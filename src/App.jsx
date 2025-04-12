@@ -1,15 +1,138 @@
-import { useState } from "react";
-import reactLogo from "./assets/react.svg";
-import viteLogo from "/vite.svg";
-import "./App.css";
+import { BrowserRouter as Router, Route, Routes, Outlet, Navigate } from "react-router-dom";
+import Header from "./components/ui/Header";
+import Footer from './components/ui/Footer';
+import { AuthProvider, useAuth } from "./context/AuthContext";
+import ProtectedRoute from "./components/auth/ProtectedRoute";
+
+// Import các trang công khai
+import HomePage from "./pages/Homepage";
+import News from "./pages/News";
+import GioiThieu from './pages/GioiThieu';
 import LoginPage from "./pages/Login";
+import ThongBaoPage from "./pages/Thongbao";
+import LienHePage from "./pages/Lienhe";
+
+// Import layout và các trang của sinh viên
+import { StudentLayout, TopicDetails, TopicsList, Proposals } from "./pages/student/StudentDashboard"; 
+import TopicRegistration from "./pages/student/TopicRegistration";
+
+// Import layout và các trang của giảng viên
+import LecturerLayout from "./components/lecturer/LecturerLayout";
+import TopicManagement from "./pages/lecturer/TopicManagement";
+import AddTopic from "./pages/lecturer/AddTopic";
+import EditTopic from "./pages/lecturer/EditTopic";
+import ApproveTopicList from "./pages/lecturer/ApproveTopicList";
+import ApproveGroupDetails from "./pages/lecturer/ApproveGroupDetails";
+import ProposedTopics from "./pages/lecturer/ProposedTopics";
+
+// Placeholders cho các role khác
+// const LecturerDashboard = () => <div className="p-8"><h1>Dashboard Giảng Viên</h1><p>...</p></div>; // Thay bằng layout thật
+const AdminDashboard = () => <div className="p-8"><h1>Dashboard Giáo Vụ</h1><p>...</p></div>;
+const UserProfilePlaceholder = () => <div className="p-8"><h1>Trang Cá Nhân</h1><p>...</p></div>;
 
 function App() {
   return (
-    <div>
-      <LoginPage />
+    <Router>
+      <AuthProvider>
+        <AppLayout />
+      </AuthProvider>
+    </Router>
+  );
+}
+
+// Component quyết định layout và routes dựa trên role
+const AppLayout = () => {
+  const { user, loading } = useAuth();
+
+  if (loading) {
+    return <div>Loading application...</div>;
+  }
+
+  // Sinh viên
+  if (user && user.role === 'sinhvien') {
+    return (
+      <Routes>
+        <Route 
+          path="/student" 
+          element={<StudentLayout />}
+        >
+          <Route index element={<TopicDetails />} /> 
+          <Route path="topics" element={<TopicsList />} /> 
+          <Route path="proposals" element={<Proposals />} />
+          <Route path="profile" element={<StudentProfilePlaceholder />} /> 
+          <Route path="topics/:topicId/register" element={<TopicRegistration />} /> 
+        </Route>
+        <Route path="*" element={<Navigate to="/student" replace />} /> 
+      </Routes>
+    );
+  }
+
+  // Giảng viên
+  if (user && user.role === 'giangvien') {
+    return (
+      <Routes>
+        <Route 
+          path="/lecturer"
+          element={<LecturerLayout />}
+        >
+          <Route index element={<Navigate to="topics" replace />} /> 
+          <Route path="topics" element={<TopicManagement />} />
+          <Route path="topics/add" element={<AddTopic />} />
+          <Route path="topics/:topicId/edit" element={<EditTopic />} />
+          <Route path="approve-groups" element={<ApproveTopicList />} />
+          <Route path="topics/:topicId/approve" element={<ApproveGroupDetails />} />
+          <Route path="proposed-topics" element={<ProposedTopics />} />
+          {/* Thêm các route khác của giảng viên ở đây */}
+          {/* <Route path="profile" element={<LecturerProfile />} /> */}
+        </Route>
+        <Route path="*" element={<Navigate to="/lecturer" replace />} /> 
+      </Routes>
+    );
+  }
+
+  // Các trang công khai và role khác (nếu có)
+  return (
+    <DefaultLayout>
+      <Routes>
+        <Route index element={<HomePage />} /> 
+        <Route path="/news" element={<News />} />
+        <Route path="/about" element={<GioiThieu />} />
+        <Route path="/notifications" element={<ThongBaoPage />} />
+        <Route path="/contact" element={<LienHePage />} />
+        <Route path="/login" element={<LoginPage />} />
+        
+        <Route 
+          path="/profile" 
+          element={ <ProtectedRoute><UserProfilePlaceholder /></ProtectedRoute> }
+        />
+        {/* Route cũ cho lecturer dashboard, giờ đã được xử lý ở trên */}
+        {/* <Route 
+          path="/lecturer/dashboard" 
+          element={ <ProtectedRoute roles={['giangvien']}><LecturerDashboard /></ProtectedRoute> }
+        /> */}
+        <Route 
+          path="/admin/dashboard" 
+          element={ <ProtectedRoute roles={['giaovu']}><AdminDashboard /></ProtectedRoute> }
+        />
+      </Routes>
+    </DefaultLayout>
+  );
+};
+
+// Layout mặc định bao gồm Header và Footer
+const DefaultLayout = ({ children }) => {
+  return (
+    <div className="min-h-screen flex flex-col bg-gray-100">
+      <Header />
+      <div className="flex-grow">
+        {children}
+      </div>
+      <Footer />
     </div>
   );
 }
+
+// Thêm placeholder cho trang profile sinh viên
+const StudentProfilePlaceholder = () => <div className="p-6"><h2 className="text-xl font-semibold">Thông tin cá nhân</h2><p>Nội dung trang thông tin cá nhân sinh viên.</p></div>;
 
 export default App;
