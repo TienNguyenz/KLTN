@@ -1,8 +1,9 @@
-import { BrowserRouter as Router, Route, Routes, Outlet, Navigate } from "react-router-dom";
+import { BrowserRouter as Router, Route, Routes, Outlet, Navigate, useLocation } from "react-router-dom";
 import Header from "./components/ui/Header";
 import Footer from './components/ui/Footer';
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import TopicDetail from "./components/lecturer/TopicDetail";
 
 // Import các trang công khai
 import HomePage from "./pages/Homepage";
@@ -24,10 +25,23 @@ import EditTopic from "./pages/lecturer/EditTopic";
 import ApproveTopicList from "./pages/lecturer/ApproveTopicList";
 import ApproveGroupDetails from "./pages/lecturer/ApproveGroupDetails";
 import ProposedTopics from "./pages/lecturer/ProposedTopics";
+import SupervisedTopics from "./components/lecturer/SupervisedTopics";
+import ReviewTopics from './components/lecturer/ReviewTopics';
+import ReviewTopicDetail from './components/lecturer/ReviewTopicDetail';
+import CommitteeTopics from './components/lecturer/CommitteeTopics';
+import CommitteeTopicDetail from './components/lecturer/CommitteeTopicDetail';
+import LecturerDashboard from "./components/lecturer/LecturerDashboard";
+
+// Import admin components
+import AdminLayout from './components/admin/AdminLayout';
+import AdminDashboard from './pages/admin/Dashboard';
+import AdminTopicManagement from './pages/admin/TopicManagement';
+import Semester from './pages/admin/Semester';
+import Registration from './pages/admin/Registration';
+import Evaluation from './pages/admin/Evaluation';
 
 // Placeholders cho các role khác
 // const LecturerDashboard = () => <div className="p-8"><h1>Dashboard Giảng Viên</h1><p>...</p></div>; // Thay bằng layout thật
-const AdminDashboard = () => <div className="p-8"><h1>Dashboard Giáo Vụ</h1><p>...</p></div>;
 const UserProfilePlaceholder = () => <div className="p-8"><h1>Trang Cá Nhân</h1><p>...</p></div>;
 
 function App() {
@@ -43,54 +57,87 @@ function App() {
 // Component quyết định layout và routes dựa trên role
 const AppLayout = () => {
   const { user, loading } = useAuth();
+  const location = useLocation();
 
   if (loading) {
     return <div>Loading application...</div>;
   }
 
-  // Sinh viên
-  if (user && user.role === 'sinhvien') {
+  // Nếu đang ở trang login, không hiển thị layout
+  if (location.pathname === '/login') {
+    return <LoginPage />;
+  }
+
+  // Nếu user là sinh viên, sử dụng StudentLayout
+  if (user?.role === 'sinhvien') {
     return (
       <Routes>
-        <Route 
-          path="/student" 
-          element={<StudentLayout />}
-        >
-          <Route index element={<TopicDetails />} /> 
-          <Route path="topics" element={<TopicsList />} /> 
+        <Route path="/student/*" element={
+          <ProtectedRoute roles={['sinhvien']}>
+            <StudentLayout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<TopicDetails />} />
+          <Route path="topics" element={<TopicsList />} />
+          <Route path="topics/:topicId/register" element={<TopicRegistration />} />
           <Route path="proposals" element={<Proposals />} />
-          <Route path="profile" element={<StudentProfilePlaceholder />} /> 
-          <Route path="topics/:topicId/register" element={<TopicRegistration />} /> 
         </Route>
-        <Route path="*" element={<Navigate to="/student" replace />} /> 
+        <Route path="*" element={<Navigate to="/student" replace />} />
       </Routes>
     );
   }
 
-  // Giảng viên
-  if (user && user.role === 'giangvien') {
+  // Nếu user là giảng viên, sử dụng LecturerLayout
+  if (user?.role === 'giangvien') {
     return (
       <Routes>
-        <Route 
-          path="/lecturer"
-          element={<LecturerLayout />}
-        >
-          <Route index element={<Navigate to="topics" replace />} /> 
+        <Route path="/lecturer/*" element={
+          <ProtectedRoute roles={['giangvien']}>
+            <LecturerLayout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<LecturerDashboard />} />
           <Route path="topics" element={<TopicManagement />} />
           <Route path="topics/add" element={<AddTopic />} />
-          <Route path="topics/:topicId/edit" element={<EditTopic />} />
+          <Route path="topics/:id/edit" element={<EditTopic />} />
+          <Route path="topics/:id" element={<TopicDetail />} />
           <Route path="approve-groups" element={<ApproveTopicList />} />
-          <Route path="topics/:topicId/approve" element={<ApproveGroupDetails />} />
+          <Route path="approve-groups/:topicId" element={<ApproveGroupDetails />} />
           <Route path="proposed-topics" element={<ProposedTopics />} />
-          {/* Thêm các route khác của giảng viên ở đây */}
-          {/* <Route path="profile" element={<LecturerProfile />} /> */}
+          <Route path="supervised-topics" element={<SupervisedTopics />} />
+          <Route path="supervised-topics/:id" element={<TopicDetail />} />
+          <Route path="review-topics" element={<ReviewTopics />} />
+          <Route path="review-topics/:id" element={<ReviewTopicDetail />} />
+          <Route path="committee" element={<CommitteeTopics />} />
+          <Route path="committee-topics/:id" element={<CommitteeTopicDetail />} />
         </Route>
-        <Route path="*" element={<Navigate to="/lecturer" replace />} /> 
+        <Route path="*" element={<Navigate to="/lecturer/topics" replace />} />
       </Routes>
     );
   }
 
-  // Các trang công khai và role khác (nếu có)
+  // Nếu user là giáo vụ, sử dụng AdminLayout
+  if (user?.role === 'giaovu') {
+    return (
+      <Routes>
+        <Route path="/admin/*" element={
+          <ProtectedRoute roles={['giaovu']}>
+            <AdminLayout />
+          </ProtectedRoute>
+        }>
+          <Route index element={<AdminDashboard />} />
+          <Route path="topics" element={<AdminTopicManagement />} />
+          <Route path="semester" element={<Semester />} />
+          <Route path="registration" element={<Registration />} />
+          <Route path="evaluation" element={<Evaluation />} />
+          {/* Thêm các route khác cho giáo vụ ở đây */}
+        </Route>
+        <Route path="*" element={<Navigate to="/admin" replace />} />
+      </Routes>
+    );
+  }
+
+  // Layout mặc định cho người dùng chưa đăng nhập
   return (
     <DefaultLayout>
       <Routes>
@@ -100,20 +147,7 @@ const AppLayout = () => {
         <Route path="/notifications" element={<ThongBaoPage />} />
         <Route path="/contact" element={<LienHePage />} />
         <Route path="/login" element={<LoginPage />} />
-        
-        <Route 
-          path="/profile" 
-          element={ <ProtectedRoute><UserProfilePlaceholder /></ProtectedRoute> }
-        />
-        {/* Route cũ cho lecturer dashboard, giờ đã được xử lý ở trên */}
-        {/* <Route 
-          path="/lecturer/dashboard" 
-          element={ <ProtectedRoute roles={['giangvien']}><LecturerDashboard /></ProtectedRoute> }
-        /> */}
-        <Route 
-          path="/admin/dashboard" 
-          element={ <ProtectedRoute roles={['giaovu']}><AdminDashboard /></ProtectedRoute> }
-        />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     </DefaultLayout>
   );

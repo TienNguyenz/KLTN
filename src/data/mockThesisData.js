@@ -201,17 +201,55 @@ export const getTopicsWithPendingGroups = () => {
    return new Promise(resolve => setTimeout(() => resolve(topics), 120));
 };
 
-// Mock function to get a single topic by ID (already exists, ensure it works)
-export const getTopicById = (topicId) => {
-  // ... (existing implementation - should be correct now)
-  console.log(`Mock fetching topic with ID: ${topicId}`);
-  const topic = availableTopics.find(t => t.id === topicId);
+// Mock function to get topic by ID
+export const getTopicById = (id) => {
+  console.log(`Mock fetching topic with ID: ${id}`);
+  const topic = availableTopics.find(t => t.id === id);
   if (!topic) {
-      console.error(`Mock topic with ID ${topicId} not found.`);
-      return null;
+    console.error(`Mock topic with ID ${id} not found.`);
+    return Promise.resolve(null);
   }
-  return new Promise(resolve => setTimeout(() => resolve(topic), 150));
-}; 
+
+  // Thêm thông tin chi tiết cho đề tài
+  const detailedTopic = {
+    ...topic,
+    description: `1. Tính cấp thiết của đề tài
+- Câu hỏi: Vì sao lại nghiên cứu đề tài đó?
++ Lí do khách quan: Ý nghĩa trên lý luận và thực tiễn chung
++ Lí do chủ quan: Thực trạng nơi tác giả nghiên cứu, nhu cầu, trách nhiệm, sự hứng thú của người nghiên cứu đối với vấn đề
+- Các nghiên cứu đã được thực hiện trước đó từ đó chỉ ra điểm mới của đề tài, vấn đề mà nhóm lựa chọn.
+- Trọng số trong bài nghiên cứu: Luận giải rõ ràng tính cấp thiết của vấn đề nghiên cứu: 10%`,
+    reviewer: 'TS. Trần Văn B',
+    documents: {
+      proposal: {
+        title: 'Đề cương chi tiết',
+        status: 'Chưa nộp'
+      },
+      guide: {
+        title: 'Tài liệu hướng dẫn',
+        status: 'Chưa nộp'
+      },
+      thesis: {
+        title: 'Báo cáo tổng kết',
+        status: 'Chưa nộp'
+      }
+    },
+    groups: [
+      {
+        id: 'G001',
+        studentName: 'Nguyễn Văn A',
+        studentId: '19110001'
+      },
+      {
+        id: 'G002',
+        studentName: 'Trần Thị B',
+        studentId: '19110002'
+      }
+    ]
+  };
+
+  return new Promise(resolve => setTimeout(() => resolve(detailedTopic), 150));
+};
 
 // Mock data for student-proposed topics
 const mockProposedTopics = [
@@ -262,4 +300,307 @@ export const getProposedTopicDetails = (proposalId) => {
       return null;
   }
   return new Promise(resolve => setTimeout(() => resolve(proposal), 90));
+};
+
+// Mock data cho đề tài hướng dẫn
+const mockSupervisedTopics = [
+  {
+    id: '1',
+    title: 'Xây dựng phần mềm Quản lý khóa luận tốt nghiệp',
+    supervisor: 'ThS. Ngô Ngọc Đăng Khoa',
+    reviewer: 'Nguyễn Minh AAA',
+    type: 'Ứng dụng',
+    studentId: '1',
+    lecturer: 'ThS. Ngô Ngọc Đăng Khoa',
+    status: 'ACTIVE',
+    description: `1. Tính cấp thiết của đề tài
+- Câu hỏi: Vì sao lại nghiên cứu đề tài đó?
++ Lí do khách quan: Ý nghĩa trên lý luận và thực tiễn chung
++ Lí do chủ quan: Thực trạng nơi tác giả nghiên cứu, nhu cầu, trách nhiệm, sự hứng thú của người nghiên cứu đối với vấn đề`,
+    documents: {
+      proposal: {
+        title: 'Đề cương chi tiết',
+        status: 'Đã nộp'
+      },
+      guide: {
+        title: 'Tài liệu hướng dẫn',
+        status: 'Chưa nộp'
+      },
+      thesis: {
+        title: 'Báo cáo tổng kết',
+        status: 'Chưa nộp'
+      }
+    },
+    groups: [
+      {
+        id: 'G001',
+        studentName: 'Nguyễn Văn A',
+        studentId: '19110001'
+      }
+    ]
+  },
+  {
+    id: '2',
+    title: 'Nghiên cứu giải thuật Deep Learning',
+    supervisor: 'TS. Nguyễn Văn A',
+    reviewer: 'TS. Trần Văn B',
+    type: 'Nghiên cứu',
+    studentId: '2',
+    lecturer: 'TS. Nguyễn Văn A',
+    status: 'REGISTERED',
+    description: `Nghiên cứu và ứng dụng các giải thuật Deep Learning hiện đại`,
+    documents: {
+      proposal: {
+        title: 'Đề cương chi tiết',
+        status: 'Chưa nộp'
+      },
+      guide: {
+        title: 'Tài liệu hướng dẫn',
+        status: 'Chưa nộp'
+      },
+      thesis: {
+        title: 'Báo cáo tổng kết',
+        status: 'Chưa nộp'
+      }
+    },
+    groups: [
+      {
+        id: 'G002',
+        studentName: 'Trần Thị B',
+        studentId: '19110002'
+      }
+    ]
+  }
+];
+
+// Hàm lấy danh sách đề tài hướng dẫn
+export const getSupervisedTopics = () => {
+  return mockSupervisedTopics;
+};
+
+// Hàm lấy chi tiết đề tài hướng dẫn theo ID
+export const getSupervisedTopicById = (id) => {
+  console.log(`Mock fetching supervised topic with ID: ${id}`);
+  const topic = mockSupervisedTopics.find(t => t.id === id);
+  if (!topic) {
+    console.error(`Mock supervised topic with ID ${id} not found.`);
+    return Promise.resolve(null);
+  }
+  return Promise.resolve(topic);
+};
+
+// Mock function to get review topics
+export const getReviewTopics = () => {
+  return availableTopics.map(topic => ({
+    ...topic,
+    id: topic.id,
+    title: topic.name,
+    supervisor: topic.supervisor || 'ThS. Ngô Ngọc Đăng Khoa',
+    reviewer: 'TS. Trần Văn B',
+    type: topic.type || 'Ứng dụng',
+    studentId: topic.studentId || '19110001',
+    lecturer: topic.lecturer || 'ThS. Ngô Ngọc Đăng Khoa',
+    status: topic.status || 'ACTIVE'
+  }));
+};
+
+// Mock function to get review topic by ID
+export const getReviewTopicById = (id) => {
+  console.log(`Mock fetching review topic with ID: ${id}`);
+  const topic = availableTopics.find(t => t.id === id);
+  if (!topic) {
+    console.error(`Mock review topic with ID ${id} not found.`);
+    return Promise.resolve(null);
+  }
+
+  // Thêm thông tin chi tiết cho đề tài
+  const detailedTopic = {
+    ...topic,
+    description: `1. Tính cấp thiết của đề tài
+- Câu hỏi: Vì sao lại nghiên cứu đề tài đó?
++ Lí do khách quan: Ý nghĩa trên lý luận và thực tiễn chung
++ Lí do chủ quan: Thực trạng nơi tác giả nghiên cứu, nhu cầu, trách nhiệm, sự hứng thú của người nghiên cứu đối với vấn đề
+- Các nghiên cứu đã được thực hiện trước đó từ đó chỉ ra điểm mới của đề tài, vấn đề mà nhóm lựa chọn.
+- Trọng số trong bài nghiên cứu: Luận giải rõ ràng tính cấp thiết của vấn đề nghiên cứu: 10%`,
+    supervisor: 'ThS. Ngô Ngọc Đăng Khoa',
+    documents: {
+      proposal: {
+        title: 'Đề cương chi tiết',
+        status: 'Chưa nộp'
+      },
+      guide: {
+        title: 'Tài liệu hướng dẫn',
+        status: 'Chưa nộp'
+      },
+      thesis: {
+        title: 'Báo cáo tổng kết',
+        status: 'Chưa nộp'
+      }
+    },
+    groups: [
+      {
+        id: 'G001',
+        studentName: 'Nguyễn Văn A',
+        studentId: '19110001'
+      },
+      {
+        id: 'G002',
+        studentName: 'Trần Thị B',
+        studentId: '19110002'
+      }
+    ]
+  };
+
+  return new Promise(resolve => setTimeout(() => resolve(detailedTopic), 150));
+};
+
+export const getCommitteeTopics = () => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve([
+        {
+          id: '1',
+          title: 'Xây dựng ứng dụng quản lý đồ án',
+          supervisor: 'Nguyễn Văn A',
+          reviewer: 'Trần Thị B',
+          type: 'Khóa luận tốt nghiệp',
+          studentId: '19120001',
+          lecturer: 'Phạm Văn C',
+          status: 'Đang chờ bảo vệ',
+          description: 'Xây dựng ứng dụng web hỗ trợ quản lý đồ án, khóa luận tốt nghiệp cho khoa',
+          documents: {
+            outline: 'Đã nộp',
+            guidance: 'Đã nộp',
+            report: 'Chưa nộp'
+          },
+          groups: [
+            {
+              id: '1',
+              studentName: 'Nguyễn Văn X',
+              studentId: '19120001'
+            }
+          ]
+        },
+        {
+          id: '2',
+          title: 'Phát triển ứng dụng học máy cho bài toán phân loại văn bản',
+          supervisor: 'Lê Thị D',
+          reviewer: 'Hoàng Văn E',
+          type: 'Khóa luận tốt nghiệp',
+          studentId: '19120002',
+          lecturer: 'Ngô Thị F',
+          status: 'Đang chờ bảo vệ',
+          description: 'Nghiên cứu và phát triển các mô hình học máy cho bài toán phân loại văn bản tiếng Việt',
+          documents: {
+            outline: 'Đã nộp',
+            guidance: 'Đã nộp',
+            report: 'Đã nộp'
+          },
+          groups: [
+            {
+              id: '2',
+              studentName: 'Trần Thị Y',
+              studentId: '19120002'
+            }
+          ]
+        }
+      ]);
+    }, 150);
+  });
+};
+
+export const getCommitteeTopicById = (id) => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      const topics = [
+        {
+          id: '1',
+          name: 'Xây dựng ứng dụng quản lý đồ án',
+          supervisor: 'Nguyễn Văn A',
+          reviewer: 'Trần Thị B',
+          type: 'Khóa luận tốt nghiệp',
+          major: 'Công nghệ thông tin',
+          maxStudents: 1,
+          description: 'Xây dựng ứng dụng web hỗ trợ quản lý đồ án, khóa luận tốt nghiệp cho khoa. Ứng dụng sẽ giúp quản lý thông tin về đề tài, sinh viên, giảng viên và quy trình thực hiện đồ án một cách hiệu quả.',
+          documents: {
+            outline: 'Đã nộp',
+            guidance: 'Đã nộp',
+            report: 'Chưa nộp'
+          },
+          groups: [
+            {
+              id: '1',
+              studentName: 'Nguyễn Văn X',
+              studentId: '19120001'
+            }
+          ]
+        },
+        {
+          id: '2',
+          name: 'Phát triển ứng dụng học máy cho bài toán phân loại văn bản',
+          supervisor: 'Lê Thị D',
+          reviewer: 'Hoàng Văn E',
+          type: 'Khóa luận tốt nghiệp',
+          major: 'Công nghệ thông tin',
+          maxStudents: 1,
+          description: 'Nghiên cứu và phát triển các mô hình học máy cho bài toán phân loại văn bản tiếng Việt. Đề tài tập trung vào việc áp dụng các kỹ thuật xử lý ngôn ngữ tự nhiên và học sâu.',
+          documents: {
+            outline: 'Đã nộp',
+            guidance: 'Đã nộp',
+            report: 'Đã nộp'
+          },
+          groups: [
+            {
+              id: '2',
+              studentName: 'Trần Thị Y',
+              studentId: '19120002'
+            }
+          ]
+        }
+      ];
+
+      const topic = topics.find(t => t.id === id);
+      resolve(topic || null);
+    }, 150);
+  });
+};
+
+// Mock function to get all topics
+export const getTopics = () => {
+  return new Promise((resolve) => {
+    setTimeout(() => {
+      resolve([
+        {
+          id: '1',
+          title: 'Xây dựng phần mềm Quản lý khóa luận tốt nghiệp',
+          supervisor: 'ThS. Ngô Ngọc Đăng Khoa',
+          reviewer: 'Nguyễn Minh AAA',
+          type: 'Ứng dụng',
+          studentId: '1',
+          lecturer: 'ThS. Ngô Ngọc Đăng Khoa',
+          status: 'ACTIVE'
+        },
+        {
+          id: '2',
+          title: 'Nghiên cứu giải thuật Deep Learning',
+          supervisor: 'TS. Nguyễn Văn A',
+          reviewer: 'TS. Trần Văn B',
+          type: 'Nghiên cứu',
+          studentId: '2',
+          lecturer: 'TS. Nguyễn Văn A',
+          status: 'REGISTERED'
+        },
+        {
+          id: '3',
+          title: 'Xây dựng Website bán sách trực tuyến',
+          supervisor: 'ThS. Ngô Ngọc Đăng Khoa',
+          reviewer: 'TS. Trần Văn B',
+          type: 'Ứng dụng',
+          studentId: '3',
+          lecturer: 'ThS. Ngô Ngọc Đăng Khoa',
+          status: 'ACTIVE'
+        }
+      ]);
+    }, 150);
+  });
 }; 

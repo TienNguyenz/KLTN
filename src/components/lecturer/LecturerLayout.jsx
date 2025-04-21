@@ -17,91 +17,99 @@ const LecturerLayout = () => {
   };
 
   return (
-    <div className="flex h-screen bg-gray-100">
-      {/* Sidebar */}
-      <aside className="w-64 bg-gray-800 text-gray-100 flex flex-col fixed h-full z-30">
-         <div className="p-4 text-center text-xl font-bold border-b border-gray-700">
+    <div className="h-screen flex overflow-hidden">
+      {/* Sidebar - Fixed */}
+      <aside className="w-64 bg-gray-800 flex-shrink-0 fixed inset-y-0 left-0 z-30">
+        <div className="h-full flex flex-col">
+          <div className="p-4 text-center text-xl font-bold border-b border-gray-700 text-white flex-shrink-0">
             GV PORTAL
-         </div>
-         
-        <nav className="flex-grow mt-4 overflow-y-auto">
-          <NavLink 
-             to="/lecturer" // Hoặc /lecturer/dashboard
-             end 
-             className={({ isActive }) => `${baseLinkClasses} ${isActive ? activeLinkClasses : ''}`}
-           >
-            <FaHome className="mr-3 w-5" /> Tổng quan
-          </NavLink>
-
-          {/* Menu Đề tài (có menu con) */}
-          <div>
-             <button 
-               onClick={toggleTopicMenu} 
-               className={`${baseLinkClasses} w-full justify-between`}
-             >
-               <div className="flex items-center">
-                 <FaCog className="mr-3 w-5" /> Đề tài
-               </div>
-               {isTopicMenuOpen ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
-             </button>
-             {isTopicMenuOpen && ( 
-                <div className="bg-gray-850">
-                   <NavLink 
-                      to="/lecturer/proposed-topics" 
-                      className={({ isActive }) => `${subMenuLinkClasses} ${isActive ? activeLinkClasses : ''}`}
-                    >
-                      <FaUserGraduate className="mr-3 w-4 opacity-0" /> Sinh viên đề xuất
-                   </NavLink>
-                   <NavLink 
-                      to="/lecturer/topics" 
-                      className={({ isActive }) => `${subMenuLinkClasses} ${isActive ? activeLinkClasses : ''}`}
-                    >
-                       <FaListAlt className="mr-3 w-4 opacity-0" /> Quản lí đề tài
-                   </NavLink>
-                   <NavLink 
-                      to="/lecturer/approve-groups" 
-                      className={({ isActive }) => `${subMenuLinkClasses} ${isActive ? activeLinkClasses : ''}`}
-                    >
-                      <FaClipboardCheck className="mr-3 w-4 opacity-0" /> Duyệt nhóm thực hiện
-                   </NavLink>
-                   <NavLink 
-                      to="/lecturer/supervised-topics" 
-                      className={({ isActive }) => `${subMenuLinkClasses} ${isActive ? activeLinkClasses : ''}`}
-                    >
-                      <FaChalkboardTeacher className="mr-3 w-4 opacity-0" /> Đề tài hướng dẫn
-                   </NavLink>
-                    <NavLink 
-                      to="/lecturer/review-topics" 
-                      className={({ isActive }) => `${subMenuLinkClasses} ${isActive ? activeLinkClasses : ''}`}
-                    >
-                      <FaComments className="mr-3 w-4 opacity-0" /> Đề tài phản biện
-                   </NavLink>
-                </div>
-             )} 
           </div>
+          
+          <nav className="flex-1 overflow-y-auto scrollbar-thin scrollbar-thumb-gray-600 scrollbar-track-gray-800">
+            <NavLink 
+              to="/lecturer" // Hoặc /lecturer/dashboard
+              end 
+              className={({ isActive }) => `${baseLinkClasses} ${isActive ? activeLinkClasses : ''}`}
+            >
+              <FaHome className="mr-3 w-5" /> Tổng quan
+            </NavLink>
 
-          <NavLink 
-             to="/lecturer/committee" 
-             className={({ isActive }) => `${baseLinkClasses} ${isActive ? activeLinkClasses : ''}`}
-           >
-            <FaUsers className="mr-3 w-5" /> Hội đồng
-          </NavLink>
-           <NavLink 
-             to="/lecturer/history" 
-             className={({ isActive }) => `${baseLinkClasses} ${isActive ? activeLinkClasses : ''}`}
-           >
-            <FaHistory className="mr-3 w-5" /> Lịch sử đề tài
-          </NavLink>
-        </nav>
+            {/* Menu Đề tài (có menu con) */}
+            <div>
+               <button 
+                 onClick={toggleTopicMenu} 
+                 className={`${baseLinkClasses} w-full justify-between`}
+               >
+                 <div className="flex items-center">
+                   <FaCog className="mr-3 w-5" /> Đề tài
+                 </div>
+                 {isTopicMenuOpen ? <FaChevronDown className="w-3 h-3" /> : <FaChevronRight className="w-3 h-3" />}
+               </button>
+               {isTopicMenuOpen && ( 
+                  <div className="bg-gray-850">
+                     <NavLink 
+                        to="/lecturer/proposed-topics" 
+                        className={({ isActive }) => `${subMenuLinkClasses} ${isActive ? activeLinkClasses : ''}`}
+                      >
+                        <FaUserGraduate className="mr-3 w-4 opacity-0" /> Sinh viên đề xuất
+                     </NavLink>
+                     <NavLink 
+                        to="/lecturer/topics" 
+                        className={({ isActive }) => `${subMenuLinkClasses} ${isActive ? activeLinkClasses : ''}`}
+                      >
+                         <FaListAlt className="mr-3 w-4 opacity-0" /> Quản lí đề tài
+                     </NavLink>
+                     <NavLink 
+                        to="/lecturer/approve-groups" 
+                        className={({ isActive }) => `${subMenuLinkClasses} ${isActive ? activeLinkClasses : ''}`}
+                      >
+                        <FaClipboardCheck className="mr-3 w-4 opacity-0" /> Duyệt nhóm thực hiện
+                     </NavLink>
+                     <NavLink 
+                        to="/lecturer/supervised-topics" 
+                        className={({ isActive }) => `${subMenuLinkClasses} ${isActive ? activeLinkClasses : ''}`}
+                      >
+                        <FaChalkboardTeacher className="mr-3 w-4 opacity-0" /> Đề tài hướng dẫn
+                     </NavLink>
+                      <NavLink 
+                        to="/lecturer/review-topics" 
+                        className={({ isActive }) => `${subMenuLinkClasses} ${isActive ? activeLinkClasses : ''}`}
+                      >
+                        <FaComments className="mr-3 w-4 opacity-0" /> Đề tài phản biện
+                     </NavLink>
+                  </div>
+               )} 
+            </div>
+
+            <NavLink 
+               to="/lecturer/committee" 
+               className={({ isActive }) => `${baseLinkClasses} ${isActive ? activeLinkClasses : ''}`}
+             >
+              <FaUsers className="mr-3 w-5" /> Hội đồng
+            </NavLink>
+             <NavLink 
+               to="/lecturer/history" 
+               className={({ isActive }) => `${baseLinkClasses} ${isActive ? activeLinkClasses : ''}`}
+             >
+              <FaHistory className="mr-3 w-5" /> Lịch sử đề tài
+            </NavLink>
+          </nav>
+        </div>
       </aside>
 
       {/* Main Content Area */}
-      <div className="flex-grow ml-64 flex flex-col">
-         {/* Header riêng cho Giảng viên */}
-         <LecturerHeader /> 
-         <main className="flex-grow overflow-auto">
-           <Outlet /> 
-         </main>
+      <div className="flex-1 flex flex-col ml-64">
+        {/* Fixed Header */}
+        <LecturerHeader className="flex-shrink-0 h-16 bg-white border-b border-gray-200" />
+        
+        {/* Main Content - Scrollable Container */}
+        <div className="flex-1 overflow-hidden bg-gray-100">
+          <div className="h-full overflow-y-auto">
+            <main className="container mx-auto px-6 py-8">
+              <Outlet /> 
+            </main>
+          </div>
+        </div>
       </div>
     </div>
   );

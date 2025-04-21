@@ -12,7 +12,7 @@ const TrangChu = () => {
           <div className="absolute inset-0 flex flex-col justify-center items-center text-center text-white px-4">
             <h2 className="text-7xl font-bold mb-6 leading-tight">
               Chào Mừng Đến Với <br />
-              <span className="text-[#008bc3]">Đại Học TDMU</span>
+              <span className="text-[#008bc3]">Đại Học SGU</span>
             </h2>
             <p className="text-xl mb-8 max-w-2xl">
               Nơi ươm mầm tri thức, chắp cánh ước mơ cho thế hệ trẻ Việt Nam
@@ -36,7 +36,7 @@ const TrangChu = () => {
                 <div className="aspect-w-16 aspect-h-9 rounded-2xl overflow-hidden shadow-2xl">
                   <img 
                     src="/Theme/images/about.jpg" 
-                    alt="Đại học TDMU" 
+                    alt="Đại học SGU" 
                     className="w-full h-full object-cover"
                   />
                 </div>
@@ -56,12 +56,11 @@ const TrangChu = () => {
               </div>
               <div className="space-y-6">
                 <h2 className="text-4xl font-bold text-gray-800">
-                  Giới Thiệu Về <span className="text-[#008bc3]">Đại Học TDMU</span>
+                  Giới Thiệu Về <span className="text-[#008bc3]">Đại Học SGU</span>
                 </h2>
-                <p className="text-gray-600 text-lg leading-relaxed">
-                  Đại học Thủ Dầu Một (TDMU) là một trong những trường đại học công lập hàng đầu tại tỉnh Bình Dương, 
-                  với sứ mệnh đào tạo nguồn nhân lực chất lượng cao, nghiên cứu khoa học và chuyển giao công nghệ 
-                  phục vụ sự phát triển kinh tế - xã hội của địa phương và cả nước.
+                <p className="text-gray-600 text-lg leading-relaxed"> 
+                Trường Đại học Sài Gòn được thành lập theo Quyết định số 478/QĐ-TTg ngày 25/04/2007 của Thủ tướng Chính phủ. Trường là cơ sở giáo dục Đại học công lập trực thuộc Ủy ban nhân dân Thành phố Hồ Chí Minh và chịu sự quản lý Nhà nước về giáo dục của Bộ Giáo dục và Đào tạo. Trường Đại học Sài Gòn đào tạo đa ngành, đa lĩnh vực; đào tạo trình độ đại học và sau đại học. Hiện tại, Nhà trường đang đào tạo tiến sĩ, thạc sĩ, đại học hệ chính quy, liên thông từ trung cấp và cao đẳng lên đại học; bồi dưỡng và cấp chứng chỉ 07 chương trình cho giáo viên; bồi dưỡng, tổ chức thi đánh giá tiếng Anh theo Khung năng lực ngoại ngữ 6 bậc dùng cho Việt Nam, Linguaskill của Hội đồng Khảo thí tiếng Anh Đại học Cambridge và chứng chỉ ứng dụng công nghệ thông tin.
+                
                 </p>
                 <div className="grid grid-cols-2 gap-6">
                   <div className="bg-gray-50 p-6 rounded-xl">
