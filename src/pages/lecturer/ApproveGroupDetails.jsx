@@ -84,11 +84,11 @@ const ApproveGroupDetails = () => {
   }
 
   if (error) {
-    return <div className="p-8 text-center text-red-600">{error}</div>;
+     return <div className="p-8 text-center text-red-600">{error}</div>;
   }
 
   if (!topic) {
-    return <div className="p-8 text-center">Không thể tải thông tin đề tài.</div>;
+     return <div className="p-8 text-center">Không thể tải thông tin đề tài.</div>;
   }
 
   return (
@@ -109,13 +109,13 @@ const ApproveGroupDetails = () => {
           </div>
           <div>
             <span className="font-medium text-gray-500">Chuyên ngành:</span>
-            <p className="text-gray-900">{topic.major || 'N/A'}</p>
+            <p className="text-gray-900">{topic.major || 'N/A'}</p> 
           </div>
-          <div className="md:col-span-1">
-            <span className="font-medium text-gray-500">Loại đề tài:</span>
-            <p className="text-gray-900">{topic.type}</p>
-          </div>
-          <div className="md:col-span-2">
+           <div className="md:col-span-1">
+             <span className="font-medium text-gray-500">Loại đề tài:</span>
+             <p className="text-gray-900">{topic.type}</p>
+           </div>
+           <div className="md:col-span-2">
             <span className="font-medium text-gray-500">Mô tả:</span>
             <p className="text-gray-900 whitespace-pre-wrap">{topic.description}</p>
           </div>
@@ -124,63 +124,63 @@ const ApproveGroupDetails = () => {
 
       {/* Registered Groups Section */}
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="flex justify-between items-center mb-4">
-          <h2 className="text-xl font-semibold text-gray-700">Nhóm đăng ký</h2>
-          {groups.length > 0 && (
-            <button 
-              onClick={handleApprove}
-              disabled={!selectedGroupId}
-              className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${!selectedGroupId ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'}`}
-            >
-              <FaCheckCircle className="mr-2 -ml-1 h-5 w-5" />
-              Duyệt nhóm thực hiện
-            </button>
-          )}
-        </div>
-
-        {groups.length === 0 ? (
-          <p className="text-gray-500 text-center py-4">Chưa có nhóm nào đăng ký đề tài này.</p>
-        ) : (
-          <div className="overflow-x-auto">
-            <table className="min-w-full divide-y divide-gray-200 text-sm">
-              <thead className="bg-gray-50">
-                <tr>
-                  <th className="px-4 py-3 w-16 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Chọn</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhóm</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng</th>
-                  <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thành viên</th>
+          <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xl font-semibold text-gray-700">Nhóm đăng ký</h2>
+              {groups.length > 0 && (
+                 <button 
+                    onClick={handleApprove}
+                    disabled={!selectedGroupId} 
+                    className={`inline-flex items-center px-4 py-2 border border-transparent rounded-md shadow-sm text-sm font-medium text-white ${!selectedGroupId ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'}`}
+                 >
+                    <FaCheckCircle className="mr-2 -ml-1 h-5 w-5" />
+                    Duyệt nhóm thực hiện
+                 </button>
+              )}
+          </div>
+          
+           {groups.length === 0 ? (
+             <p className="text-gray-500 text-center py-4">Chưa có nhóm nào đăng ký đề tài này.</p>
+           ) : (
+             <div className="overflow-x-auto">
+                <table className="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead className="bg-gray-50">
+                        <tr>
+                            <th className="px-4 py-3 w-16 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Chọn</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Nhóm</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Số lượng</th>
+                            <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Thành viên</th>
                   <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Thao tác</th>
-                </tr>
-              </thead>
-              <tbody className="bg-white divide-y divide-gray-200">
-                {groups.map((group, index) => (
-                  <tr key={group.groupId} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 text-center">
-                      <input 
-                        type="radio"
-                        name="selectedGroup"
-                        value={group.groupId}
-                        checked={selectedGroupId === group.groupId}
-                        onChange={(e) => setSelectedGroupId(e.target.value)}
-                        className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
-                      />
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-700 font-medium">{index + 1}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{group.members.length}</td>
-                    <td className="px-4 py-3 whitespace-normal text-gray-600">
-                      {group.members.map(member => (
-                        <div key={member.id}>{member.name} ({member.mssv})</div>
-                      ))}
-                    </td>
-                    <td className="px-4 py-3 whitespace-nowrap text-center">
+                        </tr>
+                    </thead>
+                    <tbody className="bg-white divide-y divide-gray-200">
+                        {groups.map((group, index) => (
+                            <tr key={group.groupId} className="hover:bg-gray-50">
+                                <td className="px-4 py-3 text-center">
+                                    <input 
+                                        type="radio" 
+                                        name="selectedGroup"
+                                        value={group.groupId}
+                                        checked={selectedGroupId === group.groupId}
+                                        onChange={(e) => setSelectedGroupId(e.target.value)}
+                                        className="focus:ring-indigo-500 h-4 w-4 text-indigo-600 border-gray-300"
+                                    />
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-gray-700 font-medium">{index + 1}</td>
+                                <td className="px-4 py-3 whitespace-nowrap text-gray-600">{group.members.length}</td>
+                                <td className="px-4 py-3 whitespace-normal text-gray-600">
+                                    {group.members.map(member => (
+                                        <div key={member.id}>{member.name} ({member.mssv})</div>
+                                    ))}
+                                </td>
+                                <td className="px-4 py-3 whitespace-nowrap text-center">
                       <div className="flex justify-center space-x-2">
                         <button 
                           onClick={() => handleViewInfo(group.groupId)} 
                           className="text-blue-600 hover:text-blue-900 p-1" 
                           title="Xem chi tiết"
                         >
-                          <FaInfoCircle className="h-5 w-5"/>
-                        </button>
+                                        <FaInfoCircle className="h-5 w-5"/>
+                                    </button>
                         <button 
                           onClick={() => handleSendMessage(group.groupId)}
                           className="text-green-600 hover:text-green-900 p-1"
@@ -189,13 +189,13 @@ const ApproveGroupDetails = () => {
                           <FaEnvelope className="h-5 w-5"/>
                         </button>
                       </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        )}
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
+            </div>
+           )}
       </div>
 
       {/* Message Modal */}

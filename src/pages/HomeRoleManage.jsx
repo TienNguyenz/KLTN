@@ -4,6 +4,11 @@ import Dashboard from "../components/ui/Dashboard.jsx";
 import HeaderAdmin from "../components/ui/HeaderAdmin.jsx";
 import Students from "../components/ui/Students.jsx";
 import LecturerList from "../components/ui/Lecturer.jsx";
+import CouncilManagement from "../components/ui/CouncilManagement.jsx";
+import ThesisApproval from "../components/ui/ThesisApproval.jsx";
+import Registration from "./admin/Registration.jsx";
+import Semester from "./admin/Semester.jsx";
+import Evaluation from "./admin/Evaluation.jsx";
 
 const Home = () => {
   const [selected, setSelected] = useState("dashboard");
@@ -23,8 +28,12 @@ const Home = () => {
             {selected === "dashboard" && "Dashboard Tổng Quan"}
             {selected === "students" && "Quản lý Sinh viên"}
             {selected === "lecturers" && "Quản lý Giảng viên"}
-            {selected === "projects" && "Quản lý Đề tài"}
-            {selected === "settings" && "Cài đặt"}
+            {selected === "topic-list" && "Danh sách đề tài"}
+            {selected === "topic-approval" && "Xét duyệt đề tài"}
+            {selected === "councils" && "Quản lý Hội đồng"}
+            {selected === "semester" && "Quản lý Học kỳ"}
+            {selected === "registration-period" && "Quản lý Đợt đăng ký"}
+            {selected === "evaluation-form" && "Quản lý Phiếu đánh giá"}
           </h1>
 
           {/* Nội dung component động */}
@@ -32,8 +41,12 @@ const Home = () => {
             {selected === "dashboard" && <Dashboard />}
             {selected === "students" && <Students />}
             {selected === "lecturers" && <LecturerList />}
-            {selected === "projects" && <div>Trang Quản lý Đề tài</div>}
-            {selected === "settings" && <div>Trang Cài đặt</div>}
+            {selected === "councils" && <CouncilManagement />}
+            {selected === "topic-list" && <div>Trang Danh sách đề tài</div>}
+            {selected === "topic-approval" && <ThesisApproval />}
+            {selected === "semester" && <Semester />}
+            {selected === "registration-period" && <Registration />}
+            {selected === "evaluation-form" && <Evaluation />}
           </div>
         </main>
       </div>

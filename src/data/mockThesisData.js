@@ -249,7 +249,7 @@ export const getTopicById = (id) => {
   };
 
   return new Promise(resolve => setTimeout(() => resolve(detailedTopic), 150));
-};
+}; 
 
 // Mock data for student-proposed topics
 const mockProposedTopics = [

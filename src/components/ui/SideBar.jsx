@@ -6,16 +6,24 @@ import {
   FaHome,
   FaListAlt,
   FaCheckSquare,
+  FaUsers,
+  FaCalendarAlt,
+  FaClipboardList,
+  FaFileAlt,
 } from "react-icons/fa";
 import Logo from "../../images/login_background.jpg";
 import { useState } from "react";
 
 const Sidebar = ({ setSelected }) => {
   const [isTopicsOpen, setIsTopicsOpen] = useState(false);
+  const [isSettingsOpen, setIsSettingsOpen] = useState(false);
 
   const handleTopicsClick = () => {
     setIsTopicsOpen(!isTopicsOpen);
-    setSelected("projects");
+  };
+
+  const handleSettingsClick = () => {
+    setIsSettingsOpen(!isSettingsOpen);
   };
 
   return (
@@ -40,11 +48,15 @@ const Sidebar = ({ setSelected }) => {
           text="Sinh viên"
           onClick={() => setSelected("students")}
         />
-
         <MenuItem
           icon={<FaChalkboardTeacher />}
           text="Giảng viên"
           onClick={() => setSelected("lecturers")}
+        />
+        <MenuItem
+          icon={<FaUsers />}
+          text="Hội đồng"
+          onClick={() => setSelected("councils")}
         />
         <div>
           <MenuItem
@@ -67,11 +79,32 @@ const Sidebar = ({ setSelected }) => {
             </div>
           )}
         </div>
-        <MenuItem
-          icon={<FaCog />}
-          text="Cài đặt"
-          onClick={() => setSelected("settings")}
-        />
+        <div>
+          <MenuItem
+            icon={<FaCog />}
+            text="Thiết lập"
+            onClick={handleSettingsClick}
+          />
+          {isSettingsOpen && (
+            <div className="ml-6 space-y-2">
+              <MenuItem
+                icon={<FaCalendarAlt />}
+                text="Học kỳ"
+                onClick={() => setSelected("semester")}
+              />
+              <MenuItem
+                icon={<FaClipboardList />}
+                text="Đợt đăng ký"
+                onClick={() => setSelected("registration-period")}
+              />
+              <MenuItem
+                icon={<FaFileAlt />}
+                text="Phiếu đánh giá"
+                onClick={() => setSelected("evaluation-form")}
+              />
+            </div>
+          )}
+        </div>
       </nav>
     </div>
   );

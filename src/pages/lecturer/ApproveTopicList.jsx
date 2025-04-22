@@ -46,7 +46,7 @@ const ApproveTopicList = () => {
                   >
                     <div className="flex items-center justify-between">
                       <div className="flex-1">
-                        <p className="text-sm font-medium text-indigo-600 truncate">{topic.name}</p>
+                      <p className="text-sm font-medium text-indigo-600 truncate">{topic.name}</p>
                         <div className="mt-1">
                           <span className="text-xs text-gray-500">
                             {topic.type} - {topic.major}
@@ -57,7 +57,7 @@ const ApproveTopicList = () => {
                         <div className="flex items-center text-sm text-gray-500">
                           <FaUsers className="mr-1" />
                           <span>{topic.pendingGroupsCount || 0} nhóm chờ duyệt</span>
-                        </div>
+                    </div>
                         <FaChevronRight className="h-5 w-5 text-gray-400" />
                       </div>
                     </div>
