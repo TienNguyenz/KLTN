@@ -6,6 +6,20 @@ import axios from 'axios';
 
 const { Search } = Input;
 
+const majorsByDepartment = {
+  "Khoa Công nghệ thông tin": [
+    "Khoa học máy tính",
+    "Kỹ thuật phần mềm",
+    "Hệ thống Thông tin",
+  ],
+  "Khoa Quản trị kinh doanh": [
+    "Quản trị Logistics",
+    "Quản trị Makerting",
+    "Digital Markerting",
+    "Quản trị nhân sự",
+  ],
+};
+
 const LecturerList = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedLecturer, setSelectedLecturer] = useState(null);
@@ -19,6 +33,9 @@ const LecturerList = () => {
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
   const [isErrorModalVisible, setIsErrorModalVisible] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [showErrorModal, setShowErrorModal] = useState(false);
 
   const fetchLecturers = async () => {
     try {
@@ -41,6 +58,26 @@ const LecturerList = () => {
   }, [searchText, selectedFaculty]);
 
   const columns = [
+    {
+      title: 'Ảnh',
+      dataIndex: 'user_avatar',
+      key: 'user_avatar',
+      render: (avatar, record) => (
+        <div className="w-10 h-10 rounded-full overflow-hidden">
+          {avatar ? (
+            <img 
+              src={`http://localhost:5000${avatar}`} 
+              alt={record.user_name} 
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
+              <span className="text-lg">{record.user_name?.charAt(0)}</span>
+            </div>
+          )}
+        </div>
+      ),
+    },
     {
       title: 'Mã GV',
       dataIndex: 'user_id',
@@ -106,7 +143,7 @@ const LecturerList = () => {
           <Button
             danger
             icon={<DeleteOutlined />}
-            onClick={() => handleDelete(record._id)}
+            onClick={() => handleDelete(record)}
           >
             Xóa
           </Button>
@@ -120,22 +157,34 @@ const LecturerList = () => {
     setIsModalVisible(true);
   };
 
-  const handleDelete = async (lecturerId) => {
-    const confirm = window.confirm("Bạn có chắc muốn xoá giảng viên này không?");
-    if (!confirm) return;
-
+  const handleDelete = async (lecturer) => {
     try {
-      await axios.delete(`http://localhost:5000/api/users/${lecturerId}`);
-      fetchLecturers();
-    } catch (err) {
-      console.error("Lỗi khi xoá giảng viên:", err);
-      alert("Có lỗi xảy ra khi xoá giảng viên");
+      // Hiển thị dialog xác nhận
+      const confirmed = window.confirm('Bạn có chắc chắn muốn xóa giảng viên này không?');
+      if (!confirmed) {
+        return;
+      }
+
+      // Gọi API xóa user
+      const response = await axios.delete(`http://localhost:5000/api/database/collections/User/${lecturer._id}`);
+      
+      if (response.data) {
+        // Cập nhật lại danh sách giảng viên
+        setLecturers(lecturers.filter(l => l._id !== lecturer._id));
+        
+        // Hiển thị thông báo thành công
+        setSuccessMessage('Xóa giảng viên thành công!');
+        setShowSuccessModal(true);
+      }
+    } catch (error) {
+      console.error('Error deleting lecturer:', error);
+      setErrorMessage('Có lỗi xảy ra khi xóa giảng viên');
+      setShowErrorModal(true);
     }
   };
 
   const handleSuccess = () => {
     setIsModalVisible(false);
-    setSelectedLecturer(null);
     fetchLecturers();
   };
 
@@ -243,17 +292,25 @@ const LecturerList = () => {
   };
 
   const handleInputChange = (field, value) => {
-    // Chỉ cập nhật formData nếu giá trị thay đổi
-    if (selectedLecturer[field] !== value) {
+    if (!selectedLecturer) {
+      // Trường hợp thêm mới: luôn cập nhật formData
       setFormData(prev => ({
         ...prev,
         [field]: value
       }));
     } else {
-      // Nếu giá trị giống ban đầu, xóa khỏi formData
-      const newFormData = { ...formData };
-      delete newFormData[field];
-      setFormData(newFormData);
+      // Trường hợp chỉnh sửa: chỉ cập nhật nếu giá trị thay đổi
+      if (selectedLecturer[field] !== value) {
+        setFormData(prev => ({
+          ...prev,
+          [field]: value
+        }));
+      } else {
+        // Nếu giá trị giống ban đầu, xóa khỏi formData
+        const newFormData = { ...formData };
+        delete newFormData[field];
+        setFormData(newFormData);
+      }
     }
     
     // Clear error when user types
@@ -276,7 +333,11 @@ const LecturerList = () => {
         }
       });
 
-      return response.data.url;
+      console.log('Image upload response:', response.data);
+      if (response.data && response.data.url) {
+        return response.data.url; // Server trả về /uploads/filename
+      }
+      throw new Error('Invalid response from server');
     } catch (error) {
       console.error('Error uploading image:', error);
       message.error('Không thể tải lên ảnh. Vui lòng thử lại.');
@@ -311,33 +372,129 @@ const LecturerList = () => {
       let user_avatar = formData.user_avatar;
       if (formData.avatarFile) {
         user_avatar = await handleImageUpload(formData.avatarFile);
+        console.log('Uploaded avatar URL:', user_avatar); // Thêm log để debug
         if (!user_avatar) {
           setIsSubmitting(false);
           return;
         }
       }
 
-      // Giữ lại các trường dữ liệu cũ nếu không có thay đổi
-      const updatedData = {
-        ...selectedLecturer, // Giữ lại tất cả dữ liệu cũ
-        ...formData, // Cập nhật các trường đã thay đổi
-        user_avatar: user_avatar || selectedLecturer.user_avatar, // Sử dụng user_avatar mới hoặc giữ lại user_avatar cũ
-        role: 'giangvien' // Đảm bảo role không bị thay đổi
-      };
+      if (selectedLecturer) {
+        // Updating existing lecturer
+        const updatedData = {
+          ...selectedLecturer,
+          ...formData,
+          user_avatar: user_avatar || selectedLecturer.user_avatar,
+          role: 'giangvien'
+        };
 
-      console.log('Sending update request with data:', updatedData);
-      const response = await axios.put(`http://localhost:5000/api/database/collections/User/${selectedLecturer._id}`, updatedData);
-      console.log('Update response:', response.data);
-      
-      if (response.data) {
-        setIsSuccessModalVisible(true);
-        handleSuccess();
+        console.log('Sending update request with data:', updatedData);
+        const response = await axios.put(
+          `http://localhost:5000/api/database/collections/User/${selectedLecturer._id}`,
+          updatedData
+        );
+        console.log('Update response:', response.data);
+        
+        if (response.data) {
+          setIsSuccessModalVisible(true);
+          handleSuccess();
+        }
       } else {
-        throw new Error('Không nhận được phản hồi từ server');
+        // First, get the faculty and major information
+        let facultyId = null;
+        let majorId = null;
+
+        try {
+          // Get faculty information
+          const facultiesResponse = await axios.get('http://localhost:5000/api/database/collections/faculties');
+          console.log('Faculties:', facultiesResponse.data);
+          console.log('Selected faculty:', formData.user_faculty);
+          
+          const faculty = facultiesResponse.data.find(f => f.faculty_title === formData.user_faculty);
+          if (faculty) {
+            facultyId = faculty._id;
+            console.log('Found faculty:', faculty);
+          } else {
+            console.log('Available faculties:', facultiesResponse.data.map(f => f.faculty_title));
+            throw new Error(`Không tìm thấy thông tin khoa "${formData.user_faculty}"`);
+          }
+
+          // Get major information
+          const majorsResponse = await axios.get('http://localhost:5000/api/database/collections/majors');
+          console.log('Majors:', majorsResponse.data);
+          console.log('Selected major:', formData.user_major);
+          
+          const major = majorsResponse.data.find(m => 
+            m.major_title === formData.user_major && 
+            m.major_faculty === faculty.faculty_title.replace('Khoa ', '')
+          );
+          if (major) {
+            majorId = major._id;
+            console.log('Found major:', major);
+          } else {
+            console.log('Available majors:', majorsResponse.data.map(m => ({title: m.major_title, faculty: m.major_faculty})));
+            throw new Error(`Không tìm thấy thông tin chuyên ngành "${formData.user_major}" trong khoa "${formData.user_faculty}"`);
+          }
+        } catch (error) {
+          console.error('Error fetching faculty/major:', error);
+          throw new Error(error.message || 'Không thể lấy thông tin khoa/chuyên ngành');
+        }
+
+        // Adding new lecturer
+        const newLecturerData = {
+          user_name: formData.user_name,
+          email: formData.email,
+          user_id: formData.user_id,
+          password: formData.user_id, // Using lecturer ID as initial password
+          user_CCCD: formData.user_CCCD || '',
+          user_phone: formData.user_phone || '',
+          user_permanent_address: formData.user_permanent_address || '',
+          user_temporary_address: formData.user_temporary_address || '',
+          user_date_of_birth: formData.user_date_of_birth || '',
+          user_faculty: facultyId, // Using the faculty ObjectId
+          user_major: majorId, // Using the major ObjectId
+          user_avatar: user_avatar || '',
+          role: 'giangvien',
+          user_status: 'active',
+          user_department: formData.user_faculty || '' // Keep faculty name for display purposes
+        };
+
+        // Validate required fields
+        const requiredFields = ['user_name', 'email', 'user_id', 'password', 'user_faculty', 'user_major'];
+        const missingFields = requiredFields.filter(field => !newLecturerData[field]);
+        
+        if (missingFields.length > 0) {
+          throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
+        }
+
+        console.log('Sending create request with data:', newLecturerData);
+        try {
+          const response = await axios.post(
+            'http://localhost:5000/api/auth/register',
+            newLecturerData,
+            {
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            }
+          );
+          console.log('Create response:', response.data);
+
+          if (response.data) {
+            setIsSuccessModalVisible(true);
+            handleSuccess();
+          }
+        } catch (error) {
+          console.error('Registration error:', error.response?.data || error);
+          const errorMessage = error.response?.data?.message || 'Lỗi khi đăng ký giảng viên mới';
+          throw new Error(errorMessage);
+        }
       }
     } catch (error) {
-      console.error('Error updating lecturer:', error);
-      setErrorMessage(error.response?.data?.message || 'Cập nhật thông tin giảng viên thất bại!');
+      console.error('Error:', error);
+      const errorMessage = error.message || 
+        (selectedLecturer ? 'Cập nhật thông tin giảng viên thất bại!' : 'Thêm giảng viên mới thất bại!');
+      setErrorMessage(errorMessage);
       setIsErrorModalVisible(true);
     } finally {
       setIsSubmitting(false);
@@ -359,10 +516,12 @@ const LecturerList = () => {
           placeholder="-- Chọn Khoa --"
           onChange={(value) => setSelectedFaculty(value)}
         >
-          <Select.Option value="cntt">Công nghệ thông tin</Select.Option>
-          <Select.Option value="ktpm">Kỹ thuật phần mềm</Select.Option>
-          <Select.Option value="httt">Hệ thống thông tin</Select.Option>
-          <Select.Option value="khmt">Khoa học máy tính</Select.Option>
+          <Select.Option value="">-- Chọn Khoa --</Select.Option>
+          {Object.keys(majorsByDepartment).map((dep, idx) => (
+            <Select.Option key={idx} value={dep}>
+              {dep}
+            </Select.Option>
+          ))}
         </Select>
         <Button
           type="primary"
@@ -389,14 +548,14 @@ const LecturerList = () => {
             <div className="flex items-center mb-6">
               <div className="relative group">
                 <div className="w-24 h-24 bg-gray-200 rounded-full mr-6 flex items-center justify-center overflow-hidden">
-                  {(formData.avatar || selectedLecturer?.avatar) ? (
+                  {(formData.user_avatar || selectedLecturer?.user_avatar) ? (
                     <img 
-                      src={formData.avatar || selectedLecturer?.avatar}
+                      src={formData.user_avatar ? formData.user_avatar : `http://localhost:5000${selectedLecturer.user_avatar}`}
                       alt="Avatar" 
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <span className="text-2xl">{selectedLecturer?.user_name?.charAt(0)}</span>
+                    <span className="text-2xl">{selectedLecturer?.user_name?.charAt(0) || formData.user_name?.charAt(0)}</span>
                   )}
                 </div>
                 <label className="absolute inset-0 flex items-center justify-center bg-black bg-opacity-50 rounded-full opacity-0 group-hover:opacity-100 cursor-pointer transition-opacity">
@@ -409,7 +568,7 @@ const LecturerList = () => {
                       if (file) {
                         const reader = new FileReader();
                         reader.onloadend = () => {
-                          handleInputChange('avatar', reader.result);
+                          handleInputChange('user_avatar', reader.result);
                           handleInputChange('avatarFile', file);
                         };
                         reader.readAsDataURL(file);
@@ -424,7 +583,7 @@ const LecturerList = () => {
                 <div className="text-gray-600">
                   <span>Mã số: {selectedLecturer?.user_id}</span>
                   <span className="mx-2">|</span>
-                  <span>Vai trò: TEACHER</span>
+                  <span>Vai trò: LECTURER</span>
                 </div>
               </div>
             </div>
@@ -441,7 +600,7 @@ const LecturerList = () => {
                     className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
                       errors.user_name ? 'border-red-500' : ''
                     }`}
-                    defaultValue={selectedLecturer?.user_name}
+                    value={formData.user_name || selectedLecturer?.user_name || ''}
                     onChange={(e) => handleInputChange('user_name', e.target.value)}
                   />
                   {errors.user_name && (
@@ -457,7 +616,7 @@ const LecturerList = () => {
                     className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
                       errors.email ? 'border-red-500' : ''
                     }`}
-                    defaultValue={selectedLecturer?.email}
+                    value={formData.email || selectedLecturer?.email || ''}
                     onChange={(e) => handleInputChange('email', e.target.value)}
                   />
                   {errors.email && (
@@ -473,7 +632,7 @@ const LecturerList = () => {
                     className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
                       errors.user_id ? 'border-red-500' : ''
                     }`}
-                    defaultValue={selectedLecturer?.user_id}
+                    value={formData.user_id || selectedLecturer?.user_id || ''}
                     onChange={(e) => handleInputChange('user_id', e.target.value)}
                   />
                   {errors.user_id && (
@@ -489,7 +648,7 @@ const LecturerList = () => {
                     className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
                       errors.user_CCCD ? 'border-red-500' : ''
                     }`}
-                    defaultValue={selectedLecturer?.user_CCCD}
+                    value={formData.user_CCCD || selectedLecturer?.user_CCCD || ''}
                     onChange={(e) => handleInputChange('user_CCCD', e.target.value)}
                   />
                   {errors.user_CCCD && (
@@ -505,7 +664,7 @@ const LecturerList = () => {
                     className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
                       errors.user_phone ? 'border-red-500' : ''
                     }`}
-                    defaultValue={selectedLecturer?.user_phone}
+                    value={formData.user_phone || selectedLecturer?.user_phone || ''}
                     onChange={(e) => handleInputChange('user_phone', e.target.value)}
                   />
                   {errors.user_phone && (
@@ -521,7 +680,7 @@ const LecturerList = () => {
                     className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
                       errors.user_permanent_address ? 'border-red-500' : ''
                     }`}
-                    defaultValue={selectedLecturer?.user_permanent_address}
+                    value={formData.user_permanent_address || selectedLecturer?.user_permanent_address || ''}
                     onChange={(e) => handleInputChange('user_permanent_address', e.target.value)}
                   />
                   {errors.user_permanent_address && (
@@ -537,7 +696,7 @@ const LecturerList = () => {
                     className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
                       errors.user_temporary_address ? 'border-red-500' : ''
                     }`}
-                    defaultValue={selectedLecturer?.user_temporary_address}
+                    value={formData.user_temporary_address || selectedLecturer?.user_temporary_address || ''}
                     onChange={(e) => handleInputChange('user_temporary_address', e.target.value)}
                   />
                   {errors.user_temporary_address && (
@@ -553,7 +712,7 @@ const LecturerList = () => {
                     className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
                       errors.user_date_of_birth ? 'border-red-500' : ''
                     }`}
-                    defaultValue={selectedLecturer?.user_date_of_birth}
+                    value={formData.user_date_of_birth || selectedLecturer?.user_date_of_birth || ''}
                     onChange={(e) => handleInputChange('user_date_of_birth', e.target.value)}
                   />
                   {errors.user_date_of_birth && (
@@ -572,10 +731,11 @@ const LecturerList = () => {
                       handleInputChange('user_faculty', value);
                     }}
                   >
-                    <Select.Option value="cntt">Công nghệ thông tin</Select.Option>
-                    <Select.Option value="ktpm">Kỹ thuật phần mềm</Select.Option>
-                    <Select.Option value="httt">Hệ thống thông tin</Select.Option>
-                    <Select.Option value="khmt">Khoa học máy tính</Select.Option>
+                    {Object.keys(majorsByDepartment).map((dep) => (
+                      <Select.Option key={dep} value={dep}>
+                        {dep}
+                      </Select.Option>
+                    ))}
                   </Select>
                   {errors.user_faculty && (
                     <span className="text-red-500 text-sm">{errors.user_faculty}</span>
@@ -588,12 +748,14 @@ const LecturerList = () => {
                   <Select
                     className={`w-full ${errors.user_major ? 'border-red-500' : ''}`}
                     defaultValue={selectedLecturer?.user_major}
+                    disabled={!selectedFaculty}
                     onChange={(value) => handleInputChange('user_major', value)}
                   >
-                    <Select.Option value="cntt">Công nghệ thông tin</Select.Option>
-                    <Select.Option value="ktpm">Kỹ thuật phần mềm</Select.Option>
-                    <Select.Option value="httt">Hệ thống thông tin</Select.Option>
-                    <Select.Option value="khmt">Khoa học máy tính</Select.Option>
+                    {(majorsByDepartment[selectedFaculty] || []).map((major) => (
+                      <Select.Option key={major} value={major}>
+                        {major}
+                      </Select.Option>
+                    ))}
                   </Select>
                   {errors.user_major && (
                     <span className="text-red-500 text-sm">{errors.user_major}</span>
@@ -618,7 +780,7 @@ const LecturerList = () => {
                 onClick={handleUpdate}
                 loading={isSubmitting}
               >
-                Cập nhật
+                {selectedLecturer ? 'Cập nhật' : 'Thêm'}
               </Button>
             </div>
           </div>
@@ -627,7 +789,7 @@ const LecturerList = () => {
 
       {/* Dialog xác nhận */}
       <Modal
-        title="Xác nhận thay đổi"
+        title={selectedLecturer ? "Xác nhận cập nhật" : "Xác nhận thêm mới"}
         open={isConfirmModalVisible}
         onOk={handleConfirmUpdate}
         onCancel={() => setIsConfirmModalVisible(false)}
@@ -649,12 +811,25 @@ const LecturerList = () => {
         centered
       >
         <div className="py-4">
-          <p className="text-gray-600">Bạn có chắc chắn muốn cập nhật thông tin của giảng viên:</p>
-          <p className="font-semibold mt-2">{selectedLecturer?.user_name}</p>
-          <p className="text-gray-500 text-sm mt-1">Mã số: {selectedLecturer?.user_id}</p>
+          {selectedLecturer ? (
+            <>
+              <p className="text-gray-600">Bạn có chắc chắn muốn cập nhật thông tin của giảng viên:</p>
+              <p className="font-semibold mt-2">{selectedLecturer.user_name}</p>
+              <p className="text-gray-500 text-sm mt-1">Mã số: {selectedLecturer.user_id}</p>
+            </>
+          ) : (
+            <>
+              <p className="text-gray-600">Bạn có chắc chắn muốn thêm giảng viên mới với thông tin:</p>
+              <p className="font-semibold mt-2">Họ tên: {formData.user_name}</p>
+              <p className="text-gray-500 text-sm mt-1">Mã số: {formData.user_id}</p>
+            </>
+          )}
           <div className="mt-4 p-3 bg-blue-50 rounded-lg">
             <p className="text-blue-600 text-sm">
-              Lưu ý: Hành động này sẽ cập nhật thông tin trong cơ sở dữ liệu và không thể hoàn tác.
+              {selectedLecturer 
+                ? "Lưu ý: Hành động này sẽ cập nhật thông tin trong cơ sở dữ liệu."
+                : "Lưu ý: Hành động này sẽ thêm giảng viên mới vào cơ sở dữ liệu."
+              }
             </p>
           </div>
         </div>
@@ -667,13 +842,19 @@ const LecturerList = () => {
         onOk={() => {
           setIsSuccessModalVisible(false);
           setIsModalVisible(false);
+          setSelectedLecturer(null);
+          setFormData({});
+          setErrors({});
+          setSelectedFaculty('');
         }}
         okText="Đóng"
         centered
       >
         <div className="text-center py-4">
           <CheckCircleFilled style={{ fontSize: '48px', color: '#52c41a' }} />
-          <p className="mt-4 text-lg">Cập nhật thông tin giảng viên thành công!</p>
+          <p className="mt-4 text-lg">
+            {selectedLecturer ? 'Cập nhật thông tin giảng viên thành công!' : 'Thêm giảng viên mới thành công!'}
+          </p>
         </div>
       </Modal>
 
@@ -689,6 +870,26 @@ const LecturerList = () => {
           <CloseCircleFilled style={{ fontSize: '48px', color: '#ff4d4f' }} />
           <p className="mt-4 text-lg">{errorMessage}</p>
         </div>
+      </Modal>
+
+      {/* Success Modal */}
+      <Modal
+        title="Thông báo"
+        open={showSuccessModal}
+        onOk={() => setShowSuccessModal(false)}
+        onCancel={() => setShowSuccessModal(false)}
+      >
+        <p>{successMessage}</p>
+      </Modal>
+
+      {/* Error Modal */}
+      <Modal
+        title="Lỗi"
+        open={showErrorModal}
+        onOk={() => setShowErrorModal(false)}
+        onCancel={() => setShowErrorModal(false)}
+      >
+        <p>{errorMessage}</p>
       </Modal>
     </div>
   );

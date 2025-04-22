@@ -1,8 +1,5 @@
-import { User } from '../models/User.js';
-import jwt from 'jsonwebtoken';
-import dotenv from 'dotenv';
-
-dotenv.config();
+const User = require('../models/User');
+const jwt = require('jsonwebtoken');
 
 const login = async (req, res) => {
     try {
@@ -149,4 +146,4 @@ const register = async (req, res) => {
     }
 };
 
-export { login, register }; 
+module.exports = { login, register }; 

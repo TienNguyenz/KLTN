@@ -135,4 +135,29 @@ router.put('/collections/User/:id', async (req, res) => {
     }
 });
 
+// Xóa user
+router.delete('/collections/User/:id', async (req, res) => {
+    try {
+        const userId = req.params.id;
+        console.log('Deleting user:', userId);
+
+        // Tìm và xóa user
+        const deletedUser = await User.findByIdAndDelete(userId);
+
+        if (!deletedUser) {
+            console.log('User not found:', userId);
+            return res.status(404).json({ message: 'Không tìm thấy user' });
+        }
+
+        console.log('User deleted successfully:', deletedUser);
+        res.json({ message: 'Xóa user thành công', user: deletedUser });
+    } catch (error) {
+        console.error('Error deleting user:', error);
+        res.status(500).json({ 
+            message: 'Lỗi khi xóa user',
+            error: error.message 
+        });
+    }
+});
+
 module.exports = router; 

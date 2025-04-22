@@ -1,0 +1,200 @@
+warning: in the working copy of 'BE/package-lock.json', LF will be replaced by CRLF the next time Git touches it
+[1mdiff --git a/BE/routes/database.js b/BE/routes/database.js[m
+[1mindex 4aae7e8..d8df3f0 100644[m
+[1m--- a/BE/routes/database.js[m
+[1m+++ b/BE/routes/database.js[m
+[36m@@ -135,4 +135,29 @@[m [mrouter.put('/collections/User/:id', async (req, res) => {[m
+     }[m
+ });[m
+ [m
+[32m+[m[32m// Xóa user[m
+[32m+[m[32mrouter.delete('/collections/User/:id', async (req, res) => {[m
+[32m+[m[32m    try {[m
+[32m+[m[32m        const userId = req.params.id;[m
+[32m+[m[32m        console.log('Deleting user:', userId);[m
+[32m+[m
+[32m+[m[32m        // Tìm và xóa user[m
+[32m+[m[32m        const deletedUser = await User.findByIdAndDelete(userId);[m
+[32m+[m
+[32m+[m[32m        if (!deletedUser) {[m
+[32m+[m[32m            console.log('User not found:', userId);[m
+[32m+[m[32m            return res.status(404).json({ message: 'Không tìm thấy user' });[m
+[32m+[m[32m        }[m
+[32m+[m
+[32m+[m[32m        console.log('User deleted successfully:', deletedUser);[m
+[32m+[m[32m        res.json({ message: 'Xóa user thành công', user: deletedUser });[m
+[32m+[m[32m    } catch (error) {[m
+[32m+[m[32m        console.error('Error deleting user:', error);[m
+[32m+[m[32m        res.status(500).json({[m[41m [m
+[32m+[m[32m            message: 'Lỗi khi xóa user',[m
+[32m+[m[32m            error: error.message[m[41m [m
+[32m+[m[32m        });[m
+[32m+[m[32m    }[m
+[32m+[m[32m});[m
+[32m+[m
+ module.exports = router; [m
+\ No newline at end of file[m
+[1mdiff --git a/BE/uploads/1745299083633.png b/BE/uploads/1745299083633.png[m
+[1mnew file mode 100644[m
+[1mindex 0000000..dd1e9a9[m
+Binary files /dev/null and b/BE/uploads/1745299083633.png differ
+[1mdiff --git a/BE/uploads/1745299118144.png b/BE/uploads/1745299118144.png[m
+[1mnew file mode 100644[m
+[1mindex 0000000..9316e46[m
+Binary files /dev/null and b/BE/uploads/1745299118144.png differ
+[1mdiff --git a/BE/uploads/1745299249666.png b/BE/uploads/1745299249666.png[m
+[1mnew file mode 100644[m
+[1mindex 0000000..dd1e9a9[m
+Binary files /dev/null and b/BE/uploads/1745299249666.png differ
+[1mdiff --git a/BE/uploads/1745299487509.png b/BE/uploads/1745299487509.png[m
+[1mnew file mode 100644[m
+[1mindex 0000000..009bbb6[m
+Binary files /dev/null and b/BE/uploads/1745299487509.png differ
+[1mdiff --git a/node_modules/.package-lock.json b/node_modules/.package-lock.json[m
+[1mindex 1eb8b2d..e9b2f7b 100644[m
+[1m--- a/node_modules/.package-lock.json[m
+[1m+++ b/node_modules/.package-lock.json[m
+[36m@@ -420,414 +420,6 @@[m
+       "integrity": "sha512-snKqtPW01tN0ui7yu9rGv69aJXr/a/Ywvl11sUjNtEcRc+ng/mQriFL0wLXMef74iHa/EkftbDzU9F8iFbH+zg==",[m
+       "license": "MIT"[m
+     },[m
+[31m-    "node_modules/@esbuild/aix-ppc64": {[m
+[31m-      "version": "0.25.2",[m
+[31m-      "resolved": "https://registry.npmjs.org/@esbuild/aix-ppc64/-/aix-ppc64-0.25.2.tgz",[m
+[31m-      "integrity": "sha512-wCIboOL2yXZym2cgm6mlA742s9QeJ8DjGVaL39dLN4rRwrOgOyYSnOaFPhKZGLb2ngj4EyfAFjsNJwPXZvseag==",[m
+[31m-      "cpu": [[m
+[31m-        "ppc64"[m
+[31m-      ],[m
+[31m-      "dev": true,[m
+[31m-      "license": "MIT",[m
+[31m-      "optional": true,[m
+[31m-      "os": [[m
+[31m-        "aix"[m
+[31m-      ],[m
+[31m-      "engines": {[m
+[31m-        "node": ">=18"[m
+[31m-      }[m
+[31m-    },[m
+[31m-    "node_modules/@esbuild/android-arm": {[m
+[31m-      "version": "0.25.2",[m
+[31m-      "resolved": "https://registry.npmjs.org/@esbuild/android-arm/-/android-arm-0.25.2.tgz",[m
+[31m-      "integrity": "sha512-NQhH7jFstVY5x8CKbcfa166GoV0EFkaPkCKBQkdPJFvo5u+nGXLEH/ooniLb3QI8Fk58YAx7nsPLozUWfCBOJA==",[m
+[31m-      "cpu": [[m
+[31m-        "arm"[m
+[31m-      ],[m
+[31m-      "dev": true,[m
+[31m-      "license": "MIT",[m
+[31m-      "optional": true,[m
+[31m-      "os": [[m
+[31m-        "android"[m
+[31m-      ],[m
+[31m-      "engines": {[m
+[31m-        "node": ">=18"[m
+[31m-      }[m
+[31m-    },[m
+[31m-    "node_modules/@esbuild/android-arm64": {[m
+[31m-      "version": "0.25.2",[m
+[31m-      "resolved": "https://registry.npmjs.org/@esbuild/android-arm64/-/android-arm64-0.25.2.tgz",[m
+[31m-      "integrity": "sha512-5ZAX5xOmTligeBaeNEPnPaeEuah53Id2tX4c2CVP3JaROTH+j4fnfHCkr1PjXMd78hMst+TlkfKcW/DlTq0i4w==",[m
+[31m-      "cpu": [[m
+[31m-        "arm64"[m
+[31m-      ],[m
+[31m-      "dev": true,[m
+[31m-      "license": "MIT",[m
+[31m-      "optional": true,[m
+[31m-      "os": [[m
+[31m-        "android"[m
+[31m-      ],[m
+[31m-      "engines": {[m
+[31m-        "node": ">=18"[m
+[31m-      }[m
+[31m-    },[m
+[31m-    "node_modules/@esbuild/android-x64": {[m
+[31m-      "version": "0.25.2",[m
+[31m-      "resolved": "https://registry.npmjs.org/@esbuild/android-x64/-/android-x64-0.25.2.tgz",[m
+[31m-      "integrity": "sha512-Ffcx+nnma8Sge4jzddPHCZVRvIfQ0kMsUsCMcJRHkGJ1cDmhe4SsrYIjLUKn1xpHZybmOqCWwB0zQvsjdEHtkg==",[m
+[31m-      "cpu": [[m
+[31m-        "x64"[m
+[31m-      ],[m
+[31m-      "dev": true,[m
+[31m-      "license": "MIT",[m
+[31m-      "optional": true,[m
+[31m-      "os": [[m
+[31m-        "android"[m
+[31m-      ],[m
+[31m-      "engines": {[m
+[31m-        "node": ">=18"[m
+[31m-      }[m
+[31m-    },[m
+[31m-    "node_modules/@esbuild/darwin-arm64": {[m
+[31m-      "version": "0.25.2",[m
+[31m-      "resolved": "https://registry.npmjs.org/@esbuild/darwin-arm64/-/darwin-arm64-0.25.2.tgz",[m
+[31m-      "integrity": "sha512-MpM6LUVTXAzOvN4KbjzU/q5smzryuoNjlriAIx+06RpecwCkL9JpenNzpKd2YMzLJFOdPqBpuub6eVRP5IgiSA==",[m
+[31m-      "cpu": [[m
+[31m-        "arm64"[m
+[31m-      ],[m
+[31m-      "dev": true,[m
+[31m-      "license": "MIT",[m
+[31m-      "optional": true,[m
+[31m-      "os": [[m
+[31m-        "darwin"[m
+[31m-      ],[m
+[31m-      "engines": {[m
+[31m-        "node": ">=18"[m
+[31m-      }[m
+[31m-    },[m
+[31m-    "node_modules/@esbuild/darwin-x64": {[m
+[31m-      "version": "0.25.2",[m
+[31m-      "resolved": "https://registry.npmjs.org/@esbuild/darwin-x64/-/darwin-x64-0.25.2.tgz",[m
+[31m-      "integrity": "sha512-5eRPrTX7wFyuWe8FqEFPG2cU0+butQQVNcT4sVipqjLYQjjh8a8+vUTfgBKM88ObB85ahsnTwF7PSIt6PG+QkA==",[m
+[31m-      "cpu": [[m
+[31m-        "x64"[m
+[31m-      ],[m
+[31m-      "dev": true,[m
+[31m-      "license": "MIT",[m
+[31m-      "optional": true,[m
+[31m-      "os": [[m
+[31m-        "darwin"[m
+[31m-      ],[m
+[31m-      "engines": {[m
+[31m-        "node": ">=18"[m
+[31m-      }[m
+[31m-    },[m
+[31m-    "node_modules/@esbuild/freebsd-arm64": {[m
+[31m-      "version": "0.25.2",[m
+[31m-      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-arm64/-/freebsd-arm64-0.25.2.tgz",[m
+[31m-      "integrity": "sha512-mLwm4vXKiQ2UTSX4+ImyiPdiHjiZhIaE9QvC7sw0tZ6HoNMjYAqQpGyui5VRIi5sGd+uWq940gdCbY3VLvsO1w==",[m
+[31m-      "cpu": [[m
+[31m-        "arm64"[m
+[31m-      ],[m
+[31m-      "dev": true,[m
+[31m-      "license": "MIT",[m
+[31m-      "optional": true,[m
+[31m-      "os": [[m
+[31m-        "freebsd"[m
+[31m-      ],[m
+[31m-      "engines": {[m
+[31m-        "node": ">=18"[m
+[31m-      }[m
+[31m-    },[m
+[31m-    "node_modules/@esbuild/freebsd-x64": {[m
+[31m-      "version": "0.25.2",[m
+[31m-      "resolved": "https://registry.npmjs.org/@esbuild/freebsd-x64/-/freebsd-x64-0.25.2.tgz",[m
+[31m-      "integrity": "sha512-6qyyn6TjayJSwGpm8J9QYYGQcRgc90nmfdUb0O7pp1s4lTY+9D0H9O02v5JqGApUyiHOtkz6+1hZNvNtEhbwRQ==",[m
+[31m-      "cpu": [[m
+[31m-        "x64"[m
+[31m-      ],[m
+[31m-      "dev": true,[m
+[31m-      "license": "MIT",[m
+[31m-      "optional": true,[m
+[31m-      "os": [[m
+[31m-        "freebsd"[m
+[31m-      ],[m
+[31m-      "engines": {[m
+[31m-        "node": ">=18"[m
+[31m-      }[m
+[31m-    },[m
+[31m-    "node_modules/@esbuild/linux-arm": {[m
+[31m-      "version": "0.25.2",[m
+[31m-      "resolved": "https://registry.npmjs.org/@esbuild/linux-arm/-/linux-arm-0.25.2.tgz",[m
+[31m-      "integri
