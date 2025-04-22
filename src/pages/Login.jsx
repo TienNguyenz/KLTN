@@ -43,7 +43,7 @@ export default function LoginPage() {
       if (data.user.role === 'sinhvien') {
         targetPath = '/student';
       } else if (data.user.role === 'giaovu') {
-        targetPath = '/admin/dashboard';
+        targetPath = '/HomeRoleManage';
       } else if (data.user.role === 'giangvien') {
         targetPath = '/lecturer';
       }

@@ -55,7 +55,7 @@ export default function Header() {
             to="/login" 
             className="bg-[#008bc3] hover:bg-[#0073a8] text-white text-sm font-medium px-5 py-2 rounded-full transition-colors duration-300 shadow-sm"
           >
-            Đăng nhập / Đăng ký
+            Đăng nhập 
           </Link>
         )}
       </div>

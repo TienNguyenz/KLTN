@@ -1,0 +1,32 @@
+Quản lý:
+-Trang tổng quan
+-QUản lý sinh viên , giảng viên , hội đồng
+-Đề tài
+
+-Giảng viên:
++quản lý đề tài:
+	Lược bỏ phần giảng viên ,chỉ để giáo vụ là duyệt hay chưa duyệt
++Từ chối đề tài:
+	Cần lý do từ chối ==> sau khi nhập sẽ thông báo cho sinh viên
++nộp đề cương 
+
+
+
+-Sinh viên:
++Đề xuất:
+	Chỉnh lại chuyên ngành lên trên gvhd vì chuyên ngành sẽ tùy gvhd (vd CNTT thì có giangvien01,02,03..., còn Sư phạm là giangvien 04,05,..)
+	Ghi danh đề tài phần dk đề tài sinh viên nên là nhập ko chọn
+	Nếu sinh viên thứ 2 hoặc 3 đã có nhóm từ trước thì ko thể add vào được.(giải quyết so với csdl là có mssv 
++hủy đề tài:
+	Nếu muốn hủy đề tài thì gvhd phải chưa phê duyệt đề tài và các thành viên phải đồng ý hủy đề tài thì mới hủy thành công
+	Nếu đã có đề tài dk thì ko được đề xuất đề tài và ngược lại
++Trang chủ:
+	Trang 60
+	Trang 61
+
+
+DATABASE:
+-Sinh viên :SV0001
+-Giảng viên: GV0001
+-admin : Admin
+	lấy dữ liệu từ gvhd để hiện danh sách đề tài duyệt 

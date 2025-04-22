@@ -4,6 +4,7 @@ import Footer from './components/ui/Footer';
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import TopicDetail from "./components/lecturer/TopicDetail";
+import HomeRoleManage from "./pages/HomeRoleManage";
 
 // Import các trang công khai
 import HomePage from "./pages/Homepage";
@@ -116,23 +117,18 @@ const AppLayout = () => {
     );
   }
 
-  // Nếu user là giáo vụ, sử dụng AdminLayout
+  // Nếu user là giáo vụ, sử dụng HomeRoleManage
   if (user?.role === 'giaovu') {
     return (
       <Routes>
-        <Route path="/admin/*" element={
+        <Route path="/HomeRoleManage" element={
           <ProtectedRoute roles={['giaovu']}>
-            <AdminLayout />
+            <HomeRoleManage />
           </ProtectedRoute>
-        }>
-          <Route index element={<AdminDashboard />} />
-          <Route path="topics" element={<AdminTopicManagement />} />
-          <Route path="semester" element={<Semester />} />
-          <Route path="registration" element={<Registration />} />
-          <Route path="evaluation" element={<Evaluation />} />
-          {/* Thêm các route khác cho giáo vụ ở đây */}
-        </Route>
-        <Route path="*" element={<Navigate to="/admin" replace />} />
+        } />
+        <Route path="/admin" element={<Navigate to="/HomeRoleManage" replace />} />
+        <Route path="/admin/*" element={<Navigate to="/HomeRoleManage" replace />} />
+        <Route path="*" element={<Navigate to="/HomeRoleManage" replace />} />
       </Routes>
     );
   }
