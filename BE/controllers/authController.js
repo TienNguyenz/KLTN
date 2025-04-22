@@ -1,10 +1,13 @@
-const User = require('../models/User');
-const jwt = require('jsonwebtoken');
+import { User } from '../models/User.js';
+import jwt from 'jsonwebtoken';
+import dotenv from 'dotenv';
+
+dotenv.config();
 
 const login = async (req, res) => {
     try {
         const { email, password } = req.body;
-        console.log('Login attempt with:', { email, password });
+        console.log('Login attempt with:', { email });
 
         // Find user by email
         const user = await User.findOne({ email });
@@ -15,10 +18,20 @@ const login = async (req, res) => {
             return res.status(401).json({ message: 'Sai tài khoản' });
         }
 
-        // Check password - compare directly for existing data
-        if (password !== user.password) {
-            console.log('Password mismatch. Provided:', password, 'Stored:', user.password);
+        // Check password using both methods
+        const isMatchHashed = await user.comparePassword(password);
+        const isMatchUnhashed = password === user.password;
+
+        if (!isMatchHashed && !isMatchUnhashed) {
+            console.log('Password mismatch');
             return res.status(401).json({ message: 'Sai mật khẩu' });
+        }
+
+        // If password matches but is unhashed, update it to hashed version
+        if (isMatchUnhashed && !isMatchHashed) {
+            user.password = password;
+            await user.save();
+            console.log('Password updated to hashed version');
         }
 
         // Create JWT token
@@ -136,4 +149,4 @@ const register = async (req, res) => {
     }
 };
 
-module.exports = { login, register }; 
+export { login, register }; 
