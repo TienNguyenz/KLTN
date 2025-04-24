@@ -25,6 +25,7 @@ import {
   FormHelperText,
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
+import { FaEdit, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
 
 const CouncilManagement = () => {
@@ -259,18 +260,22 @@ const CouncilManagement = () => {
                   ))}
                 </TableCell>
                 <TableCell>
-                  <IconButton
-                    color="primary"
+                  <Button
+                    type="text"
+                    className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-blue-100"
                     onClick={() => handleOpen(council)}
+                    sx={{ minWidth: 'auto', p: 1 }}
                   >
-                    <EditIcon />
-                  </IconButton>
-                  <IconButton
-                    color="error"
+                    <FaEdit style={{ color: '#4096ff' }} className="text-lg" />
+                  </Button>
+                  <Button
+                    type="text"
+                    className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100"
                     onClick={() => handleDelete(council._id)}
+                    sx={{ minWidth: 'auto', p: 1, ml: 1 }}
                   >
-                    <DeleteIcon />
-                  </IconButton>
+                    <FaTrash style={{ color: '#ff4d4f' }} className="text-lg" />
+                  </Button>
                 </TableCell>
               </TableRow>
             ))}

@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Table, Button, Modal, Form, Input, Select, Space, message, InputNumber, Steps } from 'antd';
 import { PlusOutlined, EditOutlined, EyeOutlined, DeleteOutlined, CheckOutlined, CloseOutlined } from '@ant-design/icons';
+import { FaEdit, FaTrash, FaEye } from 'react-icons/fa';
 
 const Evaluation = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -95,27 +96,35 @@ const Evaluation = () => {
       render: (_, record) => (
         <Space>
           {record.isEditing ? (
-            <>
+            <Space.Compact className="flex">
               <Button
                 type="text"
-                icon={<CheckOutlined />}
-                className="text-green-600 hover:text-green-500"
+                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-green-100"
                 onClick={() => handleSaveCriteria(record.id)}
+                icon={<CheckOutlined style={{ color: '#52c41a' }} className="text-lg" />}
               />
               <Button
                 type="text"
-                icon={<CloseOutlined />}
-                className="text-red-600 hover:text-red-500"
+                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100"
                 onClick={() => handleCancelEdit(record.id)}
+                icon={<CloseOutlined style={{ color: '#ff4d4f' }} className="text-lg" />}
               />
-            </>
+            </Space.Compact>
           ) : (
-            <Button
-              type="text"
-              icon={<EditOutlined />}
-              className="text-blue-600 hover:text-blue-500"
-              onClick={() => handleEditCriteria(record.id)}
-            />
+            <Space.Compact className="flex">
+              <Button
+                type="text"
+                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-blue-100"
+                onClick={() => handleEditCriteria(record.id)}
+                icon={<FaEdit style={{ color: '#4096ff' }} className="text-lg" />}
+              />
+              <Button
+                type="text"
+                className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100"
+                onClick={() => handleDelete(record)}
+                icon={<FaTrash style={{ color: '#ff4d4f' }} className="text-lg" />}
+              />
+            </Space.Compact>
           )}
         </Space>
       ),
@@ -154,26 +163,26 @@ const Evaluation = () => {
       title: 'Hành động',
       key: 'action',
       render: (_, record) => (
-        <Space size="middle">
+        <Space.Compact className="flex">
           <Button
             type="text"
-            icon={<EditOutlined />}
-            className="text-blue-600 hover:text-blue-500"
+            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-blue-100"
             onClick={() => handleAddCriteria(record)}
+            icon={<FaEdit style={{ color: '#4096ff' }} className="text-lg" />}
           />
           <Button
             type="text"
-            icon={<EyeOutlined />}
-            className="text-green-600 hover:text-green-500"
+            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-green-100"
             onClick={() => handleViewCriteria(record)}
+            icon={<FaEye style={{ color: '#52c41a' }} className="text-lg" />}
           />
           <Button
             type="text"
-            icon={<DeleteOutlined />}
-            className="text-red-600 hover:text-red-500"
+            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100"
             onClick={() => handleDelete(record)}
+            icon={<FaTrash style={{ color: '#ff4d4f' }} className="text-lg" />}
           />
-        </Space>
+        </Space.Compact>
       ),
     },
   ];

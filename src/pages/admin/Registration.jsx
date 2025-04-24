@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { Table, Button, Modal, Form, DatePicker, Select, Switch, message, Input, Space } from 'antd';
-import { PlusOutlined, EditOutlined, DeleteOutlined, SearchOutlined, FilterOutlined } from '@ant-design/icons';
+import { PlusOutlined, SearchOutlined, FilterOutlined } from '@ant-design/icons';
+import { FaEdit, FaTrash } from 'react-icons/fa';
 import moment from 'moment';
 
 const { RangePicker } = DatePicker;
@@ -70,20 +71,20 @@ const Registration = () => {
       title: 'Thao tác',
       key: 'action',
       render: (_, record) => (
-        <div className="space-x-2">
-          <Button 
-            type="text" 
-            icon={<EditOutlined />}
-            className="text-blue-600 hover:text-blue-500"
+        <Space.Compact className="flex">
+          <Button
+            type="text"
+            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-blue-100"
             onClick={() => handleEdit(record)}
+            icon={<FaEdit style={{ color: '#4096ff' }} className="text-lg" />}
           />
-          <Button 
-            type="text" 
-            icon={<DeleteOutlined />}
-            className="text-red-600 hover:text-red-500"
+          <Button
+            type="text"
+            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100"
             onClick={() => handleDelete(record)}
+            icon={<FaTrash style={{ color: '#ff4d4f' }} className="text-lg" />}
           />
-        </div>
+        </Space.Compact>
       ),
     },
   ];

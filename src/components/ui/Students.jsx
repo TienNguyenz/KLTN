@@ -1,8 +1,10 @@
 import React, { useState } from 'react';
-import { Table, Button, Modal, Space, Input, Select, message } from 'antd';
-import { EditOutlined, DeleteOutlined, ExclamationCircleFilled, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
+import { Table, Button, Modal, Space, Input, Select, message, DatePicker } from 'antd';
+import { ExclamationCircleFilled, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
 import StudentForm from './Form_Add_Student';
 import axios from 'axios';
+import dayjs from 'dayjs';
+import { FaEdit, FaTrash } from 'react-icons/fa';
 
 const { Search } = Input;
 
@@ -20,6 +22,25 @@ const majorsByDepartment = {
   ],
 };
 
+const disabledDate = (current) => {
+  // Không cho chọn ngày trong tương lai
+  if (current && current > new Date()) {
+    return true;
+  }
+  
+  // Tính tuổi
+  let calculatedAge = new Date().getFullYear() - current.year();
+  const monthDiff = new Date().getMonth() - current.month();
+  const dayDiff = new Date().getDate() - current.date();
+  
+  // Kiểm tra nếu chưa đủ 18 tuổi
+  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
+    calculatedAge--;
+  }
+  
+  return calculatedAge < 18;
+};
+
 const Students = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -27,6 +48,8 @@ const Students = () => {
   const [selectedFaculty, setSelectedFaculty] = useState('');
   const [selectedMajor, setSelectedMajor] = useState('');
   const [students, setStudents] = useState([]);
+  const [faculties, setFaculties] = useState([]);
+  const [majors, setMajors] = useState([]);
   const [formData, setFormData] = useState({});
   const [errors, setErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -37,6 +60,20 @@ const Students = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
+  const [datePickerMode, setDatePickerMode] = useState('year');
+
+  const fetchFacultiesAndMajors = async () => {
+    try {
+      const [facultiesRes, majorsRes] = await Promise.all([
+        axios.get("http://localhost:5000/api/database/collections/faculties"),
+        axios.get("http://localhost:5000/api/database/collections/majors")
+      ]);
+      setFaculties(facultiesRes.data);
+      setMajors(majorsRes.data);
+    } catch (err) {
+      console.error("Lỗi khi tải dữ liệu khoa và chuyên ngành:", err);
+    }
+  };
 
   const fetchStudents = async () => {
     try {
@@ -48,40 +85,67 @@ const Students = () => {
           major: selectedMajor
         }
       });
-      const students = res.data.filter(user => user.role === 'sinhvien');
-      setStudents(students);
+      const filteredStudents = res.data
+        .filter(user => user.role === 'sinhvien')
+        .filter(student => {
+          // Lọc theo text tìm kiếm
+          if (searchText) {
+            const searchLower = searchText.toLowerCase();
+            if (!student.user_name?.toLowerCase().includes(searchLower) &&
+                !student.user_id?.toLowerCase().includes(searchLower)) {
+              return false;
+            }
+          }
+
+          // Lọc theo khoa
+          if (selectedFaculty) {
+            const faculty = faculties.find(f => f._id === student.user_faculty);
+            if (faculty?.faculty_title !== selectedFaculty) {
+              return false;
+            }
+          }
+
+          // Lọc theo chuyên ngành
+          if (selectedMajor) {
+            const major = majors.find(m => m._id === student.user_major);
+            if (major?.major_title !== selectedMajor) {
+              return false;
+            }
+          }
+
+          return true;
+        })
+        .map(student => {
+          // Tìm tên khoa
+          const faculty = faculties.find(f => f._id === student.user_faculty);
+          // Tìm tên chuyên ngành
+          const major = majors.find(m => m._id === student.user_major);
+          
+          return {
+            ...student,
+            faculty_name: faculty ? faculty.faculty_title : 'Chưa có khoa',
+            major_name: major ? major.major_title : 'Chưa có chuyên ngành'
+          };
+        });
+      setStudents(filteredStudents);
     } catch (err) {
-      console.error(err);
+      console.error("Lỗi khi tải dữ liệu sinh viên:", err);
     }
   };
 
   React.useEffect(() => {
+    fetchFacultiesAndMajors();
+  }, []);
+
+  React.useEffect(() => {
+    if (faculties.length > 0 && majors.length > 0) {
     fetchStudents();
-  }, [selectedFaculty, selectedMajor, searchText]);
+    }
+  }, [selectedFaculty, selectedMajor, searchText, faculties, majors]);
 
   const availableMajors = majorsByDepartment[selectedFaculty] || [];
 
   const columns = [
-    {
-      title: 'Ảnh',
-      dataIndex: 'user_avatar',
-      key: 'user_avatar',
-      render: (avatar, record) => (
-        <div className="w-10 h-10 rounded-full overflow-hidden">
-          {avatar ? (
-            <img 
-              src={`http://localhost:5000${avatar}`} 
-              alt={record.user_name} 
-              className="w-full h-full object-cover"
-            />
-          ) : (
-            <div className="w-full h-full bg-gray-200 flex items-center justify-center">
-              <span className="text-lg">{record.user_name?.charAt(0)}</span>
-            </div>
-          )}
-        </div>
-      ),
-    },
     {
       title: 'Mã SV',
       dataIndex: 'user_id',
@@ -103,34 +167,28 @@ const Students = () => {
       key: 'user_phone',
     },
     {
-      title: 'CCCD',
-      dataIndex: 'user_CCCD',
-      key: 'user_CCCD',
-    },
-    {
       title: 'Ngày sinh',
       dataIndex: 'user_date_of_birth',
       key: 'user_date_of_birth',
+      render: (date) => {
+        if (!date) return '';
+        try {
+          const [year, month, day] = date.split('-');
+          return `${day}/${month}/${year}`;
+        } catch {
+          return date;
+        }
+      }
     },
     {
       title: 'Khoa',
-      dataIndex: 'user_faculty',
-      key: 'user_faculty',
+      dataIndex: 'faculty_name',
+      key: 'faculty_name',
     },
     {
       title: 'Chuyên ngành',
-      dataIndex: 'user_major',
-      key: 'user_major',
-    },
-    {
-      title: 'Địa chỉ thường trú',
-      dataIndex: 'user_permanent_address',
-      key: 'user_permanent_address',
-    },
-    {
-      title: 'Địa chỉ tạm trú',
-      dataIndex: 'user_temporary_address',
-      key: 'user_temporary_address',
+      dataIndex: 'major_name',
+      key: 'major_name',
     },
     {
       title: 'Thao tác',
@@ -138,19 +196,17 @@ const Students = () => {
       render: (_, record) => (
         <Space>
           <Button
-            type="primary"
-            icon={<EditOutlined />}
+            type="text"
+            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-blue-100"
+            icon={<FaEdit style={{ color: '#4096ff' }} className="text-lg" />}
             onClick={() => handleEdit(record)}
-          >
-            Chỉnh sửa
-          </Button>
+          />
           <Button
-            danger
-            icon={<DeleteOutlined />}
+            type="text"
+            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100"
+            icon={<FaTrash style={{ color: '#ff4d4f' }} className="text-lg" />}
             onClick={() => handleDelete(record)}
-          >
-            Xóa
-          </Button>
+          />
         </Space>
       ),
     },
@@ -189,7 +245,7 @@ const Students = () => {
 
   const handleSuccess = () => {
     setIsModalVisible(false);
-    fetchStudents();
+      fetchStudents();
   };
 
   const validateForm = async () => {
@@ -454,6 +510,37 @@ const Students = () => {
     console.log('Dialog confirmed');
     setIsSubmitting(true);
     try {
+      // Validate age
+      const today = new Date();
+      // Lấy ngày sinh từ formData nếu có, nếu không thì lấy từ selectedStudent
+      const birthDateStr = formData.user_date_of_birth || selectedStudent?.user_date_of_birth;
+      const birthDate = birthDateStr ? new Date(birthDateStr) : null;
+      
+      if (!birthDate) {
+        throw new Error('Vui lòng chọn ngày sinh');
+      }
+
+      let calculatedAge = today.getFullYear() - birthDate.getFullYear();
+      const monthDiff = today.getMonth() - birthDate.getMonth();
+      
+      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
+        calculatedAge--;
+      }
+      
+      if (calculatedAge < 18) {
+        throw new Error('Sinh viên phải từ 18 tuổi trở lên');
+      }
+
+      // Format password from YYYY-MM-DD to DDMMYYYY
+      const dateToUse = birthDateStr;
+      const formattedPassword = dateToUse ? 
+        dateToUse.split('-').reverse().join('') : 
+        null;
+
+      if (!formattedPassword) {
+        throw new Error('Không thể tạo mật khẩu từ ngày sinh');
+      }
+
       let user_avatar = formData.user_avatar;
       if (formData.avatarFile) {
         user_avatar = await handleImageUpload(formData.avatarFile);
@@ -467,10 +554,34 @@ const Students = () => {
         // Updating existing student
         const updatedData = {
           ...selectedStudent,
-          ...formData,
-          user_avatar: user_avatar || selectedStudent.user_avatar,
-          role: 'sinhvien'
+          ...formData
         };
+
+        // Remove faculty_name and major_name before sending to server
+        delete updatedData.faculty_name;
+        delete updatedData.major_name;
+
+        // Ensure user_faculty and user_major are set correctly
+        if (formData.user_faculty) {
+          const faculty = faculties.find(f => f.faculty_title === formData.user_faculty);
+          if (faculty) {
+            updatedData.user_faculty = faculty._id;
+          }
+        }
+
+        if (formData.user_major) {
+          const faculty = faculties.find(f => f.faculty_title === formData.user_faculty || selectedStudent.faculty_name);
+          if (faculty) {
+            const major = majors.find(m => m.major_title === formData.user_major && m.major_faculty === faculty._id);
+            if (major) {
+              updatedData.user_major = major._id;
+            }
+          }
+        }
+
+        updatedData.user_avatar = user_avatar || selectedStudent.user_avatar;
+        updatedData.role = 'sinhvien';
+        updatedData.password = formattedPassword;
 
         console.log('Sending update request with data:', updatedData);
         const response = await axios.put(
@@ -508,10 +619,15 @@ const Students = () => {
           console.log('Majors:', majorsResponse.data);
           console.log('Selected major:', formData.user_major);
           
-          const major = majorsResponse.data.find(m => 
-            m.major_title === formData.user_major && 
-            m.major_faculty === faculty.faculty_title.replace('Khoa ', '')
-          );
+          const major = majorsResponse.data.find(m => {
+            // Normalize strings for comparison
+            const normalizedMajorTitle = m.major_title.trim().toLowerCase();
+            const normalizedFormMajor = formData.user_major.trim().toLowerCase();
+            
+            // Compare faculty ID instead of faculty title
+            return normalizedMajorTitle === normalizedFormMajor && 
+                   m.major_faculty === faculty._id;
+          });
           if (major) {
             majorId = major._id;
             console.log('Found major:', major);
@@ -529,18 +645,18 @@ const Students = () => {
           user_name: formData.user_name,
           email: formData.email,
           user_id: formData.user_id,
-          password: formData.user_date_of_birth?.replace(/-/g, '') || '', // Using date of birth as initial password
+          password: formattedPassword,
           user_CCCD: formData.user_CCCD || '',
           user_phone: formData.user_phone || '',
           user_permanent_address: formData.user_permanent_address || '',
           user_temporary_address: formData.user_temporary_address || '',
           user_date_of_birth: formData.user_date_of_birth || '',
-          user_faculty: facultyId, // Using the faculty ObjectId
-          user_major: majorId, // Using the major ObjectId
+          user_faculty: facultyId,
+          user_major: majorId,
           user_avatar: user_avatar || '',
           role: 'sinhvien',
           user_status: 'active',
-          user_department: formData.user_faculty || '' // Keep faculty name for display purposes
+          user_department: formData.user_faculty || ''
         };
 
         // Validate required fields
@@ -591,16 +707,21 @@ const Students = () => {
       <h1 className="text-2xl font-bold mb-4">Danh sách Sinh viên</h1>
       <div className="flex gap-4 mb-4">
         <Search
-          placeholder="Tìm kiếm theo tên hoặc mã số"
+          placeholder="Tìm theo MSSV hoặc họ tên"
           onSearch={(value) => setSearchText(value)}
+          onChange={(e) => setSearchText(e.target.value)}
+          allowClear
           style={{ width: 300 }}
         />
         <Select
           style={{ width: 200 }}
           placeholder="-- Chọn Khoa --"
-          onChange={(value) => setSelectedFaculty(value)}
+          onChange={(value) => {
+            setSelectedFaculty(value);
+            setSelectedMajor(''); // Reset major when faculty changes
+          }}
+          allowClear
         >
-          <Select.Option value="">-- Chọn Khoa --</Select.Option>
           {Object.keys(majorsByDepartment).map((dep, idx) => (
             <Select.Option key={idx} value={dep}>
               {dep}
@@ -611,9 +732,9 @@ const Students = () => {
           style={{ width: 200 }}
           placeholder="-- Chọn chuyên ngành --"
           onChange={(value) => setSelectedMajor(value)}
-          disabled={availableMajors.length === 0}
+          disabled={!selectedFaculty}
+          allowClear
         >
-          <Select.Option value="">-- Chọn chuyên ngành --</Select.Option>
           {availableMajors.map((m, idx) => (
             <Select.Option key={idx} value={m}>
               {m}
@@ -804,13 +925,27 @@ const Students = () => {
                   <label className="block text-sm font-medium text-gray-700 mb-1">
                     Ngày sinh <span className="text-red-500">*</span>
                   </label>
-                  <input
-                    type="date"
+                  <DatePicker
                     className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
                       errors.user_date_of_birth ? 'border-red-500' : ''
                     }`}
-                    value={formData.user_date_of_birth || selectedStudent?.user_date_of_birth || ''}
-                    onChange={(e) => handleInputChange('user_date_of_birth', e.target.value)}
+                    value={formData.user_date_of_birth ? dayjs(formData.user_date_of_birth) : (selectedStudent?.user_date_of_birth ? dayjs(selectedStudent.user_date_of_birth) : null)}
+                    onChange={(date, dateString) => handleInputChange('user_date_of_birth', dateString)}
+                    format="YYYY-MM-DD"
+                    disabledDate={disabledDate}
+                    placeholder="Chọn ngày sinh"
+                    style={{ width: '100%' }}
+                    showToday={false}
+                    placement="bottomLeft"
+                    picker="date"
+                    mode={datePickerMode}
+                    onPanelChange={(_, mode) => {
+                      setDatePickerMode(mode);
+                    }}
+                    prevIcon={<span>←</span>}
+                    nextIcon={<span>→</span>}
+                    superPrevIcon={<span>⇐</span>}
+                    superNextIcon={<span>⇒</span>}
                   />
                   {errors.user_date_of_birth && (
                     <span className="text-red-500 text-sm">{errors.user_date_of_birth}</span>
@@ -822,7 +957,7 @@ const Students = () => {
                   </label>
                   <Select
                     className={`w-full ${errors.user_faculty ? 'border-red-500' : ''}`}
-                    defaultValue={selectedStudent?.user_faculty}
+                    value={formData.user_faculty || selectedStudent?.faculty_name}
                     onChange={(value) => {
                       setSelectedFaculty(value);
                       handleInputChange('user_faculty', value);
@@ -844,7 +979,7 @@ const Students = () => {
                   </label>
                   <Select
                     className={`w-full ${errors.user_major ? 'border-red-500' : ''}`}
-                    defaultValue={selectedStudent?.user_major}
+                    value={formData.user_major || selectedStudent?.major_name}
                     disabled={!selectedFaculty}
                     onChange={(value) => handleInputChange('user_major', value)}
                   >

@@ -80,8 +80,8 @@ const Sidebar = ({ setSelected }) => {
           )}
         </div>
         <div>
-          <MenuItem
-            icon={<FaCog />}
+        <MenuItem
+          icon={<FaCog />}
             text="Thiết lập"
             onClick={handleSettingsClick}
           />
@@ -101,7 +101,7 @@ const Sidebar = ({ setSelected }) => {
                 icon={<FaFileAlt />}
                 text="Phiếu đánh giá"
                 onClick={() => setSelected("evaluation-form")}
-              />
+        />
             </div>
           )}
         </div>

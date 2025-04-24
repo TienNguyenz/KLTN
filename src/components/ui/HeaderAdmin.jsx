@@ -29,7 +29,7 @@ const HeaderAdmin = () => {
 
         <div className="flex items-center space-x-4">
           <div className="flex items-center space-x-2">
-            <span className="text-sm text-gray-200">Xin chào,</span>
+            <span className="text-sm text-gray-200">Xin chào Admin</span>
             <span className="font-medium text-white">{user?.full_name}</span>
           </div>
           <button
