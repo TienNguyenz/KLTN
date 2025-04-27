@@ -128,7 +128,7 @@ const AppLayout = () => {
         } />
         <Route path="/admin" element={<Navigate to="/HomeRoleManage" replace />} />
         <Route path="/admin/*" element={<Navigate to="/HomeRoleManage" replace />} />
-        <Route path="*" element={<Navigate to="/HomeRoleManage" replace />} />
+        <Route path="*" element={<Navigate to="/" replace />} />
       </Routes>
     );
   }

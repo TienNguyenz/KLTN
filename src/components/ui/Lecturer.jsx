@@ -45,6 +45,8 @@ const LecturerList = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedLecturer, setSelectedLecturer] = useState(null);
   const [searchText, setSearchText] = useState('');
+  const [filterFaculty, setFilterFaculty] = useState('');
+  const [filterMajor, setFilterMajor] = useState('');
   const [selectedFaculty, setSelectedFaculty] = useState('');
   const [selectedMajor, setSelectedMajor] = useState('');
   const [lecturers, setLecturers] = useState([]);
@@ -80,9 +82,7 @@ const LecturerList = () => {
       const res = await axios.get("http://localhost:5000/api/database/collections/User", {
         params: { 
           role: 'giangvien',
-          search: searchText,
-          faculty: selectedFaculty,
-          major: selectedMajor
+          search: searchText
         }
       });
       const filteredLecturers = res.data
@@ -98,17 +98,17 @@ const LecturerList = () => {
           }
 
           // Lọc theo khoa
-          if (selectedFaculty) {
+          if (filterFaculty) {
             const faculty = faculties.find(f => f._id === lecturer.user_faculty);
-            if (faculty?.faculty_title !== selectedFaculty) {
+            if (faculty?.faculty_title !== filterFaculty) {
               return false;
             }
           }
 
           // Lọc theo chuyên ngành
-          if (selectedMajor) {
+          if (filterMajor) {
             const major = majors.find(m => m._id === lecturer.user_major);
-            if (major?.major_title !== selectedMajor) {
+            if (major?.major_title !== filterMajor) {
               return false;
             }
           }
@@ -139,9 +139,9 @@ const LecturerList = () => {
 
   useEffect(() => {
     if (faculties.length > 0 && majors.length > 0) {
-    fetchLecturers();
+      fetchLecturers();
     }
-  }, [searchText, selectedFaculty, selectedMajor, faculties, majors]);
+  }, [searchText, filterFaculty, filterMajor, faculties, majors]);
 
   const columns = [
     {
@@ -350,27 +350,27 @@ const LecturerList = () => {
   };
 
   const handleInputChange = (field, value) => {
-    if (!selectedLecturer) {
-      // Trường hợp thêm mới: luôn cập nhật formData
+    if (field === 'user_faculty') {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value,
+        user_major: '' // Reset major when faculty changes
+      }));
+      setSelectedFaculty(value);
+      setSelectedMajor(''); // Reset selected major in modal
+    } else if (field === 'user_major') {
       setFormData(prev => ({
         ...prev,
         [field]: value
       }));
+      setSelectedMajor(value);
     } else {
-      // Trường hợp chỉnh sửa: chỉ cập nhật nếu giá trị thay đổi
-      if (selectedLecturer[field] !== value) {
-        setFormData(prev => ({
-          ...prev,
-          [field]: value
-        }));
-      } else {
-        // Nếu giá trị giống ban đầu, xóa khỏi formData
-        const newFormData = { ...formData };
-        delete newFormData[field];
-        setFormData(newFormData);
-      }
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
     }
-    
+
     // Clear error when user types
     if (errors[field]) {
       setErrors(prev => ({
@@ -635,7 +635,10 @@ const LecturerList = () => {
         <Select
           style={{ width: 200 }}
           placeholder="-- Chọn Khoa --"
-          onChange={(value) => setSelectedFaculty(value)}
+          onChange={(value) => {
+            setFilterFaculty(value);
+            setFilterMajor(''); // Reset major when faculty changes
+          }}
           allowClear
         >
           {Object.keys(majorsByDepartment).map((dep, idx) => (
@@ -647,12 +650,13 @@ const LecturerList = () => {
         <Select
           style={{ width: 200 }}
           placeholder="-- Chọn Chuyên ngành --"
-          onChange={(value) => setSelectedMajor(value)}
+          onChange={(value) => setFilterMajor(value)}
+          disabled={!filterFaculty}
           allowClear
         >
-          {majors.map((major) => (
-            <Select.Option key={major._id} value={major.major_title}>
-              {major.major_title}
+          {majorsByDepartment[filterFaculty]?.map((major) => (
+            <Select.Option key={major} value={major}>
+              {major}
             </Select.Option>
           ))}
         </Select>
@@ -873,10 +877,7 @@ const LecturerList = () => {
                   <Select
                     className={`w-full ${errors.user_faculty ? 'border-red-500' : ''}`}
                     value={formData.user_faculty || selectedLecturer?.faculty_name}
-                    onChange={(value) => {
-                      setSelectedFaculty(value);
-                      handleInputChange('user_faculty', value);
-                    }}
+                    onChange={(value) => handleInputChange('user_faculty', value)}
                   >
                     {Object.keys(majorsByDepartment).map((dep) => (
                       <Select.Option key={dep} value={dep}>
@@ -992,8 +993,17 @@ const LecturerList = () => {
           setSelectedLecturer(null);
           setFormData({});
           setErrors({});
-          setSelectedFaculty('');
-          setSelectedMajor('');
+          setFilterFaculty('');
+          setFilterMajor('');
+        }}
+        onCancel={() => {
+          setIsSuccessModalVisible(false);
+          setIsModalVisible(false);
+          setSelectedLecturer(null);
+          setFormData({});
+          setErrors({});
+          setFilterFaculty('');
+          setFilterMajor('');
         }}
         okText="Đóng"
         centered

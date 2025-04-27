@@ -45,6 +45,8 @@ const Students = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
   const [searchText, setSearchText] = useState('');
+  const [filterFaculty, setFilterFaculty] = useState('');
+  const [filterMajor, setFilterMajor] = useState('');
   const [selectedFaculty, setSelectedFaculty] = useState('');
   const [selectedMajor, setSelectedMajor] = useState('');
   const [students, setStudents] = useState([]);
@@ -80,9 +82,7 @@ const Students = () => {
       const res = await axios.get("http://localhost:5000/api/database/collections/User", {
         params: { 
           role: 'sinhvien',
-          search: searchText,
-          faculty: selectedFaculty,
-          major: selectedMajor
+          search: searchText
         }
       });
       const filteredStudents = res.data
@@ -98,17 +98,17 @@ const Students = () => {
           }
 
           // Lọc theo khoa
-          if (selectedFaculty) {
+          if (filterFaculty) {
             const faculty = faculties.find(f => f._id === student.user_faculty);
-            if (faculty?.faculty_title !== selectedFaculty) {
+            if (faculty?.faculty_title !== filterFaculty) {
               return false;
             }
           }
 
           // Lọc theo chuyên ngành
-          if (selectedMajor) {
+          if (filterMajor) {
             const major = majors.find(m => m._id === student.user_major);
-            if (major?.major_title !== selectedMajor) {
+            if (major?.major_title !== filterMajor) {
               return false;
             }
           }
@@ -141,9 +141,7 @@ const Students = () => {
     if (faculties.length > 0 && majors.length > 0) {
     fetchStudents();
     }
-  }, [selectedFaculty, selectedMajor, searchText, faculties, majors]);
-
-  const availableMajors = majorsByDepartment[selectedFaculty] || [];
+  }, [searchText, filterFaculty, filterMajor, faculties, majors]);
 
   const columns = [
     {
@@ -352,48 +350,27 @@ const Students = () => {
   };
 
   const handleInputChange = (field, value) => {
-    // Cập nhật formData cho cả trường hợp thêm mới và chỉnh sửa
-    if (!selectedStudent) {
-      // Trường hợp thêm mới: luôn cập nhật formData
-      if (field === 'user_faculty') {
-        // Đảm bảo tên khoa khớp chính xác với database
-        setFormData(prev => ({
-          ...prev,
-          [field]: value,
-          user_major: '' // Reset major when faculty changes
-        }));
-        setSelectedFaculty(value);
-      } else {
-        setFormData(prev => ({
-          ...prev,
-          [field]: value
-        }));
-      }
+    if (field === 'user_faculty') {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value,
+        user_major: '' // Reset major when faculty changes
+      }));
+      setSelectedFaculty(value);
+      setSelectedMajor(''); // Reset selected major in modal
+    } else if (field === 'user_major') {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+      setSelectedMajor(value);
     } else {
-      // Trường hợp chỉnh sửa: chỉ cập nhật nếu giá trị thay đổi
-      if (selectedStudent[field] !== value) {
-        if (field === 'user_faculty') {
-          // Đảm bảo tên khoa khớp chính xác với database
-          setFormData(prev => ({
-            ...prev,
-            [field]: value,
-            user_major: '' // Reset major when faculty changes
-          }));
-          setSelectedFaculty(value);
-        } else {
-          setFormData(prev => ({
-            ...prev,
-            [field]: value
-          }));
-        }
-      } else {
-        // Nếu giá trị giống ban đầu, xóa khỏi formData
-        const newFormData = { ...formData };
-        delete newFormData[field];
-        setFormData(newFormData);
-      }
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
     }
-    
+
     // Clear error when user types
     if (errors[field]) {
       setErrors(prev => ({
@@ -717,8 +694,8 @@ const Students = () => {
           style={{ width: 200 }}
           placeholder="-- Chọn Khoa --"
           onChange={(value) => {
-            setSelectedFaculty(value);
-            setSelectedMajor(''); // Reset major when faculty changes
+            setFilterFaculty(value);
+            setFilterMajor(''); // Reset major when faculty changes
           }}
           allowClear
         >
@@ -731,11 +708,11 @@ const Students = () => {
         <Select
           style={{ width: 200 }}
           placeholder="-- Chọn chuyên ngành --"
-          onChange={(value) => setSelectedMajor(value)}
-          disabled={!selectedFaculty}
+          onChange={(value) => setFilterMajor(value)}
+          disabled={!filterFaculty}
           allowClear
         >
-          {availableMajors.map((m, idx) => (
+          {majorsByDepartment[filterFaculty]?.map((m, idx) => (
             <Select.Option key={idx} value={m}>
               {m}
             </Select.Option>
@@ -958,10 +935,7 @@ const Students = () => {
                   <Select
                     className={`w-full ${errors.user_faculty ? 'border-red-500' : ''}`}
                     value={formData.user_faculty || selectedStudent?.faculty_name}
-                    onChange={(value) => {
-                      setSelectedFaculty(value);
-                      handleInputChange('user_faculty', value);
-                    }}
+                    onChange={(value) => handleInputChange('user_faculty', value)}
                   >
                     {Object.keys(majorsByDepartment).map((dep) => (
                       <Select.Option key={dep} value={dep}>
@@ -983,7 +957,7 @@ const Students = () => {
                     disabled={!selectedFaculty}
                     onChange={(value) => handleInputChange('user_major', value)}
                   >
-                    {availableMajors.map((major) => (
+                    {majorsByDepartment[selectedFaculty]?.map((major) => (
                       <Select.Option key={major} value={major}>
                         {major}
                       </Select.Option>
@@ -1072,6 +1046,14 @@ const Students = () => {
         title="Thông báo"
         open={isSuccessModalVisible}
         onOk={() => {
+          setIsSuccessModalVisible(false);
+          setIsModalVisible(false);
+          setFormData({});
+          setErrors({});
+          setSelectedFaculty('');
+          setSelectedMajor('');
+        }}
+        onCancel={() => {
           setIsSuccessModalVisible(false);
           setIsModalVisible(false);
           setFormData({});

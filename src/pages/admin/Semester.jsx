@@ -37,19 +37,19 @@ const Semester = () => {
       key: 'action',
       render: (_, record) => (
         <Space.Compact className="flex">
-          <Button
-            type="text"
+          <Button 
+            type="text" 
             className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-blue-100"
             onClick={() => handleEdit(record)}
             icon={<FaEdit style={{ color: '#4096ff' }} className="text-lg" />}
           />
-          <Button
-            type="text"
+          <Button 
+            type="text" 
             className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-green-100"
             icon={<FaEye style={{ color: '#52c41a' }} className="text-lg" />}
           />
-          <Button
-            type="text"
+          <Button 
+            type="text" 
             className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100"
             onClick={() => handleDelete(record)}
             icon={<FaTrash style={{ color: '#ff4d4f' }} className="text-lg" />}

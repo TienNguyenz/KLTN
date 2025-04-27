@@ -112,10 +112,10 @@ const Evaluation = () => {
             </Space.Compact>
           ) : (
             <Space.Compact className="flex">
-              <Button
-                type="text"
+            <Button
+              type="text"
                 className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-blue-100"
-                onClick={() => handleEditCriteria(record.id)}
+              onClick={() => handleEditCriteria(record.id)}
                 icon={<FaEdit style={{ color: '#4096ff' }} className="text-lg" />}
               />
               <Button
@@ -123,7 +123,7 @@ const Evaluation = () => {
                 className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100"
                 onClick={() => handleDelete(record)}
                 icon={<FaTrash style={{ color: '#ff4d4f' }} className="text-lg" />}
-              />
+            />
             </Space.Compact>
           )}
         </Space>
