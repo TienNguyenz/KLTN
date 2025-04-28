@@ -27,6 +27,8 @@ import {
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
+import { Modal } from 'antd';
+import { CheckCircleFilled } from '@ant-design/icons';
 
 const CouncilManagement = () => {
   const [councils, setCouncils] = useState([]);
@@ -44,6 +46,8 @@ const CouncilManagement = () => {
     members: [],
   });
   const [errors, setErrors] = useState({});
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     fetchInitialData();
@@ -87,9 +91,25 @@ const CouncilManagement = () => {
   const fetchCouncils = async () => {
     try {
       const response = await axios.get('http://localhost:5000/api/database/collections/assemblies');
+      console.log('Fetch councils response:', response.data);
       setCouncils(response.data);
     } catch (error) {
-      console.error('Error fetching councils:', error);
+      console.error('Error fetching councils:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        headers: error.response?.headers,
+        config: error.config,
+        stack: error.stack
+      });
+      
+      // Hiển thị thông báo lỗi chi tiết
+      const errorMessage = error.response?.data?.message || error.message;
+      const errorDetails = error.response?.data?.error || '';
+      const errorField = error.response?.data?.field || '';
+      const errorValue = error.response?.data?.value || '';
+      
+      alert(`Có lỗi xảy ra khi tải danh sách hội đồng:\n${errorMessage}\n${errorDetails}\nField: ${errorField}\nValue: ${errorValue}`);
     }
   };
 
@@ -171,33 +191,67 @@ const CouncilManagement = () => {
         chairman: formData.chairman,
         secretary: formData.secretary,
         members: formData.members,
+        createdAt: now,
         updatedAt: now
-    };
+      };
+
+      console.log('Payload:', payload);
 
       if (isEdit) {
-        await axios.post(`http://localhost:5000/api/database/collections/assemblies?id=${selectedCouncil._id}&action=update`, payload);
+        await axios.put(`http://localhost:5000/api/database/collections/assemblies/${selectedCouncil._id}`, payload);
+        setSuccessMessage('Cập nhật hội đồng thành công!');
+        setIsSuccessModalVisible(true);
       } else {
-        await axios.post(`http://localhost:5000/api/database/collections/assemblies?action=insert`, {
-          ...payload,
-          createdAt: now
-        });
+        await axios.post('http://localhost:5000/api/database/collections/assemblies', payload);
+        setSuccessMessage('Thêm hội đồng thành công!');
+        setIsSuccessModalVisible(true);
       }
       fetchCouncils();
       handleClose();
     } catch (error) {
-      console.error('Error saving council:', error);
-      alert('Có lỗi xảy ra khi lưu hội đồng. Vui lòng thử lại sau.');
+      console.error('Error saving council:', {
+        message: error.message,
+        response: error.response?.data,
+        status: error.response?.status,
+        headers: error.response?.headers,
+        config: error.config,
+        stack: error.stack
+      });
+      
+      // Hiển thị thông báo lỗi chi tiết
+      const errorMessage = error.response?.data?.message || error.message;
+      const errorDetails = error.response?.data?.error || '';
+      const errorField = error.response?.data?.field || '';
+      const errorValue = error.response?.data?.value || '';
+      
+      alert(`Có lỗi xảy ra khi lưu hội đồng:\n${errorMessage}\n${errorDetails}\nField: ${errorField}\nValue: ${errorValue}`);
     }
   };
 
   const handleDelete = async (id) => {
     if (window.confirm('Bạn có chắc chắn muốn xóa hội đồng này?')) {
       try {
-        await axios.post(`http://localhost:5000/api/database/collections/assemblies?id=${id}&action=delete`);
+        await axios.delete(`http://localhost:5000/api/database/collections/assemblies/${id}`);
+        setSuccessMessage('Xóa hội đồng thành công!');
+        setIsSuccessModalVisible(true);
         fetchCouncils();
       } catch (error) {
-        console.error('Error deleting council:', error);
-        alert('Có lỗi xảy ra khi xóa hội đồng. Vui lòng thử lại sau.');
+        console.error('Error deleting council:', {
+          message: error.message,
+          response: error.response?.data,
+          status: error.response?.status,
+          headers: error.response?.headers,
+          config: error.config,
+          stack: error.stack
+        });
+        
+        // Hiển thị thông báo lỗi chi tiết
+        const errorMessage = error.response?.data?.message || error.message;
+        const errorDetails = error.response?.data?.error || '';
+        const errorField = error.response?.data?.field || '';
+        const errorValue = error.response?.data?.value || '';
+        
+        alert(`Có lỗi xảy ra khi xóa hội đồng:\n${errorMessage}\n${errorDetails}\nField: ${errorField}\nValue: ${errorValue}`);
       }
     }
   };
@@ -311,7 +365,7 @@ const CouncilManagement = () => {
                   >
                     {majors.map((major) => (
                       <MenuItem key={major._id} value={major._id}>
-                        {major.major_title} ({major.major_faculty})
+                        {major.major_title}
                       </MenuItem>
                     ))}
                   </Select>
@@ -398,6 +452,20 @@ const CouncilManagement = () => {
           </Button>
         </DialogActions>
       </Dialog>
+
+      <Modal
+        title="Thông báo"
+        open={isSuccessModalVisible}
+        onOk={() => setIsSuccessModalVisible(false)}
+        onCancel={() => setIsSuccessModalVisible(false)}
+        okText="Đóng"
+        centered
+      >
+        <div className="text-center py-4">
+          <CheckCircleFilled style={{ fontSize: '48px', color: '#52c41a' }} />
+          <p className="mt-4 text-lg">{successMessage}</p>
+        </div>
+      </Modal>
         </>
       )}
     </Box>

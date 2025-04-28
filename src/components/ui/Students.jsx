@@ -48,7 +48,6 @@ const Students = () => {
   const [filterFaculty, setFilterFaculty] = useState('');
   const [filterMajor, setFilterMajor] = useState('');
   const [selectedFaculty, setSelectedFaculty] = useState('');
-  const [selectedMajor, setSelectedMajor] = useState('');
   const [students, setStudents] = useState([]);
   const [faculties, setFaculties] = useState([]);
   const [majors, setMajors] = useState([]);
@@ -213,6 +212,7 @@ const Students = () => {
   const handleEdit = (student) => {
     setSelectedStudent(student);
     setIsModalVisible(true);
+    setSelectedFaculty(student.user_faculty);
   };
 
   const handleDelete = async (student) => {
@@ -351,19 +351,23 @@ const Students = () => {
 
   const handleInputChange = (field, value) => {
     if (field === 'user_faculty') {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value,
-        user_major: '' // Reset major when faculty changes
-      }));
+      setFormData(prev => {
+        // Lấy danh sách chuyên ngành thuộc khoa mới
+        const majorsOfFaculty = majors.filter(m => m.major_faculty === value);
+        // Nếu chuyên ngành hiện tại không thuộc khoa mới, reset về rỗng
+        const shouldResetMajor = !majorsOfFaculty.some(m => m._id === prev.user_major);
+        return {
+          ...prev,
+          [field]: value,
+          user_major: shouldResetMajor ? '' : prev.user_major
+        };
+      });
       setSelectedFaculty(value);
-      setSelectedMajor(''); // Reset selected major in modal
     } else if (field === 'user_major') {
       setFormData(prev => ({
         ...prev,
         [field]: value
       }));
-      setSelectedMajor(value);
     } else {
       setFormData(prev => ({
         ...prev,
@@ -723,6 +727,7 @@ const Students = () => {
           onClick={() => {
             setSelectedStudent(null);
             setIsModalVisible(true);
+            setSelectedFaculty(''); // Reset khi thêm mới
           }}
         >
           Thêm sinh viên
@@ -731,7 +736,12 @@ const Students = () => {
 
       <Table
         columns={columns}
-        dataSource={students}
+        dataSource={students.map(student => ({
+          ...student,
+          key: student._id,
+          faculty_name: faculties.find(f => f._id === student.user_faculty)?.faculty_title || '',
+          major_name: majors.find(m => m._id === student.user_major)?.major_title || '',
+        }))}
         rowKey="_id"
         pagination={{ pageSize: 10 }}
         scroll={{ x: true }}
@@ -934,12 +944,12 @@ const Students = () => {
                   </label>
                   <Select
                     className={`w-full ${errors.user_faculty ? 'border-red-500' : ''}`}
-                    value={formData.user_faculty || selectedStudent?.faculty_name}
+                    value={formData.user_faculty || selectedStudent?.user_faculty}
                     onChange={(value) => handleInputChange('user_faculty', value)}
                   >
-                    {Object.keys(majorsByDepartment).map((dep) => (
-                      <Select.Option key={dep} value={dep}>
-                        {dep}
+                    {faculties.map((faculty) => (
+                      <Select.Option key={faculty._id} value={faculty._id}>
+                        {faculty.faculty_title}
                       </Select.Option>
                     ))}
                   </Select>
@@ -953,15 +963,17 @@ const Students = () => {
                   </label>
                   <Select
                     className={`w-full ${errors.user_major ? 'border-red-500' : ''}`}
-                    value={formData.user_major || selectedStudent?.major_name}
+                    value={formData.user_major || selectedStudent?.user_major}
                     disabled={!selectedFaculty}
                     onChange={(value) => handleInputChange('user_major', value)}
                   >
-                    {majorsByDepartment[selectedFaculty]?.map((major) => (
-                      <Select.Option key={major} value={major}>
-                        {major}
-                      </Select.Option>
-                    ))}
+                    {majors
+                      .filter(major => major.major_faculty === selectedFaculty)
+                      .map((major) => (
+                        <Select.Option key={major._id} value={major._id}>
+                          {major.major_title}
+                        </Select.Option>
+                      ))}
                   </Select>
                   {errors.user_major && (
                     <span className="text-red-500 text-sm">{errors.user_major}</span>
@@ -1051,7 +1063,6 @@ const Students = () => {
           setFormData({});
           setErrors({});
           setSelectedFaculty('');
-          setSelectedMajor('');
         }}
         onCancel={() => {
           setIsSuccessModalVisible(false);
@@ -1059,7 +1070,6 @@ const Students = () => {
           setFormData({});
           setErrors({});
           setSelectedFaculty('');
-          setSelectedMajor('');
         }}
         okText="Đóng"
         centered

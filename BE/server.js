@@ -30,15 +30,23 @@ app.get('/', (req, res) => {
 // Import các route
 const databaseRoutes = require('./routes/database');
 const authRoutes = require('./routes/auth');
+const councilRoutes = require('./routes/councilRoutes');
+
+// Sử dụng các route
 app.use('/api/database', databaseRoutes);
 app.use('/api/auth', authRoutes);
+app.use('/api', councilRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
-    console.error(err.stack);
-    res.status(500).json({ message: 'Something went wrong!' });
+    console.error('Error:', err);
+    res.status(500).json({ 
+        message: 'Something went wrong!',
+        error: err.message 
+    });
 });
 
 app.listen(PORT, () => {
-  console.log(`Server is running on port ${PORT}`);
+    console.log(`Server is running on port ${PORT}`);
 });
+ 

@@ -48,7 +48,6 @@ const LecturerList = () => {
   const [filterFaculty, setFilterFaculty] = useState('');
   const [filterMajor, setFilterMajor] = useState('');
   const [selectedFaculty, setSelectedFaculty] = useState('');
-  const [selectedMajor, setSelectedMajor] = useState('');
   const [lecturers, setLecturers] = useState([]);
   const [faculties, setFaculties] = useState([]);
   const [majors, setMajors] = useState([]);
@@ -139,7 +138,7 @@ const LecturerList = () => {
 
   useEffect(() => {
     if (faculties.length > 0 && majors.length > 0) {
-      fetchLecturers();
+    fetchLecturers();
     }
   }, [searchText, filterFaculty, filterMajor, faculties, majors]);
 
@@ -213,6 +212,7 @@ const LecturerList = () => {
   const handleEdit = (lecturer) => {
     setSelectedLecturer(lecturer);
     setIsModalVisible(true);
+    setSelectedFaculty(lecturer.user_faculty);
   };
 
   const handleDelete = async (lecturer) => {
@@ -351,19 +351,21 @@ const LecturerList = () => {
 
   const handleInputChange = (field, value) => {
     if (field === 'user_faculty') {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value,
-        user_major: '' // Reset major when faculty changes
-      }));
+      setFormData(prev => {
+        const majorsOfFaculty = majors.filter(m => m.major_faculty === value);
+        const shouldResetMajor = !majorsOfFaculty.some(m => m._id === prev.user_major);
+        return {
+          ...prev,
+          [field]: value,
+          user_major: shouldResetMajor ? '' : prev.user_major
+        };
+      });
       setSelectedFaculty(value);
-      setSelectedMajor(''); // Reset selected major in modal
     } else if (field === 'user_major') {
       setFormData(prev => ({
         ...prev,
         [field]: value
       }));
-      setSelectedMajor(value);
     } else {
       setFormData(prev => ({
         ...prev,
@@ -665,6 +667,7 @@ const LecturerList = () => {
           onClick={() => {
             setSelectedLecturer(null);
             setIsModalVisible(true);
+            setSelectedFaculty(''); // Reset khi thêm mới
           }}
         >
           Thêm giảng viên
@@ -673,7 +676,12 @@ const LecturerList = () => {
 
       <Table
         columns={columns}
-        dataSource={lecturers}
+        dataSource={lecturers.map(lecturer => ({
+          ...lecturer,
+          key: lecturer._id,
+          faculty_name: faculties.find(f => f._id === lecturer.user_faculty)?.faculty_title || '',
+          major_name: majors.find(m => m._id === lecturer.user_major)?.major_title || '',
+        }))}
         rowKey="_id"
         pagination={{ pageSize: 10 }}
         scroll={{ x: true }}
@@ -876,12 +884,12 @@ const LecturerList = () => {
                   </label>
                   <Select
                     className={`w-full ${errors.user_faculty ? 'border-red-500' : ''}`}
-                    value={formData.user_faculty || selectedLecturer?.faculty_name}
+                    value={formData.user_faculty || selectedLecturer?.user_faculty}
                     onChange={(value) => handleInputChange('user_faculty', value)}
                   >
-                    {Object.keys(majorsByDepartment).map((dep) => (
-                      <Select.Option key={dep} value={dep}>
-                        {dep}
+                    {faculties.map((faculty) => (
+                      <Select.Option key={faculty._id} value={faculty._id}>
+                        {faculty.faculty_title}
                       </Select.Option>
                     ))}
                   </Select>
@@ -895,15 +903,17 @@ const LecturerList = () => {
                   </label>
                   <Select
                     className={`w-full ${errors.user_major ? 'border-red-500' : ''}`}
-                    value={formData.user_major || selectedLecturer?.major_name}
+                    value={formData.user_major || selectedLecturer?.user_major || ''}
                     disabled={!selectedFaculty}
                     onChange={(value) => handleInputChange('user_major', value)}
                   >
-                    {(majorsByDepartment[selectedFaculty] || []).map((major) => (
-                      <Select.Option key={major} value={major}>
-                        {major}
-                      </Select.Option>
-                    ))}
+                    {majors
+                      .filter(major => major.major_faculty === selectedFaculty)
+                      .map((major) => (
+                        <Select.Option key={major._id} value={major._id}>
+                          {major.major_title}
+                        </Select.Option>
+                      ))}
                   </Select>
                   {errors.user_major && (
                     <span className="text-red-500 text-sm">{errors.user_major}</span>

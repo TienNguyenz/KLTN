@@ -1,30 +1,37 @@
 const mongoose = require('mongoose');
 
 const councilSchema = new mongoose.Schema({
-    name: {
+    assembly_name: {
         type: String,
-        required: true
+        required: true,
+        unique: true
+    },
+    assembly_major: {
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Major'
     },
     chairman: {
-        type: String,
-        required: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     },
     secretary: {
-        type: String,
-        required: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     },
     members: [{
-        type: String,
-        required: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'User'
     }],
-    created_at: {
+    createdAt: {
         type: Date,
         default: Date.now
     },
-    updated_at: {
+    updatedAt: {
         type: Date,
         default: Date.now
     }
+}, {
+    collection: 'assemblies'
 });
 
 module.exports = mongoose.model('Council', councilSchema); 
