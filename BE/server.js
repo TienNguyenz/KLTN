@@ -26,6 +26,8 @@ mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/KLTN', {
 // Import routes
 const semesterRoutes = require('./routes/semester');
 const registrationPeriodRoutes = require('./routes/registrationPeriod');
+const authRoutes = require('./routes/auth');
+const databaseRoutes = require('./routes/database');
 
 // Basic route
 app.get('/', (req, res) => {
@@ -35,6 +37,8 @@ app.get('/', (req, res) => {
 // Use routes
 app.use('/api/semesters', semesterRoutes);
 app.use('/api/registrationperiods', registrationPeriodRoutes);
+app.use('/api/auth', authRoutes);
+app.use('/api/database', databaseRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

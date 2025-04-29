@@ -4,10 +4,12 @@ import { PlusOutlined, SearchOutlined, ExclamationCircleFilled, CheckCircleFille
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import moment from 'moment';
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const { confirm } = Modal;
 
 const Registration = () => {
+  const navigate = useNavigate();
   const [registrations, setRegistrations] = useState([]);
   const [semesters, setSemesters] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -19,12 +21,39 @@ const Registration = () => {
   const [filterStatus, setFilterStatus] = useState('all');
   const [loading, setLoading] = useState(false);
 
+  // Kiểm tra authentication
+  const checkAuth = () => {
+    const token = localStorage.getItem('token');
+    if (!token) {
+      message.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+      navigate('/login');
+      return false;
+    }
+    return true;
+  };
+
+  // Cấu hình axios
+  const api = axios.create({
+    baseURL: 'http://localhost:5000/api',
+    timeout: 5000,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${localStorage.getItem('token')}`
+    }
+  });
+
   // Fetch registrations data
   const fetchRegistrations = async () => {
+    if (!checkAuth()) return;
+    
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/registrationperiods');
-      console.log('API Response:', response.data);
+      const response = await api.get('/registrationperiods');
+      
+      if (!response.data) {
+        throw new Error('Invalid response data');
+      }
+
       const registrationsWithDetails = response.data.map(registration => ({
         ...registration,
         key: registration._id,
@@ -35,8 +64,13 @@ const Registration = () => {
       }));
       setRegistrations(registrationsWithDetails);
     } catch (error) {
-      message.error('Lỗi khi tải danh sách đợt đăng ký');
       console.error('Error fetching registrations:', error);
+      if (error.response?.status === 401) {
+        message.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+        navigate('/login');
+      } else {
+        message.error('Lỗi khi tải danh sách đợt đăng ký: ' + (error.response?.data?.message || error.message));
+      }
     } finally {
       setLoading(false);
     }
@@ -44,12 +78,22 @@ const Registration = () => {
 
   // Fetch semesters for dropdown
   const fetchSemesters = async () => {
+    if (!checkAuth()) return;
+    
     try {
-      const response = await axios.get('http://localhost:5000/api/semesters');
+      const response = await api.get('/semesters');
+      if (!response.data) {
+        throw new Error('Invalid response data');
+      }
       setSemesters(response.data);
     } catch (error) {
-      message.error('Lỗi khi tải danh sách học kỳ');
       console.error('Error fetching semesters:', error);
+      if (error.response?.status === 401) {
+        message.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+        navigate('/login');
+      } else {
+        message.error('Lỗi khi tải danh sách học kỳ: ' + (error.response?.data?.message || error.message));
+      }
     }
   };
 
@@ -161,7 +205,7 @@ const Registration = () => {
 
   const handleDelete = async (record) => {
     try {
-      await axios.delete(`http://localhost:5000/api/registrationperiods/${record._id}`);
+      await api.delete(`/registrationperiods/${record._id}`);
       message.success('Xóa đợt đăng ký thành công!');
       fetchRegistrations();
     } catch (error) {
@@ -267,6 +311,8 @@ const Registration = () => {
   };
 
   const handleModalOk = () => {
+    if (!checkAuth()) return;
+
     form.validateFields().then(async (values) => {
       try {
         const payload = {
@@ -277,23 +323,30 @@ const Registration = () => {
           block_topic: values.block_topic || false,
         };
         
-        await axios.post('http://localhost:5000/api/registrationperiods', payload);
+        const response = await api.post('/registrationperiods', payload);
+        if (!response.data) {
+          throw new Error('Invalid response data');
+        }
+        
         message.success('Thêm đợt đăng ký mới thành công!');
-      form.resetFields();
-      setIsModalVisible(false);
+        form.resetFields();
+        setIsModalVisible(false);
         fetchRegistrations();
       } catch (error) {
-        if (error.response?.data?.message) {
-          message.error(error.response.data.message);
-        } else {
-          message.error('Lỗi khi thêm đợt đăng ký mới');
-        }
         console.error('Error adding registration period:', error);
+        if (error.response?.status === 401) {
+          message.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+          navigate('/login');
+        } else {
+          message.error('Lỗi khi thêm đợt đăng ký mới: ' + (error.response?.data?.message || error.message));
+        }
       }
     });
   };
 
   const handleEditModalOk = () => {
+    if (!checkAuth()) return;
+
     editForm.validateFields().then(async (values) => {
       try {
         const payload = {
@@ -304,19 +357,24 @@ const Registration = () => {
           block_topic: values.block_topic,
         };
         
-        await axios.put(`http://localhost:5000/api/registrationperiods/${editingRecord._id}`, payload);
+        const response = await api.put(`/registrationperiods/${editingRecord._id}`, payload);
+        if (!response.data) {
+          throw new Error('Invalid response data');
+        }
+
         message.success('Cập nhật đợt đăng ký thành công!');
-      editForm.resetFields();
-      setIsEditModalVisible(false);
-      setEditingRecord(null);
+        editForm.resetFields();
+        setIsEditModalVisible(false);
+        setEditingRecord(null);
         fetchRegistrations();
       } catch (error) {
-        if (error.response?.data?.message) {
-          message.error(error.response.data.message);
-        } else {
-          message.error('Lỗi khi cập nhật đợt đăng ký');
-        }
         console.error('Error updating registration period:', error);
+        if (error.response?.status === 401) {
+          message.error('Phiên đăng nhập đã hết hạn, vui lòng đăng nhập lại');
+          navigate('/login');
+        } else {
+          message.error('Lỗi khi cập nhật đợt đăng ký: ' + (error.response?.data?.message || error.message));
+        }
       }
     });
   };
