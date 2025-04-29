@@ -29,6 +29,7 @@ import { FaEdit, FaTrash } from 'react-icons/fa';
 import axios from 'axios';
 import { Modal } from 'antd';
 import { CheckCircleFilled } from '@ant-design/icons';
+import { EditOutlined, DeleteOutlined } from '@ant-design/icons';
 
 const CouncilManagement = () => {
   const [councils, setCouncils] = useState([]);
@@ -314,22 +315,24 @@ const CouncilManagement = () => {
                   ))}
                 </TableCell>
                 <TableCell>
-                  <Button
-                    type="text"
-                    className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-blue-100"
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                    <Button
+                      type="text"
+                      className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-blue-100"
                     onClick={() => handleOpen(council)}
-                    sx={{ minWidth: 'auto', p: 1 }}
+                      sx={{ minWidth: 'auto', p: 1 }}
                   >
-                    <FaEdit style={{ color: '#4096ff' }} className="text-lg" />
-                  </Button>
-                  <Button
-                    type="text"
-                    className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100"
+                      <FaEdit style={{ color: '#4096ff' }} className="text-lg" />
+                    </Button>
+                    <Button
+                      type="text"
+                      className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100"
                     onClick={() => handleDelete(council._id)}
-                    sx={{ minWidth: 'auto', p: 1, ml: 1 }}
+                      sx={{ minWidth: 'auto', p: 1, ml: 1 }}
                   >
-                    <FaTrash style={{ color: '#ff4d4f' }} className="text-lg" />
-                  </Button>
+                      <FaTrash style={{ color: '#ff4d4f' }} className="text-lg" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}

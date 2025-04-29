@@ -1,6 +1,7 @@
 const express = require('express');
 const mongoose = require('mongoose');
 const cors = require('cors');
+const bodyParser = require('body-parser');
 require('dotenv').config();
 
 const app = express();
@@ -8,34 +9,32 @@ const PORT = process.env.PORT || 5000;
 
 // Middleware
 app.use(cors());
-app.use(express.json({ limit: '50mb' }));
-app.use(express.urlencoded({ limit: '50mb', extended: true }));
+app.use(bodyParser.json());
+app.use(bodyParser.urlencoded({ extended: true }));
 
 // Serve static files from uploads directory
 app.use('/uploads', express.static('uploads'));
 
 // Connect to MongoDB
-mongoose.connect(process.env.MONGODB_URI, {
+mongoose.connect(process.env.MONGODB_URI || 'mongodb://localhost:27017/KLTN', {
     useNewUrlParser: true,
     useUnifiedTopology: true
 })
 .then(() => console.log('Connected to MongoDB'))
 .catch((err) => console.error('MongoDB connection error:', err));
 
-// Example Route
+// Import routes
+const semesterRoutes = require('./routes/semester');
+const registrationPeriodRoutes = require('./routes/registrationPeriod');
+
+// Basic route
 app.get('/', (req, res) => {
-  res.send('Hello from Backend!');
+  res.send('Welcome to KLTN API');
 });
 
-// Import các route
-const databaseRoutes = require('./routes/database');
-const authRoutes = require('./routes/auth');
-const councilRoutes = require('./routes/councilRoutes');
-
-// Sử dụng các route
-app.use('/api/database', databaseRoutes);
-app.use('/api/auth', authRoutes);
-app.use('/api', councilRoutes);
+// Use routes
+app.use('/api/semesters', semesterRoutes);
+app.use('/api/registrationperiods', registrationPeriodRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

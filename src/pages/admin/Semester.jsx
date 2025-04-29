@@ -1,36 +1,98 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, DatePicker, message, Space } from 'antd';
-import { PlusOutlined } from '@ant-design/icons';
-import { FaEdit, FaTrash, FaEye } from 'react-icons/fa';
+import { PlusOutlined, ExclamationCircleFilled, CheckCircleFilled } from '@ant-design/icons';
+import { FaEdit, FaTrash } from 'react-icons/fa';
 import moment from 'moment';
+import axios from 'axios';
+
+const { confirm } = Modal;
 
 const Semester = () => {
+  const [semesters, setSemesters] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
   const [form] = Form.useForm();
   const [editForm] = Form.useForm();
+  const [loading, setLoading] = useState(false);
+  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
+  const [successMessage, setSuccessMessage] = useState('');
+
+  // Fetch semesters data
+  const fetchSemesters = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('http://localhost:5000/api/semesters');
+      setSemesters(response.data.map(semester => ({
+        ...semester,
+        key: semester._id
+      })));
+    } catch (error) {
+      message.error('Lỗi khi tải danh sách học kỳ');
+      console.error('Error fetching semesters:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchSemesters();
+  }, []);
+
+  const showDeleteConfirm = (record) => {
+    confirm({
+      title: 'Xác nhận xóa',
+      icon: <ExclamationCircleFilled />,
+      content: `Bạn có chắc chắn muốn xóa ${record.semester}?`,
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      onOk() {
+        return new Promise((resolve, reject) => {
+          axios.delete(`http://localhost:5000/api/semesters/${record._id}`)
+            .then((response) => {
+              console.log('Delete response:', response);
+              setSuccessMessage('Xóa học kỳ thành công!');
+              setIsSuccessModalVisible(true);
+              fetchSemesters();
+              resolve();
+            })
+            .catch((error) => {
+              console.error('Delete error:', error);
+              if (error.response) {
+                message.error(error.response.data.message || 'Lỗi khi xóa học kỳ');
+              } else if (error.request) {
+                message.error('Không thể kết nối đến server');
+              } else {
+                message.error('Lỗi khi xóa học kỳ');
+              }
+              reject();
+            });
+        });
+      },
+    });
+  };
 
   const columns = [
     {
-      title: 'Năm học',
-      dataIndex: 'name',
-      key: 'name',
-      width: '30%',
+      title: 'Học kỳ',
+      dataIndex: 'semester',
+      key: 'semester',
+      width: '25%',
     },
     {
       title: 'Thời gian bắt đầu',
-      dataIndex: 'startDate',
-      key: 'startDate',
+      dataIndex: 'school_year_start',
+      key: 'school_year_start',
       width: '25%',
-      render: (date) => moment(date).format('YYYY'),
+      render: (date) => moment(date).format('DD/MM/YYYY'),
     },
     {
       title: 'Thời gian kết thúc',
-      dataIndex: 'endDate',
-      key: 'endDate',
+      dataIndex: 'school_year_end',
+      key: 'school_year_end',
       width: '25%',
-      render: (date) => moment(date).format('YYYY'),
+      render: (date) => moment(date).format('DD/MM/YYYY'),
     },
     {
       title: 'Thao tác',
@@ -45,13 +107,8 @@ const Semester = () => {
           />
           <Button 
             type="text" 
-            className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-green-100"
-            icon={<FaEye style={{ color: '#52c41a' }} className="text-lg" />}
-          />
-          <Button 
-            type="text" 
             className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100"
-            onClick={() => handleDelete(record)}
+            onClick={() => showDeleteConfirm(record)}
             icon={<FaTrash style={{ color: '#ff4d4f' }} className="text-lg" />}
           />
         </Space.Compact>
@@ -59,59 +116,71 @@ const Semester = () => {
     },
   ];
 
-  const data = [
-    {
-      key: '1',
-      name: 'HK1',
-      startDate: '2023',
-      endDate: '2024',
-    },
-  ];
-
   const handleAddSemester = () => {
+    form.resetFields();
     setIsModalVisible(true);
   };
 
   const handleEdit = (record) => {
     setEditingRecord(record);
     editForm.setFieldsValue({
-      name: record.name,
-      startDate: moment(record.startDate),
-      endDate: moment(record.endDate),
+      semester: record.semester,
+      school_year_start: moment(record.school_year_start),
+      school_year_end: moment(record.school_year_end),
     });
     setIsEditModalVisible(true);
   };
 
-  const handleDelete = (record) => {
-    Modal.confirm({
-      title: 'Xác nhận xóa',
-      content: `Bạn có chắc chắn muốn xóa học kỳ ${record.name}?`,
-      okText: 'Xóa',
-      okType: 'danger',
-      cancelText: 'Hủy',
-      onOk() {
-        // Xử lý xóa học kỳ
-        message.success('Đã xóa học kỳ thành công');
-      },
-    });
-  };
-
   const handleModalOk = () => {
-    form.validateFields().then((values) => {
-      console.log('Success:', values);
-      message.success('Thêm học kỳ mới thành công');
+    form.validateFields().then(async (values) => {
+      try {
+        const payload = {
+          semester: values.semester,
+          school_year_start: values.school_year_start.toDate(),
+          school_year_end: values.school_year_end.toDate(),
+        };
+        
+        await axios.post('http://localhost:5000/api/semesters', payload);
+        setSuccessMessage('Thêm học kỳ mới thành công!');
+        setIsSuccessModalVisible(true);
       form.resetFields();
       setIsModalVisible(false);
+        fetchSemesters();
+      } catch (error) {
+        if (error.response?.data?.message) {
+          message.error(error.response.data.message);
+        } else {
+          message.error('Lỗi khi thêm học kỳ mới');
+        }
+        console.error('Error adding semester:', error);
+      }
     });
   };
 
   const handleEditModalOk = () => {
-    editForm.validateFields().then((values) => {
-      console.log('Edit Success:', values);
-      message.success('Cập nhật học kỳ thành công');
+    editForm.validateFields().then(async (values) => {
+      try {
+        const payload = {
+          semester: values.semester,
+          school_year_start: values.school_year_start.toDate(),
+          school_year_end: values.school_year_end.toDate(),
+        };
+        
+        await axios.put(`http://localhost:5000/api/semesters/${editingRecord._id}`, payload);
+        setSuccessMessage('Cập nhật học kỳ thành công!');
+        setIsSuccessModalVisible(true);
       editForm.resetFields();
       setIsEditModalVisible(false);
       setEditingRecord(null);
+        fetchSemesters();
+      } catch (error) {
+        if (error.response?.data?.message) {
+          message.error(error.response.data.message);
+        } else {
+          message.error('Lỗi khi cập nhật học kỳ');
+        }
+        console.error('Error updating semester:', error);
+      }
     });
   };
 
@@ -143,10 +212,11 @@ const Semester = () => {
       <div className="bg-white rounded-lg shadow">
         <Table
           columns={columns}
-          dataSource={data}
+          dataSource={semesters}
+          loading={loading}
           pagination={{
-            total: data.length,
-            pageSize: 5,
+            total: semesters.length,
+            pageSize: 10,
             showTotal: (total) => `Tổng cộng ${total} học kỳ`,
           }}
         />
@@ -167,25 +237,41 @@ const Semester = () => {
           name="semesterForm"
         >
           <Form.Item
-            name="name"
-            label="Năm học"
-            rules={[{ required: true, message: 'Vui lòng nhập năm học!' }]}
+            name="semester"
+            label="Học kỳ"
+            rules={[{ required: true, message: 'Vui lòng nhập tên học kỳ!' }]}
           >
-            <Input placeholder="Ví dụ: HK1" />
+            <Input placeholder="Ví dụ: Học kỳ 1" />
           </Form.Item>
           <Form.Item
-            name="startDate"
+            name="school_year_start"
             label="Thời gian bắt đầu"
             rules={[{ required: true, message: 'Vui lòng chọn thời gian bắt đầu!' }]}
           >
-            <DatePicker className="w-full" picker="year" />
+            <DatePicker 
+              className="w-full" 
+              format="DD/MM/YYYY"
+              changeOnBlur
+              showToday={false}
+              allowClear
+              inputReadOnly={false}
+              placeholder="Nhập hoặc chọn ngày"
+            />
           </Form.Item>
           <Form.Item
-            name="endDate"
+            name="school_year_end"
             label="Thời gian kết thúc"
             rules={[{ required: true, message: 'Vui lòng chọn thời gian kết thúc!' }]}
           >
-            <DatePicker className="w-full" picker="year" />
+            <DatePicker 
+              className="w-full" 
+              format="DD/MM/YYYY"
+              changeOnBlur
+              showToday={false}
+              allowClear
+              inputReadOnly={false}
+              placeholder="Nhập hoặc chọn ngày"
+            />
           </Form.Item>
         </Form>
       </Modal>
@@ -205,27 +291,65 @@ const Semester = () => {
           name="editSemesterForm"
         >
           <Form.Item
-            name="name"
-            label="Năm học"
-            rules={[{ required: true, message: 'Vui lòng nhập năm học!' }]}
+            name="semester"
+            label="Học kỳ"
+            rules={[{ required: true, message: 'Vui lòng nhập tên học kỳ!' }]}
           >
-            <Input placeholder="Ví dụ: HK1" />
+            <Input placeholder="Ví dụ: Học kỳ 1" />
           </Form.Item>
           <Form.Item
-            name="startDate"
+            name="school_year_start"
             label="Thời gian bắt đầu"
             rules={[{ required: true, message: 'Vui lòng chọn thời gian bắt đầu!' }]}
           >
-            <DatePicker className="w-full" picker="year" />
+            <DatePicker 
+              className="w-full" 
+              format="DD/MM/YYYY"
+              changeOnBlur
+              showToday={false}
+              allowClear
+              inputReadOnly={false}
+              placeholder="Nhập hoặc chọn ngày"
+            />
           </Form.Item>
           <Form.Item
-            name="endDate"
+            name="school_year_end"
             label="Thời gian kết thúc"
             rules={[{ required: true, message: 'Vui lòng chọn thời gian kết thúc!' }]}
           >
-            <DatePicker className="w-full" picker="year" />
+            <DatePicker 
+              className="w-full" 
+              format="DD/MM/YYYY"
+              changeOnBlur
+              showToday={false}
+              allowClear
+              inputReadOnly={false}
+              placeholder="Nhập hoặc chọn ngày"
+            />
           </Form.Item>
         </Form>
+      </Modal>
+
+      {/* Modal thông báo thành công */}
+      <Modal
+        title="Thông báo"
+        open={isSuccessModalVisible}
+        onOk={() => {
+          setIsSuccessModalVisible(false);
+          fetchSemesters();
+        }}
+        onCancel={() => {
+          setIsSuccessModalVisible(false);
+          fetchSemesters();
+        }}
+        okText="Đóng"
+        cancelButtonProps={{ style: { display: 'none' } }}
+        centered
+      >
+        <div style={{ textAlign: 'center', padding: '20px 0' }}>
+          <CheckCircleFilled style={{ fontSize: '48px', color: '#52c41a' }} />
+          <p style={{ marginTop: '20px', fontSize: '16px' }}>{successMessage}</p>
+        </div>
       </Modal>
     </div>
   );

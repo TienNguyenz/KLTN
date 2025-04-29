@@ -1,12 +1,15 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, DatePicker, Select, Switch, message, Input, Space } from 'antd';
-import { PlusOutlined, SearchOutlined, FilterOutlined } from '@ant-design/icons';
+import { PlusOutlined, SearchOutlined, ExclamationCircleFilled, CheckCircleFilled } from '@ant-design/icons';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import moment from 'moment';
+import axios from 'axios';
 
-const { RangePicker } = DatePicker;
+const { confirm } = Modal;
 
 const Registration = () => {
+  const [registrations, setRegistrations] = useState([]);
+  const [semesters, setSemesters] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
   const [editingRecord, setEditingRecord] = useState(null);
@@ -14,6 +17,163 @@ const Registration = () => {
   const [editForm] = Form.useForm();
   const [searchText, setSearchText] = useState('');
   const [filterStatus, setFilterStatus] = useState('all');
+  const [loading, setLoading] = useState(false);
+
+  // Fetch registrations data
+  const fetchRegistrations = async () => {
+    try {
+      setLoading(true);
+      const response = await axios.get('http://localhost:5000/api/registrationperiods');
+      console.log('API Response:', response.data);
+      const registrationsWithDetails = response.data.map(registration => ({
+        ...registration,
+        key: registration._id,
+        semester: registration.registration_period_semester?.semester || 'N/A',
+        academicYear: registration.registration_period_semester ? 
+          `${moment(registration.registration_period_semester.school_year_start).format('YYYY')} - ${moment(registration.registration_period_semester.school_year_end).format('YYYY')}` 
+          : 'N/A',
+      }));
+      setRegistrations(registrationsWithDetails);
+    } catch (error) {
+      message.error('Lỗi khi tải danh sách đợt đăng ký');
+      console.error('Error fetching registrations:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Fetch semesters for dropdown
+  const fetchSemesters = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/semesters');
+      setSemesters(response.data);
+    } catch (error) {
+      message.error('Lỗi khi tải danh sách học kỳ');
+      console.error('Error fetching semesters:', error);
+    }
+  };
+
+  useEffect(() => {
+    fetchRegistrations();
+    fetchSemesters();
+  }, []);
+
+  // Validate dates
+  const validateDates = async (_, value) => {
+    if (!value) return Promise.resolve();
+
+    const currentForm = _.field.includes('registration_period_start') ? form : editForm;
+    const semesterId = currentForm.getFieldValue('registration_period_semester');
+    
+    // Find selected semester
+    const selectedSemester = semesters.find(s => s._id === semesterId);
+    if (!selectedSemester) {
+      return Promise.reject('Vui lòng chọn học kỳ trước!');
+    }
+
+    // Convert all dates to moment objects with time set to start of day
+    const selectedDate = moment(value).startOf('day');
+    const semesterStart = moment(selectedSemester.school_year_start).startOf('day');
+    const semesterEnd = moment(selectedSemester.school_year_end).startOf('day');
+
+    // Kiểm tra thời gian bắt đầu đăng ký
+    if (_.field.includes('registration_period_start')) {
+      // Kiểm tra thời gian bắt đầu đăng ký với thời gian kết thúc học kỳ
+      if (selectedDate.isAfter(semesterEnd)) {
+        return Promise.reject(`Thời gian bắt đầu đăng ký không được sau ${semesterEnd.format('DD/MM/YYYY')}`);
+      }
+
+      // Kiểm tra với thời gian kết thúc đăng ký nếu đã có
+      const endDate = currentForm.getFieldValue('registration_period_end');
+      if (endDate) {
+        const endMoment = moment(endDate).startOf('day');
+        if (selectedDate.isAfter(endMoment)) {
+          return Promise.reject('Thời gian bắt đầu đăng ký phải trước thời gian kết thúc đăng ký');
+        }
+      }
+    }
+    
+    // Kiểm tra thời gian kết thúc đăng ký
+    if (_.field.includes('registration_period_end')) {
+      // Kiểm tra thời gian kết thúc đăng ký với thời gian kết thúc học kỳ
+      if (selectedDate.isAfter(semesterEnd)) {
+        return Promise.reject(`Thời gian kết thúc đăng ký không được sau ${semesterEnd.format('DD/MM/YYYY')}`);
+      }
+
+      // Kiểm tra với thời gian bắt đầu đăng ký nếu đã có
+      const startDate = currentForm.getFieldValue('registration_period_start');
+      if (startDate) {
+        const startMoment = moment(startDate).startOf('day');
+        if (selectedDate.isBefore(startMoment)) {
+          return Promise.reject('Thời gian kết thúc đăng ký phải sau thời gian bắt đầu đăng ký');
+        }
+      }
+    }
+
+    return Promise.resolve();
+  };
+
+  // Handle semester change
+  const handleSemesterChange = (semesterId) => {
+    const selectedSemester = semesters.find(s => s._id === semesterId);
+    if (selectedSemester) {
+      const currentForm = isModalVisible ? form : editForm;
+      
+      // Reset date fields when semester changes
+      currentForm.setFieldsValue({
+        registration_period_start: null,
+        registration_period_end: null
+      });
+
+      // Clear any existing errors
+      currentForm.setFields([
+        {
+          name: 'registration_period_start',
+          errors: []
+        },
+        {
+          name: 'registration_period_end',
+          errors: []
+        }
+      ]);
+
+      // Hiển thị thông tin về thời gian học kỳ
+      message.info(
+        `Thời gian học kỳ: ${moment(selectedSemester.school_year_start).format('DD/MM/YYYY')} - ${moment(selectedSemester.school_year_end).format('DD/MM/YYYY')}`
+      );
+    }
+  };
+
+  const showDeleteConfirm = (record) => {
+    confirm({
+      title: 'Xác nhận xóa',
+      icon: <ExclamationCircleFilled style={{ color: '#ff4d4f' }} />,
+      content: `Bạn có chắc chắn muốn xóa đợt đăng ký của ${record.semester} không?`,
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      centered: true,
+      onOk() {
+        return handleDelete(record);
+      },
+    });
+  };
+
+  const handleDelete = async (record) => {
+    try {
+      await axios.delete(`http://localhost:5000/api/registrationperiods/${record._id}`);
+      message.success('Xóa đợt đăng ký thành công!');
+      fetchRegistrations();
+    } catch (error) {
+      console.error('Delete error:', error);
+      if (error.response?.data?.message) {
+        message.error(error.response.data.message);
+      } else {
+        message.error('Lỗi khi xóa đợt đăng ký');
+      }
+      throw error; // Re-throw for Modal
+    }
+  };
 
   const columns = [
     {
@@ -37,27 +197,27 @@ const Registration = () => {
     },
     {
       title: 'Thời gian bắt đầu',
-      dataIndex: 'startDate',
-      key: 'startDate',
+      dataIndex: 'registration_period_start',
+      key: 'registration_period_start',
       width: '20%',
-      render: (date) => moment(date).format('DD-MM-YYYY'),
+      render: (timestamp) => moment(timestamp * 1000).format('DD-MM-YYYY'),
     },
     {
       title: 'Thời gian kết thúc',
-      dataIndex: 'endDate',
-      key: 'endDate',
+      dataIndex: 'registration_period_end',
+      key: 'registration_period_end',
       width: '20%',
-      render: (date) => moment(date).format('DD-MM-YYYY'),
+      render: (timestamp) => moment(timestamp * 1000).format('DD-MM-YYYY'),
     },
     {
       title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
+      dataIndex: 'registration_period_status',
+      key: 'registration_period_status',
       width: '15%',
       filteredValue: [filterStatus],
       onFilter: (value, record) => {
         if (value === 'all') return true;
-        return record.status === (value === 'open');
+        return record.registration_period_status === (value === 'open');
       },
       render: (status) => (
         <span className={`px-2 py-1 rounded-full text-xs ${
@@ -81,7 +241,7 @@ const Registration = () => {
           <Button 
             type="text" 
             className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100"
-            onClick={() => handleDelete(record)}
+            onClick={() => showDeleteConfirm(record)}
             icon={<FaTrash style={{ color: '#ff4d4f' }} className="text-lg" />}
           />
         </Space.Compact>
@@ -89,81 +249,75 @@ const Registration = () => {
     },
   ];
 
-  const data = [
-    {
-      key: '1',
-      semester: 'HK1',
-      academicYear: '2023 - 2024',
-      startDate: '2023-12-25',
-      endDate: '2024-01-31',
-      status: true,
-    },
-  ];
-
   const handleAddRegistration = () => {
+    form.resetFields();
     setIsModalVisible(true);
   };
 
   const handleEdit = (record) => {
     setEditingRecord(record);
     editForm.setFieldsValue({
-      semester: record.semester,
-      startDate: moment(record.startDate),
-      endDate: moment(record.endDate),
-      status: record.status,
+      registration_period_semester: record.registration_period_semester._id,
+      registration_period_start: moment(record.registration_period_start * 1000),
+      registration_period_end: moment(record.registration_period_end * 1000),
+      registration_period_status: record.registration_period_status,
+      block_topic: record.block_topic,
     });
     setIsEditModalVisible(true);
   };
 
-  const handleDelete = (record) => {
-    Modal.confirm({
-      title: 'Xác nhận xóa',
-      content: `Bạn có chắc chắn muốn xóa đợt đăng ký này?`,
-      okText: 'Xóa',
-      okType: 'danger',
-      cancelText: 'Hủy',
-      onOk() {
-        message.success('Đã xóa đợt đăng ký thành công');
-      },
-    });
-  };
-
-  const validateDates = (_, value) => {
-    const form = _.field.split('.')[0] === 'startDate' ? form : editForm;
-    const otherFieldName = _.field.split('.')[0] === 'startDate' ? 'endDate' : 'startDate';
-    const otherValue = form.getFieldValue(otherFieldName);
-
-    if (!value || !otherValue) {
-      return Promise.resolve();
-    }
-
-    if (_.field.split('.')[0] === 'startDate' && value.isAfter(otherValue)) {
-      return Promise.reject('Thời gian bắt đầu phải trước thời gian kết thúc!');
-    }
-
-    if (_.field.split('.')[0] === 'endDate' && value.isBefore(otherValue)) {
-      return Promise.reject('Thời gian kết thúc phải sau thời gian bắt đầu!');
-    }
-
-    return Promise.resolve();
-  };
-
   const handleModalOk = () => {
-    form.validateFields().then((values) => {
-      console.log('Success:', values);
-      message.success('Thêm đợt đăng ký mới thành công');
+    form.validateFields().then(async (values) => {
+      try {
+        const payload = {
+          registration_period_semester: values.registration_period_semester,
+          registration_period_start: moment(values.registration_period_start).unix(),
+          registration_period_end: moment(values.registration_period_end).unix(),
+          registration_period_status: values.registration_period_status,
+          block_topic: values.block_topic || false,
+        };
+        
+        await axios.post('http://localhost:5000/api/registrationperiods', payload);
+        message.success('Thêm đợt đăng ký mới thành công!');
       form.resetFields();
       setIsModalVisible(false);
+        fetchRegistrations();
+      } catch (error) {
+        if (error.response?.data?.message) {
+          message.error(error.response.data.message);
+        } else {
+          message.error('Lỗi khi thêm đợt đăng ký mới');
+        }
+        console.error('Error adding registration period:', error);
+      }
     });
   };
 
   const handleEditModalOk = () => {
-    editForm.validateFields().then((values) => {
-      console.log('Edit Success:', values);
-      message.success('Cập nhật đợt đăng ký thành công');
+    editForm.validateFields().then(async (values) => {
+      try {
+        const payload = {
+          registration_period_semester: values.registration_period_semester,
+          registration_period_start: moment(values.registration_period_start).unix(),
+          registration_period_end: moment(values.registration_period_end).unix(),
+          registration_period_status: values.registration_period_status,
+          block_topic: values.block_topic,
+        };
+        
+        await axios.put(`http://localhost:5000/api/registrationperiods/${editingRecord._id}`, payload);
+        message.success('Cập nhật đợt đăng ký thành công!');
       editForm.resetFields();
       setIsEditModalVisible(false);
       setEditingRecord(null);
+        fetchRegistrations();
+      } catch (error) {
+        if (error.response?.data?.message) {
+          message.error(error.response.data.message);
+        } else {
+          message.error('Lỗi khi cập nhật đợt đăng ký');
+        }
+        console.error('Error updating registration period:', error);
+      }
     });
   };
 
@@ -177,6 +331,17 @@ const Registration = () => {
     setIsEditModalVisible(false);
     setEditingRecord(null);
   };
+
+  // Form rules
+  const dateValidationRules = (fieldName) => [
+    {
+      required: true,
+      message: `Vui lòng chọn ${fieldName}!`
+    },
+    {
+      validator: validateDates
+    }
+  ];
 
   return (
     <div className="p-6">
@@ -216,10 +381,11 @@ const Registration = () => {
 
         <Table
           columns={columns}
-          dataSource={data}
+          dataSource={registrations}
+          loading={loading}
           pagination={{
-            total: data.length,
-            pageSize: 5,
+            total: registrations.length,
+            pageSize: 10,
             showTotal: (total) => `Tổng cộng ${total} đợt đăng ký`,
           }}
         />
@@ -234,60 +400,66 @@ const Registration = () => {
         okText="Tạo"
         cancelText="Hủy"
         width={600}
+        centered
       >
         <Form
           form={form}
           layout="vertical"
           name="registrationForm"
           initialValues={{
-            status: true
+            registration_period_status: true,
+            block_topic: false
           }}
         >
           <Form.Item
-            name="semester"
+            name="registration_period_semester"
             label="Học kỳ"
             rules={[{ required: true, message: 'Vui lòng chọn học kỳ!' }]}
           >
-            <Select placeholder="Vui lòng chọn">
-              <Select.Option value="HK1">HK1</Select.Option>
-              <Select.Option value="HK2">HK2</Select.Option>
+            <Select 
+              placeholder="Vui lòng chọn"
+              showSearch
+              optionFilterProp="children"
+              onChange={handleSemesterChange}
+            >
+              {semesters.map(semester => (
+                <Select.Option key={semester._id} value={semester._id}>
+                  {`${semester.semester} (${moment(semester.school_year_start).format('YYYY')} - ${moment(semester.school_year_end).format('YYYY')})`}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
             <Form.Item
-              name="startDate"
+              name="registration_period_start"
               label="Thời gian bắt đầu"
-              rules={[
-                { required: true, message: 'Vui lòng chọn thời gian bắt đầu!' },
-                { validator: validateDates }
-              ]}
+              rules={dateValidationRules('Thời gian bắt đầu')}
             >
               <DatePicker 
                 className="w-full" 
                 format="DD-MM-YYYY"
                 placeholder="Thời gian bắt đầu"
+                showTime={false}
               />
             </Form.Item>
 
             <Form.Item
-              name="endDate"
+              name="registration_period_end"
               label="Thời gian kết thúc"
-              rules={[
-                { required: true, message: 'Vui lòng chọn thời gian kết thúc!' },
-                { validator: validateDates }
-              ]}
+              rules={dateValidationRules('Thời gian kết thúc')}
             >
               <DatePicker 
                 className="w-full" 
                 format="DD-MM-YYYY"
                 placeholder="Thời gian kết thúc"
+                showTime={false}
               />
             </Form.Item>
           </div>
 
           <Form.Item
-            name="status"
+            name="registration_period_status"
             label="Trạng thái đợt đăng ký"
             valuePropName="checked"
           >
@@ -295,6 +467,19 @@ const Registration = () => {
               checkedChildren="Mở" 
               unCheckedChildren="Đóng"
               defaultChecked
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="block_topic"
+            label="Khóa đề tài"
+            valuePropName="checked"
+            tooltip="Khi bật, sinh viên sẽ không thể đăng ký đề tài mới"
+          >
+            <Switch 
+              checkedChildren="Có" 
+              unCheckedChildren="Không"
+              defaultChecked={false}
             />
           </Form.Item>
         </Form>
@@ -309,6 +494,7 @@ const Registration = () => {
         okText="Cập nhật"
         cancelText="Hủy"
         width={600}
+        centered
       >
         <Form
           form={editForm}
@@ -316,56 +502,72 @@ const Registration = () => {
           name="editRegistrationForm"
         >
           <Form.Item
-            name="semester"
+            name="registration_period_semester"
             label="Học kỳ"
             rules={[{ required: true, message: 'Vui lòng chọn học kỳ!' }]}
           >
-            <Select placeholder="Vui lòng chọn">
-              <Select.Option value="HK1">HK1</Select.Option>
-              <Select.Option value="HK2">HK2</Select.Option>
+            <Select 
+              placeholder="Vui lòng chọn"
+              showSearch
+              optionFilterProp="children"
+              onChange={handleSemesterChange}
+            >
+              {semesters.map(semester => (
+                <Select.Option key={semester._id} value={semester._id}>
+                  {`${semester.semester} (${moment(semester.school_year_start).format('YYYY')} - ${moment(semester.school_year_end).format('YYYY')})`}
+                </Select.Option>
+              ))}
             </Select>
           </Form.Item>
 
           <div className="grid grid-cols-2 gap-4">
             <Form.Item
-              name="startDate"
+              name="registration_period_start"
               label="Thời gian bắt đầu"
-              rules={[
-                { required: true, message: 'Vui lòng chọn thời gian bắt đầu!' },
-                { validator: validateDates }
-              ]}
+              rules={dateValidationRules('Thời gian bắt đầu')}
             >
               <DatePicker 
                 className="w-full" 
                 format="DD-MM-YYYY"
                 placeholder="Thời gian bắt đầu"
+                showTime={false}
               />
             </Form.Item>
 
             <Form.Item
-              name="endDate"
+              name="registration_period_end"
               label="Thời gian kết thúc"
-              rules={[
-                { required: true, message: 'Vui lòng chọn thời gian kết thúc!' },
-                { validator: validateDates }
-              ]}
+              rules={dateValidationRules('Thời gian kết thúc')}
             >
               <DatePicker 
                 className="w-full" 
                 format="DD-MM-YYYY"
                 placeholder="Thời gian kết thúc"
+                showTime={false}
               />
             </Form.Item>
           </div>
 
           <Form.Item
-            name="status"
+            name="registration_period_status"
             label="Trạng thái đợt đăng ký"
             valuePropName="checked"
           >
             <Switch 
               checkedChildren="Mở" 
               unCheckedChildren="Đóng"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="block_topic"
+            label="Khóa đề tài"
+            valuePropName="checked"
+            tooltip="Khi bật, sinh viên sẽ không thể đăng ký đề tài mới"
+          >
+            <Switch 
+              checkedChildren="Có" 
+              unCheckedChildren="Không"
             />
           </Form.Item>
         </Form>
