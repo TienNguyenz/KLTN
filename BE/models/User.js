@@ -46,7 +46,8 @@ const userSchema = new mongoose.Schema({
         ref: 'Faculty'
     },
     user_major: {
-        type: String
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Major'
     },
     role: {
         type: String,

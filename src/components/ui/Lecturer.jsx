@@ -431,7 +431,6 @@ const LecturerList = () => {
     try {
       // Validate age
       const today = new Date();
-      // Lấy ngày sinh từ formData nếu có, nếu không thì lấy từ selectedLecturer
       const birthDateStr = formData.user_date_of_birth || selectedLecturer?.user_date_of_birth;
       const birthDate = birthDateStr ? new Date(birthDateStr) : null;
       
@@ -463,10 +462,64 @@ const LecturerList = () => {
       let user_avatar = formData.user_avatar;
       if (formData.avatarFile) {
         user_avatar = await handleImageUpload(formData.avatarFile);
-        console.log('Uploaded avatar URL:', user_avatar); // Thêm log để debug
         if (!user_avatar) {
           setIsSubmitting(false);
           return;
+        }
+      }
+
+      // Validate faculty and major selection
+      if (!selectedLecturer) {
+        // For new lecturer, both faculty and major are required
+        if (!formData.user_faculty) {
+          throw new Error('Vui lòng chọn khoa');
+        }
+
+        if (!formData.user_major) {
+          throw new Error('Vui lòng chọn chuyên ngành');
+        }
+
+        // Verify that faculty exists
+        const selectedFacultyExists = faculties.some(f => f._id === formData.user_faculty);
+        if (!selectedFacultyExists) {
+          throw new Error('Khoa đã chọn không tồn tại');
+        }
+
+        // Verify that major exists and belongs to selected faculty
+        const selectedMajorExists = majors.some(m => 
+          m._id === formData.user_major && 
+          m.major_faculty === formData.user_faculty
+        );
+        if (!selectedMajorExists) {
+          throw new Error('Chuyên ngành đã chọn không tồn tại hoặc không thuộc khoa đã chọn');
+        }
+      } else {
+        // For updating existing lecturer
+        const currentFacultyId = formData.user_faculty || selectedLecturer.user_faculty;
+
+        // If changing major, verify it belongs to the current faculty
+        if (formData.user_major && formData.user_major !== selectedLecturer.user_major) {
+          const majorBelongsToFaculty = majors.some(m => 
+            m._id === formData.user_major && 
+            m.major_faculty === currentFacultyId
+          );
+          if (!majorBelongsToFaculty) {
+            throw new Error('Chuyên ngành đã chọn không thuộc khoa hiện tại');
+          }
+        }
+
+        // If changing faculty, must also select a valid major for that faculty
+        if (formData.user_faculty && formData.user_faculty !== selectedLecturer.user_faculty) {
+          if (!formData.user_major) {
+            throw new Error('Vui lòng chọn chuyên ngành cho khoa mới');
+          }
+          const majorBelongsToNewFaculty = majors.some(m => 
+            m._id === formData.user_major && 
+            m.major_faculty === formData.user_faculty
+          );
+          if (!majorBelongsToNewFaculty) {
+            throw new Error('Vui lòng chọn chuyên ngành thuộc khoa mới');
+          }
         }
       }
 
@@ -474,34 +527,17 @@ const LecturerList = () => {
         // Updating existing lecturer
         const updatedData = {
           ...selectedLecturer,
-          ...formData
+          ...formData,
+          user_faculty: formData.user_faculty || selectedLecturer.user_faculty,
+          user_major: formData.user_major || selectedLecturer.user_major,
+          user_avatar: user_avatar || selectedLecturer.user_avatar,
+          role: 'giangvien',
+          password: formattedPassword
         };
 
         // Remove faculty_name and major_name before sending to server
         delete updatedData.faculty_name;
         delete updatedData.major_name;
-
-        // Ensure user_faculty and user_major are set correctly
-        if (formData.user_faculty) {
-          const faculty = faculties.find(f => f.faculty_title === formData.user_faculty);
-          if (faculty) {
-            updatedData.user_faculty = faculty._id;
-          }
-        }
-
-        if (formData.user_major) {
-          const faculty = faculties.find(f => f.faculty_title === formData.user_faculty || selectedLecturer.faculty_name);
-          if (faculty) {
-            const major = majors.find(m => m.major_title === formData.user_major && m.major_faculty === faculty._id);
-            if (major) {
-              updatedData.user_major = major._id;
-            }
-          }
-        }
-
-        updatedData.user_avatar = user_avatar || selectedLecturer.user_avatar;
-        updatedData.role = 'giangvien';
-        updatedData.password = formattedPassword;
 
         console.log('Sending update request with data:', updatedData);
         const response = await axios.put(
@@ -515,52 +551,6 @@ const LecturerList = () => {
           handleSuccess();
         }
       } else {
-        // First, get the faculty and major information
-        let facultyId = null;
-        let majorId = null;
-
-        try {
-          // Get faculty information
-          const facultiesResponse = await axios.get('http://localhost:5000/api/database/collections/faculties');
-          console.log('Faculties:', facultiesResponse.data);
-          console.log('Selected faculty:', formData.user_faculty);
-          
-          const faculty = facultiesResponse.data.find(f => f.faculty_title === formData.user_faculty);
-          if (faculty) {
-            facultyId = faculty._id;
-            console.log('Found faculty:', faculty);
-          } else {
-            console.log('Available faculties:', facultiesResponse.data.map(f => f.faculty_title));
-            throw new Error(`Không tìm thấy thông tin khoa "${formData.user_faculty}"`);
-          }
-
-          // Get major information
-          const majorsResponse = await axios.get('http://localhost:5000/api/database/collections/majors');
-          console.log('Majors:', majorsResponse.data);
-          console.log('Selected major:', formData.user_major);
-          
-          const major = majorsResponse.data.find(m => {
-            // Normalize strings for comparison
-            const normalizedMajorTitle = m.major_title.trim().toLowerCase();
-            const normalizedFormMajor = formData.user_major.trim().toLowerCase();
-            
-            // Compare faculty ID instead of faculty title
-            return normalizedMajorTitle === normalizedFormMajor && 
-                   m.major_faculty === faculty._id;
-          });
-
-          if (major) {
-            majorId = major._id;
-            console.log('Found major:', major);
-          } else {
-            console.log('Available majors:', majorsResponse.data.map(m => ({title: m.major_title, faculty: m.major_faculty})));
-            throw new Error(`Không tìm thấy thông tin chuyên ngành "${formData.user_major}" trong khoa "${formData.user_faculty}"`);
-          }
-        } catch (error) {
-          console.error('Error fetching faculty/major:', error);
-          throw new Error(error.message || 'Không thể lấy thông tin khoa/chuyên ngành');
-        }
-
         // Adding new lecturer
         const newLecturerData = {
           user_name: formData.user_name,
@@ -572,8 +562,8 @@ const LecturerList = () => {
           user_permanent_address: formData.user_permanent_address || '',
           user_temporary_address: formData.user_temporary_address || '',
           user_date_of_birth: formData.user_date_of_birth || '',
-          user_faculty: facultyId,
-          user_major: majorId,
+          user_faculty: formData.user_faculty,
+          user_major: formData.user_major,
           user_avatar: user_avatar || '',
           role: 'giangvien',
           user_status: 'active',
@@ -581,7 +571,7 @@ const LecturerList = () => {
         };
 
         // Validate required fields
-        const requiredFields = ['user_name', 'email', 'user_id', 'password', 'user_faculty', 'user_major'];
+        const requiredFields = ['user_name', 'email', 'user_id', 'password', 'user_faculty', 'user_major', 'user_date_of_birth'];
         const missingFields = requiredFields.filter(field => !newLecturerData[field]);
         
         if (missingFields.length > 0) {

@@ -28,6 +28,7 @@ const semesterRoutes = require('./routes/semester');
 const registrationPeriodRoutes = require('./routes/registrationPeriod');
 const authRoutes = require('./routes/auth');
 const databaseRoutes = require('./routes/database');
+const rubricRoutes = require('./routes/rubricRoutes');
 
 // Basic route
 app.get('/', (req, res) => {
@@ -39,6 +40,7 @@ app.use('/api/semesters', semesterRoutes);
 app.use('/api/registrationperiods', registrationPeriodRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/database', databaseRoutes);
+app.use('/api', rubricRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {
