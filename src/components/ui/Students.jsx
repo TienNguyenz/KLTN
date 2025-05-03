@@ -1052,14 +1052,8 @@ const Students = () => {
           setErrors({});
           setSelectedFaculty('');
         }}
-        onCancel={() => {
-          setIsSuccessModalVisible(false);
-          setIsModalVisible(false);
-          setFormData({});
-          setErrors({});
-          setSelectedFaculty('');
-        }}
         okText="Đóng"
+        cancelButtonProps={{ style: { display: 'none' } }}
         centered
       >
         <div className="text-center py-4">

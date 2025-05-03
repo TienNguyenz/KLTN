@@ -6,6 +6,7 @@ import Students from "../components/ui/Students.jsx";
 import LecturerList from "../components/ui/Lecturer.jsx";
 import CouncilManagement from "../components/ui/CouncilManagement.jsx";
 import ThesisApproval from "../components/ui/ThesisApproval.jsx";
+import ThesisList from "../components/ui/ThesisList.jsx";
 import Registration from "./admin/Registration.jsx";
 import Semester from "./admin/Semester.jsx";
 import Evaluation from "./admin/Evaluation.jsx";
@@ -42,7 +43,7 @@ const Home = () => {
             {selected === "students" && <Students />}
             {selected === "lecturers" && <LecturerList />}
             {selected === "councils" && <CouncilManagement />}
-            {selected === "topic-list" && <div>Trang Danh sách đề tài</div>}
+            {selected === "topic-list" && <ThesisList />}
             {selected === "topic-approval" && <ThesisApproval />}
             {selected === "semester" && <Semester />}
             {selected === "registration-period" && <Registration />}

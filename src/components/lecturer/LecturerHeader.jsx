@@ -2,6 +2,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext'; // Đường dẫn lên 2 cấp
 import { FaBell, FaUserCircle, FaSignOutAlt, FaBars, FaUserEdit } from 'react-icons/fa';
+import NotificationBell from '../ui/NotificationBell';
 
 const LecturerHeader = () => {
   const { user, logout } = useAuth();
@@ -37,10 +38,7 @@ const LecturerHeader = () => {
 
       {/* Right side: Notifications, User Menu */}
       <div className="flex items-center space-x-4">
-        <button className="text-gray-500 hover:text-gray-700 relative focus:outline-none">
-          <FaBell className="h-6 w-6" />
-          {/* <span className="absolute top-0 right-0 block h-2 w-2 rounded-full bg-red-500 ring-2 ring-white"></span> */}
-        </button>
+        <NotificationBell userId={user?.id || user?._id} />
 
         {/* User Menu Dropdown */}
         <div className="relative" ref={dropdownRef}>
@@ -49,7 +47,7 @@ const LecturerHeader = () => {
             className="flex items-center text-sm rounded-full focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#008bc3]"
           >
             <span className="sr-only">Mở menu người dùng</span>
-            <span className="text-gray-700 mr-2 hidden sm:block">{user?.name || 'Giảng Viên'}</span>
+            <span className="text-gray-700 mr-2 hidden sm:block">{user?.user_name || user?.name || 'Giảng Viên'}</span>
              <FaUserCircle className="h-8 w-8 rounded-full text-gray-500" /> 
           </button>
 

@@ -460,8 +460,8 @@ const CouncilManagement = () => {
         title="Thông báo"
         open={isSuccessModalVisible}
         onOk={() => setIsSuccessModalVisible(false)}
-        onCancel={() => setIsSuccessModalVisible(false)}
         okText="Đóng"
+        cancelButtonProps={{ style: { display: 'none' } }}
         centered
       >
         <div className="text-center py-4">

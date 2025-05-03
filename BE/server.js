@@ -29,6 +29,11 @@ const registrationPeriodRoutes = require('./routes/registrationPeriod');
 const authRoutes = require('./routes/auth');
 const databaseRoutes = require('./routes/database');
 const rubricRoutes = require('./routes/rubricRoutes');
+const topicRoutes = require('./routes/topic');
+const userRoutes = require('./routes/user');
+const seedRoutes = require('./routes/seed');
+const userNotificationRoutes = require('./routes/userNotification');
+const councilRoutes = require('./routes/councilRoutes');
 
 // Basic route
 app.get('/', (req, res) => {
@@ -41,6 +46,11 @@ app.use('/api/registrationperiods', registrationPeriodRoutes);
 app.use('/api/auth', authRoutes);
 app.use('/api/database', databaseRoutes);
 app.use('/api', rubricRoutes);
+app.use('/api/topics', topicRoutes);
+app.use('/api', userRoutes);
+app.use('/api', seedRoutes);
+app.use('/api/notifications', userNotificationRoutes);
+app.use('/api', councilRoutes);
 
 // Error handling middleware
 app.use((err, req, res, next) => {

@@ -1,81 +1,60 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { getStudentRegisteredTopic, getAvailableTopics } from '../../data/mockThesisData';
 import { FaTimesCircle, FaBook, FaUserGraduate, FaUsers, FaTag, FaInfoCircle, FaHome, FaListAlt, FaLightbulb, FaSearch, FaSort, FaPencilAlt, FaCalendarAlt, FaClock, FaPaperPlane, FaUpload, FaDownload, FaEye, FaInfo, FaUserCircle } from 'react-icons/fa';
 import StudentHeader from '../../components/student/StudentHeader';
-import { mockLecturers, mockMajors, mockTopicTypes, mockStudents } from '../../data/mockThesisData';
+import axios from 'axios';
+import RegisteredTopicDetails from './RegisteredTopicDetails';
 
 // Component con để hiển thị chi tiết đề tài hoặc thông báo chưa đăng ký
 const TopicDetails = () => {
   const { user } = useAuth();
   const [registeredTopic, setRegisteredTopic] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
-  // State để quản lý file được chọn (ví dụ cho 1 mục)
-  const [selectedProposalFile, setSelectedProposalFile] = useState(null);
+  const navigate = useNavigate();
 
   useEffect(() => {
-    const studentId = user?.id;
-    const studentRole = user?.role;
-
-    // console.log("TopicDetails useEffect running. ID:", studentId, "Role:", studentRole); // Bỏ comment nếu cần debug
-
-    if (studentId && studentRole === 'sinhvien') {
-      setIsLoading(true);
-      setTimeout(() => {
-        const topicData = getStudentRegisteredTopic(studentId); // Sử dụng studentId
-        setRegisteredTopic(topicData);
+    const fetchRegisteredTopic = async () => {
+      try {
+        console.log('Fetching registered topic for user_id:', user?.user_id);
+        // Tìm đề tài mà sinh viên đang tham gia
+        const response = await axios.get(`/api/topics/student/${user?.user_id}`);
+        console.log('API Response:', response.data);
+        if (response.data) {
+          console.log('Setting registered topic:', response.data);
+          setRegisteredTopic(response.data);
+        } else {
+          console.log('No registered topic found');
+        }
+      } catch (error) {
+        console.error('Error fetching registered topic:', error);
+        console.error('Error details:', error.response?.data || error.message);
+      } finally {
         setIsLoading(false);
-      }, 300);
+      }
+    };
+
+    if (user?.user_id) {
+      console.log('User ID exists, fetching registered topic');
+      fetchRegisteredTopic();
     } else {
+      console.log('No user ID found');
       setIsLoading(false);
     }
-    // Chỉ chạy lại effect nếu user.id hoặc user.role thay đổi
-  }, [user?.id, user?.role]);
+  }, [user?.user_id]);
 
+  // Các hàm xử lý
   const handleCancelRegistration = () => {
     alert('Chức năng hủy đăng ký đang được phát triển!');
-    // setRegisteredTopic(null);
   };
-
-  // --- Các hàm xử lý file mới --- 
-  const handleFileChange = (event, fileType) => {
-      const file = event.target.files[0];
-      if (file) {
-          console.log(`Selected ${fileType}:`, file.name);
-          // Lưu file vào state tương ứng (ví dụ)
-          if (fileType === 'proposal') setSelectedProposalFile(file);
-          // Cần state riêng cho các loại file khác
-      }
-  };
-
-  const handleUploadFile = (fileType) => {
-      let fileToUpload = null;
-      if (fileType === 'proposal') fileToUpload = selectedProposalFile;
-      // Lấy file từ state tương ứng khác
-      
-      if (fileToUpload) {
-          alert(`Đang tải lên ${fileType}: ${fileToUpload.name}. Chức năng đang phát triển!`);
-          // Logic gọi API để upload file
-          // Sau khi upload thành công, cập nhật mock data hoặc fetch lại
-          // registeredTopic.documents[fileType] = { name: fileToUpload.name, url: 'url-sau-khi-upload' };
-          // Reset state file đã chọn
-          // setSelectedProposalFile(null);
-      } else {
-          alert('Vui lòng chọn file trước khi tải lên.');
-      }
-  };
-
   const handleViewGrades = () => {
       alert('Xem điểm. Chức năng đang phát triển!');
-      // Logic chuyển trang hoặc hiển thị modal điểm
   };
-  
     const handleViewCommittee = () => {
       alert('Xem thông tin hội đồng. Chức năng đang phát triển!');
-      // Logic chuyển trang hoặc hiển thị modal thông tin hội đồng
   };
-  // ------------------------------
+
+  const isRegistered = registeredTopic && registeredTopic.topic_title;
 
   if (isLoading) {
     return <div className="p-8 text-center">Đang tải thông tin đề tài...</div>;
@@ -84,163 +63,22 @@ const TopicDetails = () => {
   return (
     <div className="p-6 md:p-8 bg-gray-50 min-h-full">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Trang chủ Sinh viên</h1>
-
-      {registeredTopic ? (
-        <>
-          {/* Phần Thông tin đề tài (đã có) + nút Xem điểm */}
-          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-             <div className="flex justify-between items-start mb-6">
-               <h2 className="text-xl md:text-2xl font-semibold text-gray-700">Thông Tin Đề Tài Đã Đăng Ký</h2>
-                {/* Nút Hủy đăng ký hoặc Xem điểm tùy trạng thái */} 
-                {registeredTopic.grades?.finalGrade ? ( // Nếu đã có điểm cuối cùng
-                    <button 
-                      onClick={handleViewGrades}
-                      className="flex items-center bg-green-100 hover:bg-green-200 text-green-700 text-sm font-medium px-4 py-2 rounded-md transition-colors duration-300"
-                    >
-                       <FaEye className="mr-2" /> Xem điểm
-                    </button>
-                ) : (
-                    <button 
-                      onClick={handleCancelRegistration} 
-                      className="flex items-center bg-red-100 hover:bg-red-200 text-red-700 text-sm font-medium px-4 py-2 rounded-md transition-colors duration-300"
-                    >
-                      <FaTimesCircle className="mr-2" /> Hủy đăng ký
-                    </button>
-                )}
-             </div>
-              {/* ... (hiển thị các thông tin đề tài như cũ) ... */}
-               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-6">
-                   {/* ... Tên đề tài, GVHD, Chuyên ngành, Loại đề tài ... */} 
-                   {/* Số lượng SV thực hiện */} 
-                    <div>
-                       <label className="block text-sm font-medium text-gray-500 mb-1">Số lượng sinh viên thực hiện tối đa</label>
-                       <p className="text-md text-gray-800 flex items-center">
-                          <FaUsers className="text-[#008bc3] mr-2 flex-shrink-0" />
-                          {registeredTopic.maxStudents}
-                        </p>
-                    </div>
-               </div>
-              {/* Chi tiết đề tài (Yêu cầu đề tài) */}
-              <div>
-                <label className="block text-sm font-medium text-gray-500 mb-2">Chi tiết đề tài (Yêu cầu)</label>
-                <div className="bg-gray-50 p-4 rounded-md border border-gray-200 text-gray-700 text-sm space-y-2 whitespace-pre-line h-40 overflow-y-auto">
-                  {registeredTopic.details.map((line, index) => (
-                    <p key={index}>{line}</p>
-                  ))}
-                </div>
-              </div>
-          </div>
-
-          {/* Phần Các nhóm đăng ký */}
-          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-            <h3 className="text-md font-semibold text-gray-700 mb-4">Các nhóm đăng ký</h3>
-            {registeredTopic.registeredGroups && registeredTopic.registeredGroups.length > 0 ? (
-               registeredTopic.registeredGroups.map(group => (
-                 <div key={group.groupId} className="border rounded-md p-4">
-                   <p className="text-sm font-medium text-gray-600 mb-2">{group.groupId} (Số lượng: {group.members.length})</p>
-                   <ul className="space-y-1">
-                      {group.members.map(member => (
-                        <li key={member.id} className="flex items-center justify-between text-sm text-gray-800">
-                           <span className="flex items-center">
-                              <FaUserCircle className="mr-2 text-gray-400" /> {member.name}
-                           </span>
-                           <span className="text-gray-500">{member.mssv}</span>
-                        </li>
-                      ))}
-                   </ul>
-                 </div>
-               ))
-            ) : (
-               <p className="text-sm text-orange-600">Hiện tại chưa có sinh viên đăng ký đề tài này.</p>
-            )}
-          </div>
-
-          {/* Phần Tài liệu quan trọng */}
-          <div className="bg-white p-6 rounded-lg shadow-md mb-6">
-             <h3 className="text-md font-semibold text-gray-700 mb-4">Tài liệu quan trọng</h3>
-             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                {/* Mục 1: Đơn xin hướng dẫn */}
-                <div className="border rounded-md p-4 space-y-2 text-sm">
-                   <label className="font-medium">1. Đơn xin hướng dẫn khóa luận</label>
-                   {registeredTopic.documents?.proposal?.name ? (
-                      <div className="flex items-center justify-between text-blue-600">
-                         <span>{registeredTopic.documents.proposal.name}</span>
-                         <a href={registeredTopic.documents.proposal.url || '#'} target="_blank" rel="noopener noreferrer" title="Tải xuống">
-                            <FaDownload />
-                         </a>
-                      </div>
-                   ) : (
-                      <p className="text-red-600">Không có tệp nào.</p>
-                   )}
-                   <div className="flex gap-2">
-                     <input type="file" id="proposalFile" className="hidden" onChange={(e) => handleFileChange(e, 'proposal')}/>
-                     <label htmlFor="proposalFile" className="flex-1 cursor-pointer text-center px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-100 text-xs">Chọn file</label>
-                     <button onClick={() => handleUploadFile('proposal')} className="flex-1 px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-xs">Tải lên</button>
-                   </div>
-                   {selectedProposalFile && <p className="text-xs text-gray-500 truncate">Đã chọn: {selectedProposalFile.name}</p>} 
-                </div>
-                 {/* Mục 2: Đơn xin bảo vệ (Tương tự) */}
-                <div className="border rounded-md p-4 space-y-2 text-sm">
-                   <label className="font-medium">2. Đơn xin bảo vệ khóa luận</label>
-                   {/* ... Hiển thị file đã upload hoặc "Không có tệp nào." ... */} 
-                   <p className="text-red-600">Không có tệp nào.</p>
-                    <div className="flex gap-2">
-                     <input type="file" id="defenseFile" className="hidden" onChange={(e) => handleFileChange(e, 'defenseRequest')}/>
-                     <label htmlFor="defenseFile" className="flex-1 cursor-pointer text-center px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-100 text-xs">Chọn file</label>
-                     <button onClick={() => handleUploadFile('defenseRequest')} className="flex-1 px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-xs">Tải lên</button>
-                   </div>
-                   {/* ... Hiển thị tên file đã chọn ... */} 
-                </div>
-                 {/* Mục 3: Báo cáo cuối cùng (Tương tự) */}
-                 <div className="border rounded-md p-4 space-y-2 text-sm">
-                   <label className="font-medium">3. Báo cáo cuối cùng</label>
-                   {/* ... Hiển thị file đã upload hoặc "Không có tệp nào." ... */} 
-                   <p className="text-red-600">Không có tệp nào.</p>
-                    <div className="flex gap-2">
-                     <input type="file" id="reportFile" className="hidden" onChange={(e) => handleFileChange(e, 'finalReport')}/>
-                     <label htmlFor="reportFile" className="flex-1 cursor-pointer text-center px-3 py-1 border border-gray-300 rounded text-gray-600 hover:bg-gray-100 text-xs">Chọn file</label>
-                     <button onClick={() => handleUploadFile('finalReport')} className="flex-1 px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 text-xs">Tải lên</button>
-                   </div>
-                   {/* ... Hiển thị tên file đã chọn ... */} 
-                </div>
-             </div>
-          </div>
-          
-           {/* Phần Thông tin phản biện và nút */}
-           <div className="bg-white p-6 rounded-lg shadow-md">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
-                  <div>
-                     <label className="block text-sm font-medium text-gray-500 mb-1">Giảng viên phản biện</label>
-                     <p className="text-md text-gray-800">{registeredTopic.reviewer || 'Chưa có thông tin'}</p>
-                  </div>
-                   <div>
-                     <label className="block text-sm font-medium text-gray-500 mb-1">Hội đồng phản biện</label>
-                     <p className="text-md text-gray-800">{registeredTopic.committee || 'Chưa có hội đồng chấm điểm'}</p>
-                  </div>
-              </div>
-               <div className="flex flex-wrap justify-end gap-4 border-t pt-6">
-                 <button 
-                      onClick={handleViewCommittee}
-                      className="flex items-center bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium px-4 py-2 rounded-md transition-colors duration-300"
-                    >
-                       <FaInfo className="mr-2" /> Thông tin hội đồng
-                    </button>
-                  <button 
-                      onClick={handleViewGrades}
-                      className="flex items-center bg-green-100 hover:bg-green-200 text-green-700 text-sm font-medium px-4 py-2 rounded-md transition-colors duration-300"
-                      disabled={!registeredTopic.grades?.finalGrade} // Disable nếu chưa có điểm
-                    >
-                       <FaEye className="mr-2" /> Xem điểm
-                    </button>
-               </div>
-           </div>
-        </>
+      {isRegistered ? (
+        <RegisteredTopicDetails
+          topic={registeredTopic}
+          onCancel={handleCancelRegistration}
+          onViewGrades={handleViewGrades}
+          onViewCommittee={handleViewCommittee}
+        />
       ) : (
         <div className="bg-white p-6 rounded-lg shadow-md text-center">
            <FaInfoCircle className="text-4xl text-blue-500 mx-auto mb-4" />
-          <p className="text-lg text-gray-600">Bạn hiện chưa đăng ký đề tài nào.</p>
-          <button className="mt-6 bg-[#008bc3] hover:bg-[#0073a8] text-white font-semibold py-2 px-6 rounded-full transition-colors duration-300">
-             Tìm kiếm đề tài
+          <p className="text-lg text-gray-600 mb-4">Bạn hiện chưa đăng ký đề tài nào.</p>
+          <button
+            className="mt-2 bg-[#008bc3] hover:bg-[#0073a8] text-white font-semibold py-2 px-6 rounded-full transition-colors duration-300"
+            onClick={() => navigate('/student/topics')}
+          >
+            Tìm kiếm đề tài để đăng ký
           </button>
         </div>
       )}
@@ -253,30 +91,77 @@ const TopicsList = () => {
   const [topics, setTopics] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  const navigate = useNavigate(); // Khởi tạo navigate
+  const navigate = useNavigate();
 
   useEffect(() => {
+    const fetchTopics = async () => {
+      try {
     setIsLoading(true);
-    setTimeout(() => { 
-      const data = getAvailableTopics(); 
-      setTopics(data);
+        // Thêm timeout để đảm bảo backend đã sẵn sàng
+        const response = await axios.get('/api/topics', {
+          timeout: 5000,
+          headers: {
+            'Accept': 'application/json'
+          }
+        });
+        
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+        console.log('Topics data:', response.data);
+
+        if (Array.isArray(response.data)) {
+          setTopics(response.data);
+        } else if (response.data && Array.isArray(response.data.topics)) {
+          // Trong trường hợp API trả về dạng { topics: [...] }
+          setTopics(response.data.topics);
+        } else {
+          console.error('Expected array of topics but got:', response.data);
+          setTopics([]);
+        }
+      } catch (error) {
+        console.error('Error fetching topics:', error.message);
+        if (error.response) {
+          // Server trả về response với status code nằm ngoài range 2xx
+          console.error('Error response:', error.response.data);
+          console.error('Error status:', error.response.status);
+        } else if (error.request) {
+          // Request được gửi nhưng không nhận được response
+          console.error('No response received:', error.request);
+        } else {
+          // Có lỗi khi setting up request
+          console.error('Error setting up request:', error.message);
+        }
+        setTopics([]);
+      } finally {
       setIsLoading(false);
-    }, 300); 
+      }
+    };
+
+    fetchTopics();
   }, []);
 
-  const handleRegisterClick = (topicId) => {
-     // Chuyển hướng đến trang ghi danh
+  const handleRegisterClick = (topicId, isBlocked) => {
+    if (isBlocked) {
+      alert('Đề tài này đã bị khóa và không thể đăng ký.');
+      return;
+    }
      navigate(`/student/topics/${topicId}/register`); 
   };
 
-  const filteredTopics = topics.filter(topic => 
-    topic.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    topic.supervisor.toLowerCase().includes(searchTerm.toLowerCase())
+  const filteredTopics = topics.filter(topic => {
+    const searchString = searchTerm.toLowerCase();
+    return (
+      topic.topic_title?.toLowerCase().includes(searchString) ||
+      topic.topic_instructor?.toString().toLowerCase().includes(searchString) ||
+      topic.topic_major?.toString().toLowerCase().includes(searchString) ||
+      topic.topic_category?.toString().toLowerCase().includes(searchString)
   );
+  });
 
   return (
     <div className="p-6 md:p-8 bg-gray-50 min-h-full">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Danh Sách Đề Tài</h1>
+      
       {/* Filters and Actions Row */}
       <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center space-x-4 text-sm">
@@ -293,10 +178,13 @@ const TopicsList = () => {
              <span>31/01/2024</span>
           </div>
         </div>
-        <button className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-md">
+        <button className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-md"
+          onClick={() => navigate('/student/proposals')}
+        >
            Đề xuất
         </button>
       </div>
+
       {/* Search and Table */}
       <div className="bg-white p-6 rounded-lg shadow-md">
          <div className="flex justify-between items-center mb-4">
@@ -312,6 +200,7 @@ const TopicsList = () => {
               <FaSearch className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400" />
             </div>
          </div>
+
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
@@ -323,41 +212,59 @@ const TopicsList = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Chuyên ngành <FaSort className="inline ml-1 text-gray-400" /></th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại đề tài <FaSort className="inline ml-1 text-gray-400" /></th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tối đa</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Trạng thái</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
-                <tr><td colSpan="6" className="p-4 text-center text-gray-500">Đang tải...</td></tr>
+                <tr><td colSpan="7" className="p-4 text-center text-gray-500">Đang tải...</td></tr>
               ) : filteredTopics.length > 0 ? (
                 filteredTopics.map((topic) => (
-                  <tr key={topic.id} className="hover:bg-gray-50">
+                  <tr key={topic._id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap text-center">
-                      {topic.isAvailable ? (
                          <button 
-                           onClick={() => handleRegisterClick(topic.id)}
-                           className="text-blue-600 hover:text-blue-800 focus:outline-none disabled:text-gray-300"
-                           title="Ghi danh"
+                        onClick={() => handleRegisterClick(topic._id, topic.topic_block)}
+                        className={`text-blue-600 hover:text-blue-800 focus:outline-none ${topic.topic_block ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title={topic.topic_block ? 'Đề tài đã bị khóa' : 'Ghi danh'}
+                        disabled={topic.topic_block}
                          >
                            <FaPencilAlt />
                          </button>
-                      ) : (
-                         <span className="text-gray-400" title="Đã đủ số lượng">-</span>
-                      )}
                     </td>
-                    <td className="px-4 py-3 whitespace-normal font-medium text-gray-900">{topic.name}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{topic.supervisor}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{topic.major}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{topic.type}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{topic.maxStudents}</td>
+                    <td className="px-4 py-3 whitespace-normal font-medium text-gray-900">
+                      {topic.topic_title}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                      {topic.topic_instructor?.user_name || ''}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                      {topic.topic_major?.major_title || ''}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                      {topic.topic_category?.type_name || ''}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                      {topic.topic_max_members}
+                    </td>
+                    <td className="px-4 py-3 whitespace-nowrap">
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
+                        topic.topic_block 
+                          ? 'bg-red-100 text-red-800' 
+                          : 'bg-green-100 text-green-800'
+                      }`}>
+                        {topic.topic_block ? 'Đã khóa' : 'Có thể đăng ký'}
+                      </span>
+                    </td>
                   </tr>
                 ))
               ) : (
-                 <tr><td colSpan="6" className="p-4 text-center text-gray-500">Không tìm thấy đề tài phù hợp.</td></tr>
+                <tr><td colSpan="7" className="p-4 text-center text-gray-500">Không tìm thấy đề tài phù hợp.</td></tr>
               )}
             </tbody>
           </table>
         </div>
-        {/* Pagination (Placeholder) */}
+
+        {/* Pagination */}
         <div className="mt-6 flex items-center justify-between text-xs text-gray-600">
            <div>Hiển thị 1 đến {filteredTopics.length} của {topics.length} đề tài</div>
            <div className="flex items-center space-x-1">
@@ -380,18 +287,61 @@ const TopicsList = () => {
 
 // Component Đề xuất Đề tài
 const Proposals = () => {
-  const { user } = useAuth(); // Lấy thông tin user hiện tại
-  // State cho các trường trong form
+  const { user } = useAuth();
   const [formData, setFormData] = useState({
     topicName: '',
     supervisorId: '',
     majorId: '',
     topicTypeId: '',
     description: '',
-    student1Id: user?.id || '', // Mặc định là user đang đăng nhập
+    maxMembers: 2, // Mặc định 2 thành viên
+    student1Id: user?.user_id || '',
     student2Id: '',
     student3Id: '',
+    student4Id: ''
   });
+
+  // States cho dữ liệu từ MongoDB
+  const [instructors, setInstructors] = useState([]);
+  const [majors, setMajors] = useState([]);
+  const [topicTypes, setTopicTypes] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [isLoading, setIsLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        setIsLoading(true);
+        const [
+          instructorsRes,
+          majorsRes,
+          topicTypesRes,
+          studentsRes
+        ] = await Promise.all([
+          // Lấy danh sách giảng viên
+          axios.get('/api/instructors'),
+          // Lấy danh sách chuyên ngành
+          axios.get('/api/majors'),
+          // Lấy danh sách loại đề tài
+          axios.get('/api/topics/topic-types'),
+          // Lấy danh sách sinh viên
+          axios.get('/api/students')
+        ]);
+
+        setInstructors(instructorsRes.data);
+        setMajors(majorsRes.data);
+        setTopicTypes(topicTypesRes.data);
+        // Lọc bỏ user hiện tại khỏi danh sách sinh viên
+        setStudents(studentsRes.data.filter(s => s._id !== user?.user_id));
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchData();
+  }, [user?.user_id]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -401,30 +351,85 @@ const Proposals = () => {
     }));
   };
 
-  const handleSubmit = (e) => {
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Validate dữ liệu (ví dụ: kiểm tra các trường bắt buộc)
-    if (!formData.topicName || !formData.supervisorId || !formData.majorId || !formData.topicTypeId || !formData.description) {
-       alert('Vui lòng điền đầy đủ các trường bắt buộc (*).');
+    
+    try {
+      // Tạo mảng thành viên, bắt đầu với trưởng nhóm
+      let leaderId = user._id;
+      if (!leaderId) {
+        const leader = students.find(s => s.user_id === user.user_id);
+        leaderId = leader?._id;
+      }
+      const members = [leaderId];
+      
+      // Thêm các thành viên khác nếu có
+      for (let i = 2; i <= formData.maxMembers; i++) {
+        const memberId = formData[`student${i}Id`];
+        if (memberId) {
+          members.push(memberId);
+        }
+      }
+
+      // Kiểm tra số lượng thành viên
+      if (members.length < 2) {
+        alert('Vui lòng chọn ít nhất 1 thành viên khác');
        return;
     }
-    console.log("Submitting Proposal:", formData);
-    alert('Đề xuất đã được gửi (Xem Console log để biết chi tiết). Chức năng thực tế đang phát triển!');
-    // Logic gửi đề xuất lên backend (gọi API)
+
+      let creatorId = user._id;
+      if (!creatorId) {
+        const leader = students.find(s => s.user_id === user.user_id);
+        creatorId = leader?._id;
+      }
+      const proposalData = {
+        topic_title: formData.topicName,
+        topic_instructor: formData.supervisorId,
+        topic_major: formData.majorId,
+        topic_category: formData.topicTypeId,
+        topic_description: formData.description,
+        topic_max_members: formData.maxMembers,
+        topic_group_student: members,
+        topic_creator: creatorId
+      };
+      console.log('Proposal data:', proposalData);
+      await axios.post('/api/topics/propose', proposalData);
+      alert('Đề xuất đã được gửi thành công!');
+      // Reset form
+      setFormData({
+        ...formData,
+        topicName: '',
+        supervisorId: '',
+        majorId: '',
+        topicTypeId: '',
+        description: '',
+        student2Id: '',
+        student3Id: '',
+        student4Id: ''
+      });
+    } catch (error) {
+      console.error('Error submitting proposal:', error);
+      if (error.response?.data?.message) {
+        if (error.response.data.registeredMembers) {
+          alert(`${error.response.data.message}\n\n${error.response.data.registeredMembers.join('\n')}`);
+        } else {
+          alert(error.response.data.message);
+        }
+      } else {
+        alert('Có lỗi xảy ra khi gửi đề xuất!');
+      }
+    }
   };
 
-  // Lấy tên user hiện tại từ mockStudents để hiển thị (hoặc từ user.name)
-  const currentUserInfo = mockStudents.find(s => s.id === user?.id);
-  const currentUserDisplay = currentUserInfo ? `${currentUserInfo.name} - ${currentUserInfo.mssv}` : `Sinh viên ${user?.id}`;
-
-  // Lọc danh sách sinh viên khác để chọn thành viên
-  const otherStudents = mockStudents.filter(s => s.id !== user?.id);
+  if (isLoading) {
+    return <div className="p-8 text-center">Đang tải dữ liệu...</div>;
+  }
 
   return (
     <div className="p-6 md:p-8 bg-gray-50 min-h-full">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Đề Xuất Đề Tài Với Giảng Viên</h1>
 
-      {/* Filters Row (giống trang TopicsList, có thể tách thành component riêng sau) */}
+      {/* Filters Row */}
        <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
          <div className="flex items-center space-x-4 text-sm">
            <div className="flex items-center border rounded px-2 py-1 bg-gray-100">
@@ -440,7 +445,6 @@ const Proposals = () => {
               <span>31/01/2024</span>
            </div>
          </div>
-         {/* Có thể bỏ nút Đề xuất ở đây vì đây là trang đề xuất */}
        </div>
 
       {/* Proposal Form */}
@@ -477,9 +481,11 @@ const Proposals = () => {
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#008bc3] focus:border-[#008bc3] text-sm bg-white"
             required
           >
-            <option value="" disabled>Chọn giảng viên</option>
-            {mockLecturers.map(lecturer => (
-              <option key={lecturer.id} value={lecturer.id}>{lecturer.name}</option>
+            <option value="">Chọn giảng viên</option>
+            {instructors.map(instructor => (
+              <option key={instructor._id} value={instructor._id}>
+                {instructor.user_name}
+              </option>
             ))}
           </select>
         </div>
@@ -498,9 +504,11 @@ const Proposals = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#008bc3] focus:border-[#008bc3] text-sm bg-white"
               required
             >
-              <option value="" disabled>Chọn chuyên ngành</option>
-               {mockMajors.map(major => (
-                <option key={major.id} value={major.id}>{major.name}</option>
+              <option value="">Chọn chuyên ngành</option>
+              {majors.map(major => (
+                <option key={major._id} value={major._id}>
+                  {major.major_title}
+                </option>
               ))}
             </select>
           </div>
@@ -516,12 +524,33 @@ const Proposals = () => {
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#008bc3] focus:border-[#008bc3] text-sm bg-white"
               required
             >
-              <option value="" disabled>Chọn loại đề tài</option>
-              {mockTopicTypes.map(type => (
-                <option key={type.id} value={type.id}>{type.name}</option>
+              <option value="">Chọn loại đề tài</option>
+              {topicTypes.map(type => (
+                <option key={type._id} value={type._id}>
+                  {type.topic_category_title}
+                </option>
               ))}
             </select>
           </div>
+        </div>
+
+        {/* Số lượng thành viên */}
+        <div>
+          <label htmlFor="maxMembers" className="block text-sm font-medium text-gray-700 mb-1">
+            Số lượng thành viên <span className="text-red-500">*</span>
+          </label>
+          <select
+            id="maxMembers"
+            name="maxMembers"
+            value={formData.maxMembers}
+            onChange={handleChange}
+            className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#008bc3] focus:border-[#008bc3] text-sm bg-white"
+            required
+          >
+            <option value="2">2 thành viên</option>
+            <option value="3">3 thành viên</option>
+            <option value="4">4 thành viên</option>
+          </select>
         </div>
 
         {/* Mô tả chi tiết */}
@@ -544,51 +573,52 @@ const Proposals = () => {
         {/* Chọn Sinh viên */}
         <div className="border-t pt-6">
           <h3 className="text-md font-semibold text-gray-700 mb-4">Thành viên nhóm</h3>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
              {/* Sinh viên 1 (hiện tại) */}
              <div>
-               <label htmlFor="student1Id" className="block text-sm font-medium text-gray-700 mb-1">Sinh viên 1</label>
+              <label className="block text-sm font-medium text-gray-700 mb-1">Sinh viên 1 (Trưởng nhóm)</label>
                <input
                  type="text"
-                 id="student1Id"
-                 value={currentUserDisplay} // Hiển thị tên + MSSV
+                value={`${user?.user_name || ''} (${user?.user_id || ''})`}
                  className="w-full px-3 py-2 border border-gray-300 rounded-md bg-gray-100 text-sm text-gray-500 cursor-not-allowed"
                  readOnly
                  disabled
                />
              </div>
-             {/* Sinh viên 2 */}
-             <div>
-               <label htmlFor="student2Id" className="block text-sm font-medium text-gray-700 mb-1">Sinh viên 2</label>
+
+            {/* Các thành viên khác */}
+            {Array.from({ length: formData.maxMembers - 1 }, (_, idx) => (
+              <div key={idx + 2}>
+                <label className="block text-sm font-medium text-gray-700 mb-1">
+                  Sinh viên {idx + 2}
+                </label>
                <select
-                 id="student2Id"
-                 name="student2Id"
-                 value={formData.student2Id}
+                  name={`student${idx + 2}Id`}
+                  value={formData[`student${idx + 2}Id`]}
                  onChange={handleChange}
                  className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#008bc3] focus:border-[#008bc3] text-sm bg-white"
+                  required
                >
                  <option value="">Chọn sinh viên</option>
-                 {otherStudents.map(student => (
-                   <option key={student.id} value={student.id}>{student.name} - {student.mssv}</option>
-                 ))}
+                  {students
+                    .filter(student => {
+                      // Không hiển thị người dùng hiện tại (trưởng nhóm)
+                      if (student._id === user._id) return false;
+                      // Kiểm tra xem sinh viên đã được chọn ở ô khác chưa
+                      const isSelectedInOtherField = Object.entries(formData)
+                        .filter(([key]) => key.startsWith('student'))
+                        .some(([key, value]) => key !== `student${idx + 2}Id` && value === student._id);
+                      return !isSelectedInOtherField;
+                    })
+                    .map(student => (
+                      <option key={student._id} value={student._id}>
+                        {student.user_name} ({student.user_id})
+                      </option>
+                    ))
+                  }
                </select>
              </div>
-              {/* Sinh viên 3 */}
-             <div>
-               <label htmlFor="student3Id" className="block text-sm font-medium text-gray-700 mb-1">Sinh viên 3</label>
-               <select
-                 id="student3Id"
-                 name="student3Id"
-                 value={formData.student3Id}
-                 onChange={handleChange}
-                 className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#008bc3] focus:border-[#008bc3] text-sm bg-white"
-               >
-                 <option value="">Chọn sinh viên</option>
-                  {otherStudents.map(student => (
-                   <option key={student.id} value={student.id}>{student.name} - {student.mssv}</option>
-                 ))}
-               </select>
-             </div>
+            ))}
           </div>
         </div>
 

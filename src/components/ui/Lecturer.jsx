@@ -406,29 +406,21 @@ const LecturerList = () => {
   };
 
   const handleUpdate = async () => {
-    console.log('handleUpdate called');
-    // Nếu không có trường nào thay đổi, không cần validate và update
-    if (Object.keys(formData).length === 0) {
-      console.log('No changes detected');
-      setIsModalVisible(false);
-      return;
-    }
-
-    console.log('Validating form...');
-    if (!await validateForm()) {
-      console.log('Validation failed');
-      message.error('Vui lòng kiểm tra lại thông tin!');
-      return;
-    }
-
-    console.log('Showing confirmation dialog...');
     setIsConfirmModalVisible(true);
   };
 
   const handleConfirmUpdate = async () => {
-    console.log('Dialog confirmed');
     setIsSubmitting(true);
     try {
+      // Nếu không có trường nào thay đổi khi chỉnh sửa
+      if (selectedLecturer && Object.keys(formData).length === 0) {
+        setSuccessMessage('Cập nhật thông tin giảng viên thành công!');
+        setIsSuccessModalVisible(true);
+        setIsSubmitting(false);
+        setIsConfirmModalVisible(false);
+        return;
+      }
+
       // Validate age
       const today = new Date();
       const birthDateStr = formData.user_date_of_birth || selectedLecturer?.user_date_of_birth;
@@ -547,8 +539,8 @@ const LecturerList = () => {
         console.log('Update response:', response.data);
         
         if (response.data) {
+          console.log('API update thành công, response:', response.data);
           setIsSuccessModalVisible(true);
-          handleSuccess();
         }
       } else {
         // Adding new lecturer
@@ -592,8 +584,8 @@ const LecturerList = () => {
           console.log('Create response:', response.data);
 
           if (response.data) {
+            console.log('API update thành công, response:', response.data);
             setIsSuccessModalVisible(true);
-            handleSuccess();
           }
         } catch (error) {
           console.error('Registration error:', error.response?.data || error);
@@ -995,23 +987,16 @@ const LecturerList = () => {
           setErrors({});
           setFilterFaculty('');
           setFilterMajor('');
-        }}
-        onCancel={() => {
-          setIsSuccessModalVisible(false);
-          setIsModalVisible(false);
-          setSelectedLecturer(null);
-          setFormData({});
-          setErrors({});
-          setFilterFaculty('');
-          setFilterMajor('');
+          fetchLecturers();
         }}
         okText="Đóng"
+        cancelButtonProps={{ style: { display: 'none' } }}
         centered
       >
         <div className="text-center py-4">
           <CheckCircleFilled style={{ fontSize: '48px', color: '#52c41a' }} />
           <p className="mt-4 text-lg">
-            {selectedLecturer ? 'Cập nhật thông tin giảng viên thành công!' : 'Thêm giảng viên mới thành công!'}
+            {'Cập nhật thông tin giảng viên thành công!'}
           </p>
         </div>
       </Modal>
@@ -1049,6 +1034,8 @@ const LecturerList = () => {
       >
         <p>{errorMessage}</p>
       </Modal>
+
+      {console.log('isSuccessModalVisible:', isSuccessModalVisible)}
     </div>
   );
 };

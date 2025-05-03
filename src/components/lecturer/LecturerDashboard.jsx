@@ -8,10 +8,12 @@ import {
   FileExcelOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { getTopics, getSupervisedTopics, getReviewTopics, getCommitteeTopics } from '../../data/mockThesisData';
+import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 
 const LecturerDashboard = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState({
     totalTopics: 0,
@@ -19,60 +21,64 @@ const LecturerDashboard = () => {
     reviewTopics: 0,
     committeeTopics: 0
   });
+  const [recentTopics, setRecentTopics] = useState([]);
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        const [topics, supervisedTopics, reviewTopics, committeeTopics] = await Promise.all([
-          getTopics(),
-          getSupervisedTopics(),
-          getReviewTopics(),
-          getCommitteeTopics()
-        ]);
+        // Lấy thống kê tổng quan
+        const statsResponse = await axios.get(`/api/lecturers/${user?._id}/stats`);
+        setStats(statsResponse.data);
 
-        setStats({
-          totalTopics: topics.length,
-          supervisedTopics: supervisedTopics.length,
-          reviewTopics: reviewTopics.length,
-          committeeTopics: committeeTopics.length
-        });
+        // Lấy danh sách đề tài gần đây
+        const recentTopicsResponse = await axios.get(`/api/lecturers/${user?._id}/recent-topics`);
+        setRecentTopics(recentTopicsResponse.data);
       } catch (error) {
         console.error('Error loading dashboard data:', error);
       }
       setLoading(false);
     };
 
+    if (user?._id) {
     loadData();
-  }, []);
+    }
+  }, [user?._id]);
 
   const recentTopicsColumns = [
     {
       title: 'Tên đề tài',
-      dataIndex: 'title',
-      key: 'title',
+      dataIndex: 'topic_title',
+      key: 'topic_title',
       render: (text, record) => (
-        <a onClick={() => navigate(`/lecturer/topics/${record.id}`)} className="text-blue-600 hover:text-blue-800">
+        <a onClick={() => navigate(`/lecturer/topics/${record._id}`)} className="text-blue-600 hover:text-blue-800">
           {text}
         </a>
       ),
     },
     {
       title: 'Loại',
-      dataIndex: 'type',
-      key: 'type',
+      dataIndex: 'topic_category',
+      key: 'topic_category',
       width: '15%',
+      render: (category) => category?.type_name || 'N/A',
     },
     {
       title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
+      dataIndex: 'topic_status',
+      key: 'topic_status',
       width: '15%',
-      render: (status) => (
-        <Tag color={status === 'ACTIVE' ? 'success' : 'processing'}>
-          {status}
-        </Tag>
-      ),
+      render: (status) => {
+        const statusConfig = {
+          'PENDING': { color: 'processing', text: 'Chờ duyệt' },
+          'APPROVED': { color: 'success', text: 'Đã duyệt' },
+          'REJECTED': { color: 'error', text: 'Từ chối' },
+          'IN_PROGRESS': { color: 'warning', text: 'Đang thực hiện' },
+          'COMPLETED': { color: 'success', text: 'Hoàn thành' }
+        };
+        const config = statusConfig[status] || { color: 'default', text: status };
+        return <Tag color={config.color}>{config.text}</Tag>;
+      },
     },
   ];
 
@@ -139,10 +145,11 @@ const LecturerDashboard = () => {
       >
         <Table
           columns={recentTopicsColumns}
-          dataSource={[]} // TODO: Add recent topics data
+          dataSource={recentTopics}
           loading={loading}
           pagination={false}
           size="middle"
+          rowKey="_id"
         />
       </Card>
 

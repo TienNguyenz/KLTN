@@ -1,10 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
-import { getPendingProposedTopics } from '../../data/mockThesisData';
-import { FaEye, FaCheck, FaTimes } from 'react-icons/fa'; // Icons for actions
+import { FaEye, FaCheck, FaTimes } from 'react-icons/fa';
+import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 
 const ProposedTopics = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [proposals, setProposals] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
@@ -14,8 +16,8 @@ const ProposedTopics = () => {
       setIsLoading(true);
       setError('');
       try {
-        const data = await getPendingProposedTopics();
-        setProposals(data);
+        const response = await axios.get(`/api/topics/instructor/${user?.id}/proposals`);
+        setProposals(response.data);
       } catch (err) {
         console.error("Error fetching proposed topics:", err);
         setError('Lỗi khi tải danh sách đề xuất.');
@@ -24,31 +26,35 @@ const ProposedTopics = () => {
       }
     };
     fetchProposals();
-  }, []);
+  }, [user?.id]);
 
   const handleViewDetails = (proposalId) => {
-    alert(`Xem chi tiết đề xuất ${proposalId}. Chức năng đang phát triển!`);
-    // Navigate to a detailed view page if created: 
-    // navigate(`/lecturer/proposed-topics/${proposalId}`); 
+    navigate(`/lecturer/proposed-topics/${proposalId}`);
   };
 
-  const handleApprove = (proposalId, topicName) => {
+  const handleApprove = async (proposalId, topicName) => {
     if (window.confirm(`Bạn có chắc chắn muốn duyệt đề tài "${topicName}"?`)) {
-      console.log(`Approving proposal ${proposalId}`);
-      alert(`Đã duyệt đề tài "${topicName}" (giả lập)!`);
-      // TODO: Update mock data or call API to change status to 'approved'
-      // Remove from the current list
-      setProposals(prev => prev.filter(p => p.proposalId !== proposalId));
+      try {
+        await axios.put(`/api/topics/${proposalId}/approve`);
+        alert(`Đã duyệt đề tài "${topicName}"!`);
+        setProposals(prev => prev.filter(p => p._id !== proposalId));
+      } catch (error) {
+        console.error('Error approving topic:', error);
+        alert(error.response?.data?.message || 'Có lỗi xảy ra khi duyệt đề tài!');
+      }
     }
   };
 
-  const handleReject = (proposalId, topicName) => {
+  const handleReject = async (proposalId, topicName) => {
     if (window.confirm(`Bạn có chắc chắn muốn từ chối đề tài "${topicName}"?`)) {
-       console.log(`Rejecting proposal ${proposalId}`);
-       alert(`Đã từ chối đề tài "${topicName}" (giả lập)!`);
-       // TODO: Update mock data or call API to change status to 'rejected'
-       // Remove from the current list
-       setProposals(prev => prev.filter(p => p.proposalId !== proposalId));
+      try {
+        await axios.put(`/api/topics/${proposalId}/reject`);
+        alert(`Đã từ chối đề tài "${topicName}"!`);
+        setProposals(prev => prev.filter(p => p._id !== proposalId));
+      } catch (error) {
+        console.error('Error rejecting topic:', error);
+        alert(error.response?.data?.message || 'Có lỗi xảy ra khi từ chối đề tài!');
+      }
     }
   };
 
@@ -76,29 +82,31 @@ const ProposedTopics = () => {
                 </thead>
                 <tbody className="bg-white divide-y divide-gray-200">
                   {proposals.map((proposal) => (
-                    <tr key={proposal.proposalId} className="hover:bg-gray-50">
-                      <td className="px-4 py-3 whitespace-normal font-medium text-gray-900">{proposal.topicName}</td>
+                    <tr key={proposal._id} className="hover:bg-gray-50">
+                      <td className="px-4 py-3 whitespace-normal font-medium text-gray-900">{proposal.topic_title}</td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-600">
-                        {proposal.student.name} ({proposal.student.mssv})
+                        {proposal.topic_group_student[0]?.user_name} ({proposal.topic_group_student[0]?.user_id})
                       </td>
-                      <td className="px-4 py-3 whitespace-nowrap text-gray-600">{proposal.submissionDate}</td>
+                      <td className="px-4 py-3 whitespace-nowrap text-gray-600">
+                        {new Date(proposal.createdAt).toLocaleDateString('vi-VN')}
+                      </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-medium space-x-2">
                         <button 
-                          onClick={() => handleViewDetails(proposal.proposalId)}
+                          onClick={() => handleViewDetails(proposal._id)}
                           className="text-blue-600 hover:text-blue-900 p-1 rounded hover:bg-blue-100" 
                           title="Xem chi tiết"
                         >
                           <FaEye />
                         </button>
                         <button 
-                           onClick={() => handleApprove(proposal.proposalId, proposal.topicName)}
+                          onClick={() => handleApprove(proposal._id, proposal.topic_title)}
                            className="text-green-600 hover:text-green-900 p-1 rounded hover:bg-green-100" 
                            title="Duyệt"
                         >
                           <FaCheck />
                         </button>
                         <button 
-                          onClick={() => handleReject(proposal.proposalId, proposal.topicName)}
+                          onClick={() => handleReject(proposal._id, proposal.topic_title)}
                           className="text-red-600 hover:text-red-900 p-1 rounded hover:bg-red-100" 
                           title="Từ chối"
                         >

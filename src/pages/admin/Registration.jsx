@@ -329,8 +329,8 @@ const Registration = () => {
         }
         
         message.success('Thêm đợt đăng ký mới thành công!');
-        form.resetFields();
-        setIsModalVisible(false);
+      form.resetFields();
+      setIsModalVisible(false);
         fetchRegistrations();
       } catch (error) {
         console.error('Error adding registration period:', error);
@@ -363,9 +363,9 @@ const Registration = () => {
         }
 
         message.success('Cập nhật đợt đăng ký thành công!');
-        editForm.resetFields();
-        setIsEditModalVisible(false);
-        setEditingRecord(null);
+      editForm.resetFields();
+      setIsEditModalVisible(false);
+      setEditingRecord(null);
         fetchRegistrations();
       } catch (error) {
         console.error('Error updating registration period:', error);

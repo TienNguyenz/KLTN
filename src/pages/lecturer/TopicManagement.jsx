@@ -1,64 +1,65 @@
 import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
-import { getAvailableTopics } from '../../data/mockThesisData'; // Import dữ liệu
+import { useNavigate } from 'react-router-dom';
+import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 // Import icons
-import { FaSearch, FaSort, FaPlus, FaEdit, FaTrash } from 'react-icons/fa'; 
-
-// Hàm để lấy màu badge dựa trên status
-const getStatusBadgeColor = (status) => {
-    switch (status?.toUpperCase()) {
-      case 'READY':
-        return 'bg-yellow-100 text-yellow-800';
-      case 'ACTIVE':
-        return 'bg-green-100 text-green-800';
-      case 'REGISTERED':
-        return 'bg-blue-100 text-blue-800';
-      case 'PENDING':
-        return 'bg-orange-100 text-orange-800';
-      default:
-        return 'bg-gray-100 text-gray-800';
-    }
-};
+import { FaSearch, FaSort, FaPlus, FaEdit } from 'react-icons/fa'; 
 
 const TopicManagement = () => {
-  const navigate = useNavigate(); // Khởi tạo useNavigate
+  console.log('TopicManagement component mounted'); // Log khi component render
+  const navigate = useNavigate();
+  const { user } = useAuth();
   const [topics, setTopics] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
-  // Thêm state cho sort, pagination sau
+
+  // Map trạng thái sang tiếng Việt và màu sắc
+  const statusConfig = {
+    approved: {
+      text: 'Đã duyệt',
+      color: 'bg-green-100 text-green-800'
+    },
+    pending: {
+      text: 'Chờ duyệt',
+      color: 'bg-yellow-100 text-yellow-800'
+    },
+    rejected: {
+      text: 'Từ chối',
+      color: 'bg-red-100 text-red-800'
+    }
+  };
 
   useEffect(() => {
+    console.log('user:', user); // Log user để kiểm tra
+    const fetchTopics = async () => {
     setIsLoading(true);
-    // Giả lập fetch dữ liệu
-    setTimeout(() => { 
-      // Ở đây có thể filter đề tài thuộc giảng viên đang đăng nhập nếu cần
-      const data = getAvailableTopics(); 
-      setTopics(data);
+      try {
+        if (!user?.id) return;
+        // Gọi API mới lấy tất cả đề tài của giảng viên
+        const res = await axios.get(`/api/topics/instructor/${user.id}/all`);
+        console.log('API response:', res.data); // Thêm log để debug
+        setTopics(res.data);
+      } catch (error) {
+        console.error('Error fetching topics:', error);
+        setTopics([]);
+      } finally {
       setIsLoading(false);
-    }, 300); 
-  }, []);
+      }
+    };
+    if (user?.id) fetchTopics();
+  }, [user?.id]);
 
   const handleAddTopic = () => {
       navigate('/lecturer/topics/add'); 
   };
 
   const handleEditTopic = (topicId) => {
-      // alert(`Chỉnh sửa đề tài ${topicId}. Chức năng đang phát triển!`);
-      navigate(`/lecturer/topics/${topicId}/edit`); // Điều hướng đến trang sửa với topicId
+      navigate(`/lecturer/topics/${topicId}/edit`);
   };
 
-   const handleDeleteTopic = (topicId) => {
-      if (window.confirm(`Bạn có chắc chắn muốn xóa đề tài ${topicId}?`)) {
-          alert(`Xóa đề tài ${topicId}. Chức năng đang phát triển!`);
-          // Logic gọi API xóa
-          // setTopics(prev => prev.filter(t => t.id !== topicId));
-      }
-  };
-
-  // Lọc dữ liệu (ví dụ đơn giản)
   const filteredTopics = topics.filter(topic => 
-    topic.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    topic.supervisor.toLowerCase().includes(searchTerm.toLowerCase())
+    topic.topic_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    topic.topic_instructor?.user_name?.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
   return (
@@ -77,24 +78,28 @@ const TopicManagement = () => {
 
       {/* Table Card */}
       <div className="bg-white p-6 rounded-lg shadow-md">
-         {/* Search Input (có thể đặt ở đây hoặc trên header) */}
-         {/* <div className="mb-4 relative w-full max-w-sm">
-              <input type="text" placeholder="Tìm kiếm..." ... />
-              <FaSearch ... />
-            </div> */}
+        <div className="mb-4 relative w-full max-w-sm">
+          <input
+            type="text"
+            placeholder="Tìm kiếm đề tài..."
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+          <FaSearch className="absolute left-3 top-2.5 text-gray-400" />
+        </div>
 
         {/* Table */}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-gray-200 text-sm">
             <thead className="bg-gray-50">
               <tr>
-                {/* Các cột như trong hình */} 
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên đề tài <FaSort className="inline ml-1 text-gray-400" /></th> 
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GVHD <FaSort className="inline ml-1 text-gray-400" /></th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại đề tài <FaSort className="inline ml-1 text-gray-400" /></th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên đề tài</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">GVHD</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại đề tài</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SV Thực Hiện</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giảng viên</th>{/* Status GV */}
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giáo vụ</th> {/* Status GVU */}
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giảng viên</th>
+                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giáo vụ</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
@@ -103,25 +108,29 @@ const TopicManagement = () => {
                 <tr><td colSpan="7" className="p-4 text-center text-gray-500">Đang tải...</td></tr>
               ) : filteredTopics.length > 0 ? (
                 filteredTopics.map((topic) => (
-                  <tr key={topic.id} className="hover:bg-gray-50">
-                    <td className="px-4 py-3 whitespace-normal font-medium text-gray-900">{topic.name}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{topic.supervisor}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{topic.type}</td>
-                    <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-center">{topic.studentCount ?? 0}</td>
+                  <tr key={topic._id} className="hover:bg-gray-50">
+                    <td className="px-4 py-3 whitespace-normal font-medium text-gray-900">{topic.topic_title}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{topic.topic_instructor?.user_name}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600">{topic.topic_category?.type_name || topic.topic_category?.topic_category_title || '-'}</td>
+                    <td className="px-4 py-3 whitespace-nowrap text-gray-600 text-center">{topic.topic_group_student?.length ?? 0}</td>
                     <td className="px-4 py-3 whitespace-nowrap">
-                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(topic.lecturerStatus)}`}>
-                          {topic.lecturerStatus || '-'}
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusConfig[topic.topic_teacher_status]?.color || 'bg-gray-100 text-gray-800'}`}>
+                        {statusConfig[topic.topic_teacher_status]?.text || '-'}
                        </span>
                     </td>
                      <td className="px-4 py-3 whitespace-nowrap">
-                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${getStatusBadgeColor(topic.adminStatus)}`}>
-                          {topic.adminStatus || '-'}
+                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusConfig[topic.topic_leader_status]?.color || 'bg-gray-100 text-gray-800'}`}>
+                        {statusConfig[topic.topic_leader_status]?.text || '-'}
                        </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium space-x-2">
-                        <button onClick={() => handleEditTopic(topic.id)} className="text-indigo-600 hover:text-indigo-900" title="Sửa"><FaEdit /></button>
-                        <button onClick={() => handleDeleteTopic(topic.id)} className="text-red-600 hover:text-red-900" title="Xóa"><FaTrash /></button>
-                        {/* Thêm nút xem chi tiết nếu cần */}
+                      <button 
+                        onClick={() => handleEditTopic(topic._id)} 
+                        className="text-indigo-600 hover:text-indigo-900" 
+                        title="Sửa"
+                      >
+                        <FaEdit />
+                      </button>
                     </td>
                   </tr>
                 ))
