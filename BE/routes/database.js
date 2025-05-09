@@ -137,9 +137,31 @@ router.put('/collections/User/:id', async (req, res) => {
         res.json(updatedUser);
     } catch (error) {
         console.error('Error updating user:', error);
+        // Xử lý lỗi duplicate key (trùng email, user_id, ...)
+        if (error.code === 11000 && error.keyPattern && error.keyPattern.email) {
+            // Tìm user trùng email để xác định role
+            try {
+                const userWithEmail = await User.findOne({ email: req.body.email });
+                if (userWithEmail) {
+                    if (userWithEmail.role === 'sinhvien') {
+                        return res.status(400).json({ message: 'Email này đã được sử dụng bởi một sinh viên' });
+                    } else if (userWithEmail.role === 'giangvien') {
+                        return res.status(400).json({ message: 'Email này đã được sử dụng bởi một giảng viên' });
+                    } else {
+                        return res.status(400).json({ message: 'Email này đã được sử dụng' });
+                    }
+                } else {
+                    return res.status(400).json({ message: 'Email này đã được sử dụng' });
+                }
+            } catch (findErr) {
+                return res.status(400).json({ message: 'Email này đã được sử dụng' });
+            }
+        }
+        if (error.code === 11000 && error.keyPattern && error.keyPattern.user_id) {
+            return res.status(400).json({ message: 'Mã số đã được sử dụng bởi một tài khoản khác!' });
+        }
         res.status(500).json({ 
-            message: 'Lỗi khi cập nhật thông tin user',
-            error: error.message 
+            message: error.message || 'Lỗi khi cập nhật thông tin user'
         });
     }
 });

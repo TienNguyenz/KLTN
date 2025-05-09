@@ -273,7 +273,13 @@ const Students = () => {
           });
           const existingUser = response.data.find(user => user.email === formData.email && user._id !== selectedStudent?._id);
           if (existingUser) {
-            newErrors.email = 'Email đã được sử dụng';
+            if (existingUser.role === 'sinhvien') {
+              newErrors.email = 'Email này đã được sử dụng bởi một sinh viên';
+            } else if (existingUser.role === 'giangvien') {
+              newErrors.email = 'Email này đã được sử dụng bởi một giảng viên';
+            } else {
+              newErrors.email = 'Email này đã được sử dụng';
+            }
           }
         } catch (error) {
           console.error('Error checking email:', error);
@@ -663,8 +669,10 @@ const Students = () => {
       }
     } catch (error) {
       console.error('Error:', error);
-      const errorMessage = error.message || 
-        (selectedStudent ? 'Cập nhật thông tin sinh viên thất bại!' : 'Thêm sinh viên mới thất bại!');
+      // Ưu tiên lấy message chi tiết từ backend nếu có
+      const errorMessage = error.response?.data?.message
+        || error.message
+        || (selectedStudent ? 'Cập nhật thông tin sinh viên thất bại!' : 'Thêm sinh viên mới thất bại!');
       setErrorMessage(errorMessage);
       setIsErrorModalVisible(true);
     } finally {
@@ -1070,6 +1078,8 @@ const Students = () => {
         open={isErrorModalVisible}
         onOk={() => setIsErrorModalVisible(false)}
         okText="Đóng"
+        cancelButtonProps={{ style: { display: 'none' } }}
+        closable={false}
         centered
       >
         <div className="text-center py-4">

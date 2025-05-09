@@ -17,14 +17,14 @@ const LecturerForm = ({ onSuccess, initialData }) => {
   const [maxBirthday, setMaxBirthday] = useState("");
 
   useEffect(() => {
-    // Tính toán ngày tối đa có thể chọn (cách đây 18 năm)
+    // Tính toán ngày tối đa có thể chọn (cách đây 22 năm)
     const today = new Date();
-    const eighteenYearsAgo = new Date(
-      today.getFullYear() - 30,
+    const twentyTwoYearsAgo = new Date(
+      today.getFullYear() - 22,
       today.getMonth(),
       today.getDate()
     );
-    const maxDateString = eighteenYearsAgo.toISOString().split("T")[0]; // Định dạng YYYY-MM-DD
+    const maxDateString = twentyTwoYearsAgo.toISOString().split("T")[0]; // Định dạng YYYY-MM-DD
     setMaxBirthday(maxDateString);
 
     if (initialData) {
@@ -105,10 +105,10 @@ const LecturerForm = ({ onSuccess, initialData }) => {
         const dayDiff = today.getDate() - birthDate.getDate();
 
         if (
-          age < 18 ||
-          (age === 18 && (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)))
+          age < 22 ||
+          (age === 22 && (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)))
         ) {
-          validationErrors.birthday = "Giảng viên phải từ 18 tuổi trở lên";
+          validationErrors.birthday = "Giảng viên phải từ 22 tuổi trở lên";
         }
       }
     }

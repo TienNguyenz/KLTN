@@ -33,12 +33,12 @@ const disabledDate = (current) => {
   const monthDiff = new Date().getMonth() - current.month();
   const dayDiff = new Date().getDate() - current.date();
   
-  // Kiểm tra nếu chưa đủ 18 tuổi
+  // Kiểm tra nếu chưa đủ 22 tuổi
   if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
     calculatedAge--;
   }
   
-  return calculatedAge < 18;
+  return calculatedAge < 22;
 };
 
 const LecturerList = () => {
@@ -276,7 +276,13 @@ const LecturerList = () => {
           });
           const existingUser = response.data.find(user => user.email === formData.email && user._id !== selectedLecturer?._id);
           if (existingUser) {
-            newErrors.email = 'Email đã được sử dụng';
+            if (existingUser.role === 'sinhvien') {
+              newErrors.email = 'Email này đã được sử dụng bởi một sinh viên';
+            } else if (existingUser.role === 'giangvien') {
+              newErrors.email = 'Email này đã được sử dụng bởi một giảng viên';
+            } else {
+              newErrors.email = 'Email này đã được sử dụng';
+            }
           }
         } catch (error) {
           console.error('Error checking email:', error);
@@ -437,8 +443,8 @@ const LecturerList = () => {
         calculatedAge--;
       }
       
-      if (calculatedAge < 18) {
-        throw new Error('Giảng viên phải từ 18 tuổi trở lên');
+      if (calculatedAge < 22) {
+        throw new Error('Giảng viên phải từ 22 tuổi trở lên');
       }
 
       // Format password from YYYY-MM-DD to DDMMYYYY
@@ -595,8 +601,10 @@ const LecturerList = () => {
       }
     } catch (error) {
       console.error('Error:', error);
-      const errorMessage = error.message || 
-        (selectedLecturer ? 'Cập nhật thông tin giảng viên thất bại!' : 'Thêm giảng viên mới thất bại!');
+      // Ưu tiên lấy message chi tiết từ backend nếu có
+      const errorMessage = error.response?.data?.message
+        || error.message
+        || (selectedLecturer ? 'Cập nhật thông tin giảng viên thất bại!' : 'Thêm giảng viên mới thất bại!');
       setErrorMessage(errorMessage);
       setIsErrorModalVisible(true);
     } finally {
@@ -1007,6 +1015,8 @@ const LecturerList = () => {
         open={isErrorModalVisible}
         onOk={() => setIsErrorModalVisible(false)}
         okText="Đóng"
+        cancelButtonProps={{ style: { display: 'none' } }}
+        closable={false}
         centered
       >
         <div className="text-center py-4">
