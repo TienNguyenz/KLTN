@@ -1,51 +1,149 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { FaPlus, FaMinus, FaUserPlus, FaSave } from 'react-icons/fa';
+import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 
 const AddTopic = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [topicName, setTopicName] = useState('');
   const [semester, setSemester] = useState('');
   const [topicType, setTopicType] = useState('');
   const [studentCount, setStudentCount] = useState(1);
   const [description, setDescription] = useState('');
-  // Placeholder for selected students
   const [selectedStudents, setSelectedStudents] = useState([]);
+  const [semesters, setSemesters] = useState([]);
+  const [topicTypes, setTopicTypes] = useState([]);
+  const [students, setStudents] = useState([]);
+  const [showStudentModal, setShowStudentModal] = useState(false);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        const [semestersRes, typesRes, studentsRes] = await Promise.all([
+          axios.get('/api/semesters'),
+          axios.get('/api/topics/topic-types'),
+          axios.get('/api/students')
+        ]);
+        setSemesters(semestersRes.data);
+        setTopicTypes(typesRes.data);
+        setStudents(studentsRes.data);
+      } catch (error) {
+        console.error('Error fetching data:', error);
+      }
+    };
+    fetchData();
+  }, []);
+
+  // Adjust selected students if studentCount changes
+  useEffect(() => {
+    if (selectedStudents.length > studentCount) {
+      setSelectedStudents(selectedStudents.slice(0, studentCount));
+    }
+  }, [studentCount]);
 
   const handleStudentCountChange = (increment) => {
-    setStudentCount(prev => Math.max(1, prev + increment)); // Ensure count is at least 1
+    setStudentCount(prev => Math.max(1, prev + increment));
   };
 
   const handleSelectStudents = () => {
-    alert('Chức năng chọn sinh viên đang được phát triển!');
-    // Logic để mở modal/popup chọn sinh viên sẽ được thêm sau
+    setShowStudentModal(true);
   };
 
-  const handleSubmit = (e) => {
+  const handleStudentCheckbox = (student) => {
+    const exists = selectedStudents.find(s => s._id === student._id);
+    if (exists) {
+      setSelectedStudents(selectedStudents.filter(s => s._id !== student._id));
+    } else if (selectedStudents.length < studentCount) {
+      setSelectedStudents([...selectedStudents, student]);
+    }
+  };
+
+  const handleCloseStudentModal = () => {
+    setShowStudentModal(false);
+  };
+
+  const checkStudentsRegistration = async () => {
+    try {
+      // Kiểm tra từng sinh viên xem đã đăng ký đề tài nào chưa
+      const studentChecks = await Promise.all(
+        selectedStudents.map(async (student) => {
+          const response = await axios.get(`/api/topics/student/${student.user_id}`);
+          return {
+            student,
+            hasTopic: response.data !== null
+          };
+        })
+      );
+
+      // Lọc ra những sinh viên đã đăng ký đề tài
+      const registeredStudents = studentChecks.filter(check => check.hasTopic);
+      
+      if (registeredStudents.length > 0) {
+        const studentList = registeredStudents
+          .map(s => `${s.student.user_name} (${s.student.user_id})`)
+          .join('\n');
+        alert(`Các sinh viên sau đã đăng ký đề tài khác:\n${studentList}`);
+        return false;
+      }
+      return true;
+    } catch (error) {
+      console.error('Error checking student registration:', error);
+      return false;
+    }
+  };
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
-    // Basic validation (can be improved)
-    if (!topicName || !semester || !topicType || !description) {
-      alert('Vui lòng điền đầy đủ thông tin.');
+    
+    // Kiểm tra thông tin cơ bản
+    if (!topicName || !semester || !topicType || !description || selectedStudents.length !== studentCount) {
+      alert('Vui lòng điền đầy đủ thông tin và chọn đủ số lượng sinh viên.');
       return;
     }
 
-    const newTopicData = {
-      name: topicName,
-      semester,
-      type: topicType,
-      maxStudents: studentCount,
-      description,
-      selectedStudents, // Include selected students if needed
-      // Add lecturer ID/info automatically here based on logged-in user
-      lecturerStatus: 'READY', // Default status
-      adminStatus: 'PENDING',   // Default status
-    };
+    const lecturerId = user?._id || user?.id;
+    if (!lecturerId) {
+      alert('Không xác định được thông tin giảng viên.');
+      return;
+    }
 
-    console.log('Submitting new topic:', newTopicData);
-    alert('Đã tạo đề tài thành công (giả lập)! Chuyển về trang quản lý.');
-    // Logic gọi API để lưu đề tài sẽ được thêm sau
-    // Ví dụ: createTopicAPI(newTopicData).then(() => navigate('/lecturer/topics'));
-    navigate('/lecturer/topics'); // Redirect back to the list
+    if (!user?.user_major) {
+      alert('Không xác định được chuyên ngành của giảng viên.');
+      return;
+    }
+
+    // Kiểm tra sinh viên đã đăng ký đề tài khác chưa
+    const canProceed = await checkStudentsRegistration();
+    if (!canProceed) {
+      return;
+    }
+
+    try {
+      const payload = {
+        topic_title: topicName,
+        topic_instructor: lecturerId,
+        topic_major: user.user_major,
+        topic_category: topicType,
+        topic_description: description,
+        topic_max_members: studentCount,
+        topic_group_student: selectedStudents.map(s => s._id),
+        topic_creator: lecturerId,
+        topic_registration_period: semester,
+        topic_teacher_status: "approved"
+      };
+
+      await axios.post('/api/topics/propose', payload);
+      alert('Đã tạo đề tài thành công! Đề tài sẽ hiển thị khi được admin duyệt.');
+      navigate('/lecturer/topics');
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.message) {
+        alert(error.response.data.message);
+      } else {
+        alert('Có lỗi xảy ra khi tạo đề tài.');
+      }
+    }
   };
 
   return (
@@ -53,7 +151,6 @@ const AddTopic = () => {
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Thêm Đề Tài Mới</h1>
 
       <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-lg shadow-md space-y-6">
-        
         {/* Row 1: Semester and Topic Type */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -66,10 +163,9 @@ const AddTopic = () => {
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
             >
               <option value="">Vui lòng chọn</option>
-              <option value="HK1_2023_2024">HK1 - 2023-2024</option>
-              <option value="HK2_2023_2024">HK2 - 2023-2024</option>
-              <option value="HK3_2023_2024">HK3 - 2023-2024</option>
-              {/* Thêm các học kỳ khác */}
+              {semesters.map(s => (
+                <option key={s._id} value={s._id}>{s.semester}</option>
+              ))}
             </select>
           </div>
           <div>
@@ -82,10 +178,9 @@ const AddTopic = () => {
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
             >
               <option value="">Vui lòng chọn</option>
-              <option value="KLTN">Khóa luận tốt nghiệp</option>
-              <option value="TTTN">Thực tập tốt nghiệp</option>
-              <option value="NNCKH">Nghiên cứu khoa học</option>
-              {/* Thêm các loại khác */}
+              {topicTypes.map(t => (
+                <option key={t._id} value={t._id}>{t.topic_category_title}</option>
+              ))}
             </select>
           </div>
         </div>
@@ -121,14 +216,13 @@ const AddTopic = () => {
                     type="number" 
                     id="studentCount" 
                     value={studentCount} 
-                    readOnly // Make it read-only, controlled by buttons
+                readOnly
                     className="w-16 text-center border-t border-b border-gray-300 py-2 focus:outline-none focus:ring-0 sm:text-sm"
                 />
                  <button 
                   type="button" 
                   onClick={() => handleStudentCountChange(1)} 
                   className="inline-flex items-center justify-center p-2 border border-gray-300 rounded-r-md bg-gray-50 text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-1 focus:ring-indigo-500 focus:border-indigo-500"
-                  // Add max limit if needed
                 >
                     <FaPlus className="h-4 w-4" />
                 </button>
@@ -151,8 +245,7 @@ const AddTopic = () => {
              <label className="block text-sm font-medium text-gray-700 mb-1">Danh sách sinh viên được chọn</label>
              <div className="mt-1 p-3 h-24 border border-gray-300 rounded-md bg-gray-50 text-sm text-gray-500 overflow-y-auto">
                  {selectedStudents.length === 0 ? 'Chưa chọn sinh viên nào' : (
-                     // Render list of selected students here later
-                     selectedStudents.map(student => <div key={student.id}>{student.name}</div>) 
+              selectedStudents.map(student => <div key={student._id}>{student.user_name} ({student.user_id})</div>) 
                  )}
              </div>
          </div>
@@ -181,8 +274,41 @@ const AddTopic = () => {
                 Tạo đề tài
             </button>
         </div>
-
       </form>
+
+      {/* Student Selection Modal */}
+      {showStudentModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-6 w-full max-w-lg">
+            <h2 className="text-lg font-semibold mb-4">Chọn sinh viên ({selectedStudents.length}/{studentCount})</h2>
+            <div className="max-h-64 overflow-y-auto mb-4">
+              {students.map(student => (
+                <div key={student._id} className="flex items-center mb-2">
+                  <input
+                    type="checkbox"
+                    checked={!!selectedStudents.find(s => s._id === student._id)}
+                    disabled={
+                      !selectedStudents.find(s => s._id === student._id) && selectedStudents.length >= studentCount
+                    }
+                    onChange={() => handleStudentCheckbox(student)}
+                    className="mr-2"
+                  />
+                  <span>{student.user_name} ({student.user_id})</span>
+                </div>
+              ))}
+            </div>
+            <div className="flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={handleCloseStudentModal}
+                className="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700"
+              >
+                Xong
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

@@ -94,12 +94,30 @@ const NotificationBell = ({ userId }) => {
                 cursor: 'pointer'
               }}
               onClick={() => markAsRead(n._id)}
+              onMouseEnter={() => {
+                if (!n.user_notification_isRead) markAsRead(n._id);
+              }}
             >
               <div style={{ fontWeight: n.user_notification_isRead ? 'normal' : 'bold' }}>
                 {n.user_notification_title}
               </div>
               <div style={{ fontSize: 13, color: '#555', margin: '4px 0' }}>
-                {n.user_notification_content}
+                {(() => {
+                  const content = n.user_notification_content || '';
+                  const [main, ...rest] = content.split('Nhận xét:');
+                  const comment = rest.join('Nhận xét:').trim();
+                  return (
+                    <>
+                      <span dangerouslySetInnerHTML={{ __html: main.replace(/\n/g, '<br/>') }} />
+                      {comment && (
+                        <div style={{ marginTop: 4 }}>
+                          <b>Nhận xét:</b>
+                          <span style={{ fontStyle: 'italic', color: '#1976d2', marginLeft: 4 }}>{comment}</span>
+                        </div>
+                      )}
+                    </>
+                  );
+                })()}
               </div>
               <div style={{ fontSize: 11, color: '#aaa' }}>
                 {new Date(n.createdAt).toLocaleString('vi-VN')}

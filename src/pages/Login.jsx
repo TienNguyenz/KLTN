@@ -35,8 +35,8 @@ export default function LoginPage() {
       // Lưu token vào localStorage
       localStorage.setItem('token', data.token);
       
-      // Lưu thông tin user vào context
-      login(data.user);
+      // Lưu thông tin user và token vào context
+      login({ ...data.user, token: data.token });
 
       // Chuyển hướng dựa vào role
       let targetPath = from;

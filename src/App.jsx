@@ -17,6 +17,7 @@ import LienHePage from "./pages/Lienhe";
 // Import layout và các trang của sinh viên
 import { StudentLayout, TopicDetails, TopicsList, Proposals } from "./pages/student/StudentDashboard"; 
 import TopicRegistration from "./pages/student/TopicRegistration";
+import StudentProfile from "./components/student/StudentProfile";
 
 // Import layout và các trang của giảng viên
 import LecturerLayout from "./components/lecturer/LecturerLayout";
@@ -32,6 +33,7 @@ import ReviewTopicDetail from './components/lecturer/ReviewTopicDetail';
 import CommitteeTopics from './components/lecturer/CommitteeTopics';
 import CommitteeTopicDetail from './components/lecturer/CommitteeTopicDetail';
 import LecturerDashboard from "./components/lecturer/LecturerDashboard";
+import LecturerProfile from "./components/lecturer/LecturerProfile";
 
 // Import admin components
 import AdminLayout from './components/admin/AdminLayout';
@@ -82,6 +84,7 @@ const AppLayout = () => {
           <Route path="topics" element={<TopicsList />} />
           <Route path="topics/:topicId/register" element={<TopicRegistration />} />
           <Route path="proposals" element={<Proposals />} />
+          <Route path="profile" element={<StudentProfile />} />
         </Route>
         <Route path="*" element={<Navigate to="/student" replace />} />
       </Routes>
@@ -111,6 +114,7 @@ const AppLayout = () => {
           <Route path="review-topics/:id" element={<ReviewTopicDetail />} />
           <Route path="committee" element={<CommitteeTopics />} />
           <Route path="committee-topics/:id" element={<CommitteeTopicDetail />} />
+          <Route path="profile" element={<LecturerProfile />} />
         </Route>
         <Route path="*" element={<Navigate to="/lecturer/topics" replace />} />
       </Routes>

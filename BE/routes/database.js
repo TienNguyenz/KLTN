@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const mongoose = require('mongoose');
 const User = require('../models/User');
+const Topic = require('../models/Topic');
 const multer = require('multer');
 const path = require('path');
 
@@ -58,6 +59,14 @@ router.get('/collections', async (req, res) => {
 router.get('/collections/:name', async (req, res) => {
     try {
         const collectionName = req.params.name;
+        if (collectionName === 'Topic') {
+            const data = await Topic.find({})
+                .populate('topic_instructor', 'user_name')
+                .populate('topic_category', 'topic_category_title')
+                .populate('topic_major', 'major_title')
+                .populate('topic_group_student', 'user_name user_id');
+            return res.json(data);
+        }
         const data = await mongoose.connection.db.collection(collectionName).find({}).toArray();
         res.json(data);
     } catch (err) {

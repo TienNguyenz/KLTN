@@ -28,4 +28,17 @@ router.patch('/:id/read', async (req, res) => {
   }
 });
 
+// Đánh dấu tất cả thông báo của user là đã đọc
+router.patch('/:userId/read-all', async (req, res) => {
+  try {
+    await UserNotification.updateMany(
+      { user_notification_recipient: req.params.userId, user_notification_isRead: false },
+      { $set: { user_notification_isRead: true } }
+    );
+    res.json({ message: 'Đã đánh dấu tất cả thông báo là đã đọc.' });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router; 

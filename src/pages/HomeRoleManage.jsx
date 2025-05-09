@@ -44,7 +44,7 @@ const Home = () => {
             {selected === "lecturers" && <LecturerList />}
             {selected === "councils" && <CouncilManagement />}
             {selected === "topic-list" && <ThesisList />}
-            {selected === "topic-approval" && <ThesisApproval />}
+            {selected === "topic-approval" && <ThesisApproval setSelected={setSelected} />}
             {selected === "semester" && <Semester />}
             {selected === "registration-period" && <Registration />}
             {selected === "evaluation-form" && <Evaluation />}

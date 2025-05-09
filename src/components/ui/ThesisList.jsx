@@ -99,20 +99,19 @@ const ThesisList = () => {
       title: 'GVHD',
       dataIndex: 'topic_instructor',
       key: 'topic_instructor',
-      render: (instructorId) => {
-        const instructor = faculties.find(f => f._id === instructorId);
-        return instructor ? instructor.faculty_title : 'Chưa có GVHD';
-      }
+      render: (instructor) => instructor?.user_name || 'Chưa có GVHD',
     },
     {
       title: 'Loại đề tài',
       dataIndex: 'topic_category',
       key: 'topic_category',
+      render: (cat) => cat?.topic_category_title || cat?.type_name || '-',
     },
     {
       title: 'Học kì',
       dataIndex: 'topic_registration_period',
       key: 'topic_registration_period',
+      render: (period) => period?.semester_name || period?.name || period || '-',
     },
     {
       title: 'Thời gian tạo',
@@ -218,44 +217,63 @@ const ThesisList = () => {
         footer={null}
         width={800}
       >
-        {selectedThesis && (
-          <div className="space-y-4">
-            <div>
-              <div className="font-semibold">Tên đề tài:</div>
-              <div>{selectedThesis.topic_title}</div>
-            </div>
-            <div>
-              <div className="font-semibold">Mô tả:</div>
-              <div>{selectedThesis.topic_description}</div>
-            </div>
-            <div>
-              <div className="font-semibold">GVHD:</div>
-              <div>{faculties.find(f => f._id === selectedThesis.topic_instructor)?.faculty_title || 'Chưa có GVHD'}</div>
-            </div>
-            <div>
-              <div className="font-semibold">Loại đề tài:</div>
-              <div>{selectedThesis.topic_category}</div>
-            </div>
-            <div>
-              <div className="font-semibold">Số lượng sinh viên tối đa:</div>
-              <div>{selectedThesis.topic_max_members}</div>
-            </div>
-            <div>
-              <div className="font-semibold">Trạng thái:</div>
-              <div>{selectedThesis.topic_teacher_status}</div>
-            </div>
-            {selectedThesis.topic_group_student && selectedThesis.topic_group_student.length > 0 && (
-              <div>
-                <div className="font-semibold">Nhóm sinh viên thực hiện:</div>
-                <ul>
-                  {selectedThesis.topic_group_student.map((group, index) => (
-                    <li key={index}>Nhóm {index + 1}</li>
-                  ))}
-                </ul>
-              </div>
-            )}
+        <div style={{ padding: 24 }}>
+          <h2 style={{ fontWeight: 700, fontSize: 22, color: '#1976d2', marginBottom: 16 }}>Chi tiết đề tài</h2>
+          <div style={{ marginBottom: 16 }}>
+            <b>Tên đề tài:</b> <span>{selectedThesis?.topic_title}</span>
           </div>
-        )}
+          <div style={{ marginBottom: 16 }}>
+            <b>Mô tả:</b>
+            <div style={{ background: '#f9fafb', padding: 12, borderRadius: 6, marginTop: 4 }}>{selectedThesis?.topic_description}</div>
+          </div>
+          <div style={{ marginBottom: 16 }}>
+            <b>GVHD:</b> <span>{selectedThesis?.topic_instructor?.user_name || 'Chưa có GVHD'}</span>
+            </div>
+          <div style={{ marginBottom: 16 }}>
+            <b>Loại đề tài:</b> <span>{selectedThesis?.topic_category?.topic_category_title || '-'}</span>
+            </div>
+          <div style={{ marginBottom: 16 }}>
+            <b>Chuyên ngành:</b> <span>{selectedThesis?.topic_major?.major_title || '-'}</span>
+            </div>
+          <div style={{ marginBottom: 16 }}>
+            <b>Học kỳ:</b> <span>{selectedThesis?.topic_registration_period?.semester_name || selectedThesis?.topic_registration_period || '-'}</span>
+            </div>
+          <div style={{ marginBottom: 16 }}>
+            <b>Số lượng sinh viên tối đa:</b> <span>{selectedThesis?.topic_max_members}</span>
+            </div>
+          <div style={{ marginBottom: 16 }}>
+            <b>Trạng thái:</b> <span>{
+              {
+                approved: 'Đã duyệt',
+                pending: 'Chờ duyệt',
+                rejected: 'Từ chối',
+                in_progress: 'Đang thực hiện',
+                completed: 'Đã hoàn thành'
+              }[selectedThesis?.topic_teacher_status] || selectedThesis?.topic_teacher_status
+            }</span>
+            </div>
+          <div style={{ marginBottom: 16 }}>
+            <b>Nhóm sinh viên thực hiện:</b>
+            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8, background: '#fff' }}>
+              <thead>
+                <tr style={{ background: '#f0f4ff' }}>
+                  <th style={{ border: '1px solid #e0e0e0', padding: 6 }}>STT</th>
+                  <th style={{ border: '1px solid #e0e0e0', padding: 6 }}>Họ tên</th>
+                  <th style={{ border: '1px solid #e0e0e0', padding: 6 }}>MSSV</th>
+                </tr>
+              </thead>
+              <tbody>
+                {(selectedThesis?.topic_group_student || []).map((sv, idx) => (
+                  <tr key={sv._id}>
+                    <td style={{ border: '1px solid #e0e0e0', padding: 6, textAlign: 'center' }}>{idx + 1}</td>
+                    <td style={{ border: '1px solid #e0e0e0', padding: 6 }}>{sv.user_name}</td>
+                    <td style={{ border: '1px solid #e0e0e0', padding: 6 }}>{sv.user_id}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
       </Modal>
     </div>
   );

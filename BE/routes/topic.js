@@ -39,17 +39,54 @@ router.get('/topic-types', async (req, res) => {
 router.get('/:id', async (req, res) => {
   try {
     const topic = await Topic.findById(req.params.id)
-      .populate('topic_instructor', 'user_name')
-      .populate('topic_major', 'major_name')
-      .populate('topic_category', 'type_name')
-      .populate('topic_group_student', 'user_name user_id');
+      .populate('topic_instructor', 'user_name user_id')
+      .populate('topic_major', 'major_title')
+      .populate('topic_category', 'topic_category_title')
+      .populate('topic_group_student', 'user_name user_id')
+      .populate('topic_creator', 'user_name user_id role');
     
     if (!topic) {
-      return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+      return res.status(404).json({ 
+        success: false,
+        message: 'Không tìm thấy đề tài' 
+      });
     }
-    res.json(topic);
+
+    // Format response data
+    const formattedTopic = {
+      ...topic.toObject(),
+      topic_instructor: topic.topic_instructor ? {
+        name: topic.topic_instructor.user_name,
+        id: topic.topic_instructor.user_id
+      } : null,
+      topic_major: topic.topic_major ? {
+        title: topic.topic_major.major_title
+      } : null,
+      topic_category: topic.topic_category ? {
+        title: topic.topic_category.topic_category_title
+      } : null,
+      topic_group_student: topic.topic_group_student.map(student => ({
+        name: student.user_name,
+        id: student.user_id
+      })),
+      topic_creator: topic.topic_creator ? {
+        name: topic.topic_creator.user_name,
+        id: topic.topic_creator.user_id,
+        role: topic.topic_creator.role
+      } : null
+    };
+
+    res.json({
+      success: true,
+      data: formattedTopic
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('Error fetching topic details:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Lỗi khi lấy thông tin đề tài',
+      error: err.message 
+    });
   }
 });
 
@@ -250,11 +287,6 @@ router.post('/propose', async (req, res) => {
           `${m.name} (${m.id}) - Đã đăng ký đề tài: ${m.topic}`
         )
       });
-    }
-
-    // Validate max members
-    if (topic_max_members < 2 || topic_max_members > 4) {
-      return res.status(400).json({ message: 'Số lượng thành viên phải từ 2 đến 4 người.' });
     }
 
     // Validate group members
@@ -488,6 +520,33 @@ router.put('/:id/approve-by-admin', async (req, res) => {
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
     topic.topic_leader_status = 'approved';
     await topic.save();
+
+    // Gửi thông báo cho sinh viên và giảng viên nếu có comment
+    const { comment } = req.body;
+    if (comment && comment.trim()) {
+      const notifications = [
+        {
+          user_notification_title: 'Đề tài đã được duyệt',
+          user_notification_sender: req.user?._id || null,
+          user_notification_recipient: topic.topic_group_student[0],
+          user_notification_content: `Đề tài "${topic.topic_title}" đã được admin duyệt.\nNhận xét: ${comment}`,
+          user_notification_type: 2,
+          user_notification_isRead: false,
+          user_notification_topic: 'topic',
+        },
+        {
+          user_notification_title: 'Đề tài đã được duyệt',
+          user_notification_sender: req.user?._id || null,
+          user_notification_recipient: topic.topic_instructor,
+          user_notification_content: `Đề tài "${topic.topic_title}" đã được admin duyệt.\nNhận xét: ${comment}`,
+          user_notification_type: 2,
+          user_notification_isRead: false,
+          user_notification_topic: 'topic',
+        }
+      ];
+      await UserNotification.insertMany(notifications);
+    }
+
     res.json({ message: 'Đề tài đã được admin duyệt', topic });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi khi duyệt đề tài bởi admin', error: err.message });
@@ -521,12 +580,13 @@ router.put('/:id/reject-by-admin', async (req, res) => {
     await topic.save();
 
     // Gửi thông báo cho sinh viên và giảng viên
+    const { comment } = req.body;
     const notifications = [
       {
         user_notification_title: 'Đề tài bị từ chối',
         user_notification_sender: req.user?._id || null, // id admin nếu có
         user_notification_recipient: topic.topic_group_student[0], // id sinh viên đề xuất
-        user_notification_content: `Đề tài "${topic.topic_title}" đã bị từ chối bởi admin.`,
+        user_notification_content: `Đề tài "${topic.topic_title}" đã bị từ chối bởi admin.${comment && comment.trim() ? `\nNhận xét: ${comment}` : ''}`,
         user_notification_type: 2,
         user_notification_isRead: false,
         user_notification_topic: 'topic',
@@ -535,7 +595,7 @@ router.put('/:id/reject-by-admin', async (req, res) => {
         user_notification_title: 'Đề tài bị từ chối',
         user_notification_sender: req.user?._id || null,
         user_notification_recipient: topic.topic_instructor,
-        user_notification_content: `Đề tài "${topic.topic_title}" đã bị từ chối bởi admin.`,
+        user_notification_content: `Đề tài "${topic.topic_title}" đã bị từ chối bởi admin.${comment && comment.trim() ? `\nNhận xét: ${comment}` : ''}`,
         user_notification_type: 2,
         user_notification_isRead: false,
         user_notification_topic: 'topic',
