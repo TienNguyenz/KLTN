@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 [33mcommit 444ee587c8aef5ff0c61aac876a82a701d7862cd[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
 Author: Tien <htiennguyen081103@gmail.com>
 Date:   Sat May 10 22:24:08 2025 +0700
@@ -9,6 +10,14 @@ Author: Tien <htiennguyen081103@gmail.com>
 Date:   Sat May 10 18:04:57 2025 +0700
 
     UP
+=======
+[33mcommit 93fdb951ce97f05860ef7fff0efb59e3d35b22d9[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mmaster[m[33m)[m
+Merge: 426b373 4acd344
+Author: Tien <htiennguyen081103@gmail.com>
+Date:   Sat May 10 17:39:56 2025 +0700
+
+    Xoá node_modules khỏi Git và thêm vào .gitignore
+>>>>>>> 7e69192e302156dd2ed7cc0d5f8360e15bcfac30
 
 [33mcommit 426b3738d9b339611ad0e29a4f2c6d73626c0316[m
 Author: Tien <htiennguyen081103@gmail.com>
@@ -16,6 +25,15 @@ Date:   Sat May 10 17:36:08 2025 +0700
 
     Lưu tạm thay đổi local trước khi pull
 
+<<<<<<< HEAD
+=======
+[33mcommit 4acd344234935926445ef34d5c4e255e48cc47b3[m[33m ([m[1;31morigin/master[m[33m)[m
+Author: NguyenMinhTrii <minhtringuyen061103@gmail.com>
+Date:   Sat May 10 13:22:50 2025 +0700
+
+    them hoi dong thanh cong
+
+>>>>>>> 7e69192e302156dd2ed7cc0d5f8360e15bcfac30
 [33mcommit 186b0cfb532569fa9b8440d3ef23ae6117b7e6aa[m
 Author: Tien <htiennguyen081103@gmail.com>
 Date:   Sat May 10 11:58:00 2025 +0700
