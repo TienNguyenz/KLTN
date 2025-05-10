@@ -1,10 +1,11 @@
-import React, { useState } from 'react';
-import { Table, Button, Modal, Space, Input, Select, message, DatePicker } from 'antd';
-import { ExclamationCircleFilled, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
+import React, { useState, useEffect } from 'react';
+import { Table, Button, Modal, Space, Input, Select, message, DatePicker, Alert } from 'antd';
+import { ExclamationCircleFilled, CheckCircleFilled, CloseCircleFilled, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
 import StudentForm from './Form_Add_Student';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { FaEdit, FaTrash } from 'react-icons/fa';
+import * as XLSX from 'xlsx';
 
 const { Search } = Input;
 
@@ -41,6 +42,19 @@ const disabledDate = (current) => {
   return calculatedAge < 18;
 };
 
+const VIETNAMESE_TO_FIELD = {
+  'Mã số': 'user_id',
+  'Họ tên': 'user_name',
+  'Email': 'email',
+  'CCCD': 'user_CCCD',
+  'Số điện thoại': 'user_phone',
+  'Địa chỉ thường trú': 'user_permanent_address',
+  'Địa chỉ tạm trú': 'user_temporary_address',
+  'Ngày sinh': 'user_date_of_birth',
+  'Khoa': 'user_faculty',
+  'Chuyên ngành': 'user_major',
+};
+
 const Students = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
@@ -62,6 +76,8 @@ const Students = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState('year');
+  const [importError, setImportError] = useState('');
+  const [importSuccess, setImportSuccess] = useState('');
 
   const fetchFacultiesAndMajors = async () => {
     try {
@@ -130,6 +146,20 @@ const Students = () => {
     fetchStudents();
     }
   }, [searchText, filterFaculty, filterMajor, faculties, majors]);
+
+  useEffect(() => {
+    if (importSuccess) {
+      const timer = setTimeout(() => setImportSuccess(''), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [importSuccess]);
+
+  useEffect(() => {
+    if (importError) {
+      const timer = setTimeout(() => setImportError(''), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [importError]);
 
   const columns = [
     {
@@ -681,6 +711,140 @@ const Students = () => {
     }
   };
 
+  const handleImportExcel = (event) => {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        let jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        // Nếu là cột tiếng Việt, map sang trường chuẩn
+        if (jsonData.length > 0) {
+          const firstRow = jsonData[0];
+          const isVietnamese = Object.keys(firstRow).some(key => VIETNAMESE_TO_FIELD[key]);
+          if (isVietnamese) {
+            jsonData = jsonData.map(row => {
+              const mapped = {};
+              Object.entries(row).forEach(([k, v]) => {
+                const field = VIETNAMESE_TO_FIELD[k] || k;
+                mapped[field] = v;
+              });
+              return mapped;
+            });
+          }
+        }
+
+        // Validate data structure
+        const requiredFields = ['user_id', 'user_name', 'email', 'user_CCCD', 'user_phone', 'user_permanent_address', 'user_date_of_birth', 'user_faculty', 'user_major'];
+        const missingFields = requiredFields.filter(field => !Object.prototype.hasOwnProperty.call(jsonData[0] || {}, field));
+        
+        if (missingFields.length > 0) {
+          setImportError(`Thiếu các trường bắt buộc: ${missingFields.join(', ')}`);
+          return;
+        }
+
+        // Process and send data to server
+        const processedData = jsonData.map(row => ({
+          ...row,
+          role: 'sinhvien',
+          user_status: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }));
+
+        await axios.post('http://localhost:5000/api/database/collections/User/bulk', processedData);
+        setImportSuccess('Import dữ liệu sinh viên thành công!');
+        fetchStudents();
+      } catch (error) {
+        setImportError('Có lỗi xảy ra khi import file: ' + error.message);
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleExportExcel = () => {
+    try {
+      // Chuẩn bị dữ liệu để xuất
+      const exportData = students.map(student => ({
+        'Mã số': student.user_id,
+        'Họ tên': student.user_name,
+        'Email': student.email,
+        'CCCD': student.user_CCCD,
+        'Số điện thoại': student.user_phone,
+        'Địa chỉ thường trú': student.user_permanent_address,
+        'Địa chỉ tạm trú': student.user_temporary_address,
+        'Ngày sinh': student.user_date_of_birth,
+        'Khoa': faculties.find(f => f._id === student.user_faculty)?.faculty_title || '',
+        'Chuyên ngành': majors.find(m => m._id === student.user_major)?.major_title || ''
+      }));
+
+      // Tạo worksheet từ dữ liệu
+      const ws = XLSX.utils.json_to_sheet(exportData, { cellStyles: true });
+
+      // Tự động căn chỉnh độ rộng cột
+      const colWidths = Object.keys(exportData[0] || {}).map(key => {
+        const maxLen = Math.max(
+          key.length,
+          ...exportData.map(row => (row[key] ? row[key].toString().length : 0))
+        );
+        return { wch: Math.min(Math.max(maxLen + 2, 10), 30) };
+      });
+      ws['!cols'] = colWidths;
+
+      // In đậm dòng tiêu đề, căn giữa tiêu đề, wrap text cho tất cả các ô
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cell = ws[XLSX.utils.encode_cell({ r: 0, c: C })];
+        if (cell && !cell.s) cell.s = {};
+        if (cell) {
+          cell.s = {
+            font: { bold: true },
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+            border: {
+              top: { style: 'thin' },
+              bottom: { style: 'thin' },
+              left: { style: 'thin' },
+              right: { style: 'thin' }
+            }
+          };
+        }
+      }
+      // Căn trái nội dung, wrap text, border cho các ô còn lại
+      for (let R = 1; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+          if (cell) {
+            cell.s = {
+              alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+              border: {
+                top: { style: 'thin' },
+                bottom: { style: 'thin' },
+                left: { style: 'thin' },
+                right: { style: 'thin' }
+              }
+            };
+          }
+        }
+      }
+
+      // Tạo workbook và thêm worksheet
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Danh sách sinh viên');
+
+      // Xuất file Excel
+      XLSX.writeFile(wb, 'Danh_sach_sinh_vien.xlsx');
+      message.success('Xuất file Excel thành công!');
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      message.error('Có lỗi xảy ra khi xuất file Excel');
+    }
+  };
+
   return (
     <div className="p-4 relative">
       <h1 className="text-2xl font-bold mb-4">Danh sách Sinh viên</h1>
@@ -730,7 +894,53 @@ const Students = () => {
         >
           Thêm sinh viên
         </Button>
+        <Button
+          type="primary"
+          icon={<UploadOutlined />}
+          onClick={() => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.xlsx,.xls';
+            input.onchange = handleImportExcel;
+            input.click();
+          }}
+        >
+          Import Excel
+        </Button>
+        <Button
+          type="primary"
+          icon={<DownloadOutlined />}
+          onClick={handleExportExcel}
+        >
+          Export Excel
+        </Button>
       </div>
+
+      {importError && (
+        <div className="mb-4">
+          <Alert
+            message="Lỗi"
+            description={importError}
+            type="error"
+            showIcon
+            closable
+            onClose={() => setImportError('')}
+          />
+        </div>
+      )}
+
+      {importSuccess && (
+        <div className="mb-4">
+          <Alert
+            message="Thành công"
+            description={importSuccess}
+            type="success"
+            showIcon
+            closable
+            onClose={() => setImportSuccess('')}
+          />
+        </div>
+      )}
 
       <Table
         columns={columns}

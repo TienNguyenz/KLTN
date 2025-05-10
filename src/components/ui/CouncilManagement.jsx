@@ -49,6 +49,7 @@ const CouncilManagement = () => {
   const [errors, setErrors] = useState({});
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
+  const [filteredLecturers, setFilteredLecturers] = useState([]);
 
   useEffect(() => {
     fetchInitialData();
@@ -125,6 +126,14 @@ const CouncilManagement = () => {
         secretary: council.secretary,
         members: council.members || [],
       });
+      // Lọc giảng viên theo khoa của hội đồng đang sửa
+      const selectedMajor = majors.find(m => m._id === council.assembly_major);
+      const facultyId = selectedMajor?.major_faculty;
+      setFilteredLecturers(
+        lecturers.filter(
+          gv => gv.user_faculty === facultyId
+        )
+      );
     } else {
       setIsEdit(false);
       setSelectedCouncil(null);
@@ -135,6 +144,7 @@ const CouncilManagement = () => {
         secretary: '',
         members: [],
       });
+      setFilteredLecturers([]);
     }
     setErrors({});
     setOpen(true);
@@ -157,8 +167,18 @@ const CouncilManagement = () => {
     setFormData(prev => ({
       ...prev,
       [name]: value,
+      ...(name === 'assembly_major' ? { chairman: '', secretary: '', members: [] } : {})
     }));
     setErrors(prev => ({ ...prev, [name]: '' }));
+    if (name === 'assembly_major') {
+      const selectedMajor = majors.find(m => m._id === value);
+      const facultyId = selectedMajor?.major_faculty;
+      setFilteredLecturers(
+        lecturers.filter(
+          gv => gv.user_faculty === facultyId
+        )
+      );
+    }
   };
 
   const validateForm = () => {
@@ -376,9 +396,9 @@ const CouncilManagement = () => {
                 </FormControl>
 
                 <Autocomplete
-                  options={lecturers}
+                  options={filteredLecturers}
                   getOptionLabel={(lecturer) => `${lecturer.user_id} - ${lecturer.user_name}`}
-                  value={lecturers.find(l => l._id === formData.chairman) || null}
+                  value={filteredLecturers.find(l => l._id === formData.chairman) || null}
                   onChange={(event, newValue) => {
                     setFormData(prev => ({
                       ...prev,
@@ -398,9 +418,9 @@ const CouncilManagement = () => {
                 />
 
                 <Autocomplete
-                  options={lecturers.filter(l => l._id !== formData.chairman)}
+                  options={filteredLecturers.filter(l => l._id !== formData.chairman)}
                   getOptionLabel={(lecturer) => `${lecturer.user_id} - ${lecturer.user_name}`}
-                  value={lecturers.find(l => l._id === formData.secretary) || null}
+                  value={filteredLecturers.find(l => l._id === formData.secretary) || null}
                   onChange={(event, newValue) => {
                     setFormData(prev => ({
                       ...prev,
@@ -421,13 +441,10 @@ const CouncilManagement = () => {
 
                 <Autocomplete
                   multiple
-                  options={lecturers.filter(l => 
-                    l._id !== formData.chairman && 
-                    l._id !== formData.secretary
-                  )}
+                  options={filteredLecturers.filter(l => l._id !== formData.chairman && l._id !== formData.secretary)}
                   getOptionLabel={(lecturer) => `${lecturer.user_id} - ${lecturer.user_name}`}
                   value={formData.members.map(id => 
-                    lecturers.find(l => l._id === id)
+                    filteredLecturers.find(l => l._id === id)
                   ).filter(Boolean)}
                   onChange={(event, newValue) => {
                     setFormData(prev => ({

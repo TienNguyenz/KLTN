@@ -1,10 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Space, Input, Select, message, DatePicker } from 'antd';
-import { ExclamationCircleFilled, CheckCircleFilled, CloseCircleFilled } from '@ant-design/icons';
+import { Table, Button, Modal, Space, Input, Select, message, DatePicker, Alert } from 'antd';
+import { ExclamationCircleFilled, CheckCircleFilled, CloseCircleFilled, UploadOutlined, DownloadOutlined } from '@ant-design/icons';
 import LecturerForm from './Form_Add_Lecturer';
 import axios from 'axios';
 import dayjs from 'dayjs';
 import { FaEdit, FaTrash } from 'react-icons/fa';
+import * as XLSX from 'xlsx';
 
 const { Search } = Input;
 
@@ -41,6 +42,19 @@ const disabledDate = (current) => {
   return calculatedAge < 22;
 };
 
+const VIETNAMESE_TO_FIELD = {
+  'Mã số': 'user_id',
+  'Họ tên': 'user_name',
+  'Email': 'email',
+  'CCCD': 'user_CCCD',
+  'Số điện thoại': 'user_phone',
+  'Địa chỉ thường trú': 'user_permanent_address',
+  'Địa chỉ tạm trú': 'user_temporary_address',
+  'Ngày sinh': 'user_date_of_birth',
+  'Khoa': 'user_faculty',
+  'Chuyên ngành': 'user_major',
+};
+
 const LecturerList = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedLecturer, setSelectedLecturer] = useState(null);
@@ -62,6 +76,8 @@ const LecturerList = () => {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
   const [datePickerMode, setDatePickerMode] = useState('year');
+  const [importError, setImportError] = useState('');
+  const [importSuccess, setImportSuccess] = useState('');
 
   const fetchFacultiesAndMajors = async () => {
     try {
@@ -613,6 +629,96 @@ const LecturerList = () => {
     }
   };
 
+  const handleImportExcel = (event) => {
+    const file = event.target.files[0];
+    const reader = new FileReader();
+
+    reader.onload = async (e) => {
+      try {
+        const data = new Uint8Array(e.target.result);
+        const workbook = XLSX.read(data, { type: 'array' });
+        const worksheet = workbook.Sheets[workbook.SheetNames[0]];
+        let jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+        // Nếu là cột tiếng Việt, map sang trường chuẩn
+        if (jsonData.length > 0) {
+          const firstRow = jsonData[0];
+          const isVietnamese = Object.keys(firstRow).some(key => VIETNAMESE_TO_FIELD[key]);
+          if (isVietnamese) {
+            jsonData = jsonData.map(row => {
+              const mapped = {};
+              Object.entries(row).forEach(([k, v]) => {
+                const field = VIETNAMESE_TO_FIELD[k] || k;
+                mapped[field] = v;
+              });
+              return mapped;
+            });
+          }
+        }
+
+        // Validate data structure
+        const requiredFields = ['user_id', 'user_name', 'email', 'user_CCCD', 'user_phone', 'user_permanent_address', 'user_date_of_birth', 'user_faculty', 'user_major'];
+        const missingFields = requiredFields.filter(field => !Object.prototype.hasOwnProperty.call(jsonData[0] || {}, field));
+        
+        if (missingFields.length > 0) {
+          setImportError(`Thiếu các trường bắt buộc: ${missingFields.join(', ')}`);
+          return;
+        }
+
+        // Process and send data to server
+        const processedData = jsonData.map(row => ({
+          ...row,
+          role: 'giangvien',
+          user_status: 'active',
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        }));
+
+        await axios.post('http://localhost:5000/api/database/collections/User/bulk', processedData);
+        setImportSuccess('Import dữ liệu giảng viên thành công!');
+        fetchLecturers();
+      } catch (error) {
+        setImportError('Có lỗi xảy ra khi import file: ' + error.message);
+      }
+    };
+
+    reader.readAsArrayBuffer(file);
+  };
+
+  const handleExportExcel = () => {
+    try {
+      // Tạo workbook mới
+      const wb = XLSX.utils.book_new();
+      
+      // Chuẩn bị dữ liệu để xuất
+      const exportData = lecturers.map(lecturer => ({
+        'Mã số': lecturer.user_id,
+        'Họ tên': lecturer.user_name,
+        'Email': lecturer.email,
+        'CCCD': lecturer.user_CCCD,
+        'Số điện thoại': lecturer.user_phone,
+        'Địa chỉ thường trú': lecturer.user_permanent_address,
+        'Ngày sinh': lecturer.user_date_of_birth,
+        'Khoa': faculties.find(f => f._id === lecturer.user_faculty)?.faculty_title || '',
+        'Chuyên ngành': majors.find(m => m._id === lecturer.user_major)?.major_title || ''
+      }));
+
+      // Tạo worksheet từ dữ liệu
+      const ws = XLSX.utils.json_to_sheet(exportData);
+
+      // Thêm worksheet vào workbook
+      XLSX.utils.book_append_sheet(wb, ws, "Danh sách giảng viên");
+
+      // Xuất file Excel
+      XLSX.writeFile(wb, "danh_sach_giang_vien.xlsx");
+      
+      message.success('Xuất file Excel thành công!');
+    } catch (error) {
+      console.error('Error exporting Excel:', error);
+      message.error('Có lỗi xảy ra khi xuất file Excel');
+    }
+  };
+
   return (
     <div className="p-4 relative">
       <h1 className="text-2xl font-bold mb-4">Danh sách Giảng viên</h1>
@@ -662,7 +768,53 @@ const LecturerList = () => {
         >
           Thêm giảng viên
         </Button>
+        <Button
+          type="primary"
+          icon={<UploadOutlined />}
+          onClick={() => {
+            const input = document.createElement('input');
+            input.type = 'file';
+            input.accept = '.xlsx,.xls';
+            input.onchange = handleImportExcel;
+            input.click();
+          }}
+        >
+          Import Excel
+        </Button>
+        <Button
+          type="primary"
+          icon={<DownloadOutlined />}
+          onClick={handleExportExcel}
+        >
+          Export Excel
+        </Button>
       </div>
+
+      {importError && (
+        <div className="mb-4">
+          <Alert
+            message="Lỗi"
+            description={importError}
+            type="error"
+            showIcon
+            closable
+            onClose={() => setImportError('')}
+          />
+        </div>
+      )}
+
+      {importSuccess && (
+        <div className="mb-4">
+          <Alert
+            message="Thành công"
+            description={importSuccess}
+            type="success"
+            showIcon
+            closable
+            onClose={() => setImportSuccess('')}
+          />
+        </div>
+      )}
 
       <Table
         columns={columns}
