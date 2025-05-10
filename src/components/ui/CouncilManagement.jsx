@@ -448,7 +448,10 @@ const CouncilManagement = () => {
                 />
 
                 <Autocomplete
-                  options={filteredLecturers}
+                  options={filteredLecturers.filter(l => 
+                    l._id !== formData.chairman && 
+                    l._id !== formData.secretary
+                  )}
                   getOptionLabel={(lecturer) => `${lecturer.user_id} - ${lecturer.user_name}`}
                   value={filteredLecturers.find(l => l._id === formData.members) || null}
                   onChange={(event, newValue) => {
@@ -459,7 +462,7 @@ const CouncilManagement = () => {
                     setErrors(prev => ({ ...prev, members: '' }));
                   }}
                   renderInput={(params) => (
-            <TextField
+                    <TextField
                       {...params}
                       label="Chọn thành viên"
                       placeholder="Tìm theo mã số hoặc tên giảng viên"
@@ -497,4 +500,4 @@ const CouncilManagement = () => {
   );
 };
 
-export default CouncilManagement; 
+export default CouncilManagement;
