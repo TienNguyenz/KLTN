@@ -44,12 +44,13 @@ const CouncilManagement = () => {
     assembly_major: '',
     chairman: '',
     secretary: '',
-    members: [],
+    members: '',
   });
   const [errors, setErrors] = useState({});
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [filteredLecturers, setFilteredLecturers] = useState([]);
+  const [faculties, setFaculties] = useState([]);
 
   useEffect(() => {
     fetchInitialData();
@@ -59,7 +60,7 @@ const CouncilManagement = () => {
     setIsLoading(true);
     try {
       await Promise.all([
-        fetchMajors(),
+        fetchFaculties(),
         fetchLecturers(),
         fetchCouncils()
       ]);
@@ -67,6 +68,15 @@ const CouncilManagement = () => {
       console.error('Error fetching initial data:', error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const fetchFaculties = async () => {
+    try {
+      const response = await axios.get('http://localhost:5000/api/database/collections/faculties');
+      setFaculties(response.data);
+    } catch (error) {
+      console.error('Error fetching faculties:', error);
     }
   };
 
@@ -124,7 +134,7 @@ const CouncilManagement = () => {
         assembly_major: council.assembly_major,
         chairman: council.chairman,
         secretary: council.secretary,
-        members: council.members || [],
+        members: council.members || '',
       });
       // Lọc giảng viên theo khoa của hội đồng đang sửa
       const selectedMajor = majors.find(m => m._id === council.assembly_major);
@@ -142,7 +152,7 @@ const CouncilManagement = () => {
         assembly_major: '',
         chairman: '',
         secretary: '',
-        members: [],
+        members: '',
       });
       setFilteredLecturers([]);
     }
@@ -157,7 +167,7 @@ const CouncilManagement = () => {
       assembly_major: '',
       chairman: '',
       secretary: '',
-      members: [],
+      members: '',
     });
     setErrors({});
   };
@@ -167,15 +177,13 @@ const CouncilManagement = () => {
     setFormData(prev => ({
       ...prev,
       [name]: value,
-      ...(name === 'assembly_major' ? { chairman: '', secretary: '', members: [] } : {})
+      ...(name === 'assembly_major' ? { chairman: '', secretary: '', members: '' } : {})
     }));
     setErrors(prev => ({ ...prev, [name]: '' }));
     if (name === 'assembly_major') {
-      const selectedMajor = majors.find(m => m._id === value);
-      const facultyId = selectedMajor?.major_faculty;
       setFilteredLecturers(
         lecturers.filter(
-          gv => gv.user_faculty === facultyId
+          gv => gv.user_faculty === value || gv.user_faculty === (typeof value === 'object' ? value.$oid : value)
         )
       );
     }
@@ -308,7 +316,7 @@ const CouncilManagement = () => {
           <TableHead>
             <TableRow>
               <TableCell>Tên Hội đồng</TableCell>
-                  <TableCell>Chuyên ngành</TableCell>
+                  <TableCell>Khoa</TableCell>
               <TableCell>Chủ tịch</TableCell>
               <TableCell>Thư ký</TableCell>
               <TableCell>Thành viên</TableCell>
@@ -320,7 +328,7 @@ const CouncilManagement = () => {
               <TableRow key={council._id}>
                     <TableCell>{council.assembly_name}</TableCell>
                     <TableCell>
-                      {majors.find(m => m._id === council.assembly_major)?.major_title || 'Không xác định'}
+                      {faculties.find(f => (f._id.$oid || f._id) === council.assembly_major)?.faculty_title || 'Không xác định'}
                     </TableCell>
                     <TableCell>{getLecturerInfo(council.chairman)}</TableCell>
                     <TableCell>{getLecturerInfo(council.secretary)}</TableCell>
@@ -378,17 +386,17 @@ const CouncilManagement = () => {
                 />
 
                 <FormControl fullWidth error={!!errors.assembly_major}>
-                  <InputLabel>Chuyên ngành</InputLabel>
+                  <InputLabel>Khoa</InputLabel>
                   <Select
                     name="assembly_major"
                     value={formData.assembly_major}
                     onChange={handleChange}
-                    label="Chuyên ngành"
+                    label="Khoa"
                     required
                   >
-                    {majors.map((major) => (
-                      <MenuItem key={major._id} value={major._id}>
-                        {major.major_title}
+                    {faculties.map((faculty) => (
+                      <MenuItem key={faculty._id.$oid || faculty._id} value={faculty._id.$oid || faculty._id}>
+                        {faculty.faculty_title}
                       </MenuItem>
                     ))}
                   </Select>
@@ -440,16 +448,13 @@ const CouncilManagement = () => {
                 />
 
                 <Autocomplete
-                  multiple
-                  options={filteredLecturers.filter(l => l._id !== formData.chairman && l._id !== formData.secretary)}
+                  options={filteredLecturers}
                   getOptionLabel={(lecturer) => `${lecturer.user_id} - ${lecturer.user_name}`}
-                  value={formData.members.map(id => 
-                    filteredLecturers.find(l => l._id === id)
-                  ).filter(Boolean)}
+                  value={filteredLecturers.find(l => l._id === formData.members) || null}
                   onChange={(event, newValue) => {
                     setFormData(prev => ({
                       ...prev,
-                      members: newValue.map(lecturer => lecturer._id)
+                      members: newValue?._id || ''
                     }));
                     setErrors(prev => ({ ...prev, members: '' }));
                   }}
@@ -462,7 +467,7 @@ const CouncilManagement = () => {
                       helperText={errors.members}
                     />
                   )}
-            />
+                />
           </Box>
         </DialogContent>
         <DialogActions>
