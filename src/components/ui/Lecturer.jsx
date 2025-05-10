@@ -24,22 +24,10 @@ const majorsByDepartment = {
 };
 
 const disabledDate = (current) => {
-  // Không cho chọn ngày trong tương lai
-  if (current && current > new Date()) {
-    return true;
-  }
-  
-  // Tính tuổi
-  let calculatedAge = new Date().getFullYear() - current.year();
-  const monthDiff = new Date().getMonth() - current.month();
-  const dayDiff = new Date().getDate() - current.date();
-  
-  // Kiểm tra nếu chưa đủ 22 tuổi
-  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
-    calculatedAge--;
-  }
-  
-  return calculatedAge < 22;
+  if (!current) return false;
+  const year = current.year();
+  const nowYear = new Date().getFullYear();
+  return year > nowYear - 22;
 };
 
 const VIETNAMESE_TO_FIELD = {
@@ -158,6 +146,20 @@ const LecturerList = () => {
     }
   }, [searchText, filterFaculty, filterMajor, faculties, majors]);
 
+  useEffect(() => {
+    if (importSuccess) {
+      const timer = setTimeout(() => setImportSuccess(''), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [importSuccess]);
+
+  useEffect(() => {
+    if (importError) {
+      const timer = setTimeout(() => setImportError(''), 2000);
+      return () => clearTimeout(timer);
+    }
+  }, [importError]);
+
   const columns = [
     {
       title: 'Mã GV',
@@ -254,153 +256,6 @@ const LecturerList = () => {
       console.error('Error deleting lecturer:', error);
       setErrorMessage('Có lỗi xảy ra khi xóa giảng viên');
       setShowErrorModal(true);
-    }
-  };
-
-  const handleSuccess = () => {
-    setIsModalVisible(false);
-    fetchLecturers();
-  };
-
-  const validateForm = async () => {
-    const newErrors = {};
-    const changedFields = Object.keys(formData);
-
-    // Validate họ tên nếu đã thay đổi
-    if (changedFields.includes('user_name')) {
-      if (!formData.user_name?.trim()) {
-        newErrors.user_name = 'Họ tên không được để trống';
-      } else if (/[\d!@#$%^&*(),.?":{}|<>]/.test(formData.user_name)) {
-        newErrors.user_name = 'Họ tên không được chứa số hoặc ký tự đặc biệt';
-      }
-    }
-
-    // Validate email nếu đã thay đổi
-    if (changedFields.includes('email')) {
-      if (!formData.email?.trim()) {
-        newErrors.email = 'Email không được để trống';
-      } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)) {
-        newErrors.email = 'Email không hợp lệ';
-      } else {
-        // Kiểm tra email trùng
-        try {
-          const response = await axios.get(`http://localhost:5000/api/database/collections/User`, {
-            params: {
-              email: formData.email,
-              excludeId: selectedLecturer?._id // Loại trừ ID hiện tại khi kiểm tra
-            }
-          });
-          const existingUser = response.data.find(user => user.email === formData.email && user._id !== selectedLecturer?._id);
-          if (existingUser) {
-            if (existingUser.role === 'sinhvien') {
-              newErrors.email = 'Email này đã được sử dụng bởi một sinh viên';
-            } else if (existingUser.role === 'giangvien') {
-              newErrors.email = 'Email này đã được sử dụng bởi một giảng viên';
-            } else {
-              newErrors.email = 'Email này đã được sử dụng';
-            }
-          }
-        } catch (error) {
-          console.error('Error checking email:', error);
-        }
-      }
-    }
-
-    // Validate mã số nếu đã thay đổi
-    if (changedFields.includes('user_id')) {
-      if (!formData.user_id?.trim()) {
-        newErrors.user_id = 'Mã số không được để trống';
-      } else {
-        // Kiểm tra mã số trùng
-        try {
-          const response = await axios.get(`http://localhost:5000/api/database/collections/User`, {
-            params: {
-              user_id: formData.user_id,
-              excludeId: selectedLecturer?._id // Loại trừ ID hiện tại khi kiểm tra
-            }
-          });
-          const existingUser = response.data.find(user => user.user_id === formData.user_id && user._id !== selectedLecturer?._id);
-          if (existingUser) {
-            newErrors.user_id = 'Mã số đã tồn tại';
-          }
-        } catch (error) {
-          console.error('Error checking user ID:', error);
-        }
-      }
-    }
-
-    // Validate CCCD nếu đã thay đổi
-    if (changedFields.includes('user_CCCD')) {
-      if (!formData.user_CCCD?.trim()) {
-        newErrors.user_CCCD = 'CCCD không được để trống';
-      } else if (!/^\d{12}$/.test(formData.user_CCCD)) {
-        newErrors.user_CCCD = 'CCCD phải có 12 chữ số';
-      }
-    }
-
-    // Validate số điện thoại nếu đã thay đổi
-    if (changedFields.includes('user_phone')) {
-      if (!formData.user_phone?.trim()) {
-        newErrors.user_phone = 'Số điện thoại không được để trống';
-      } else if (!/^\d{10}$/.test(formData.user_phone)) {
-        newErrors.user_phone = 'Số điện thoại phải có 10 chữ số';
-      }
-    }
-
-    // Validate địa chỉ nếu đã thay đổi
-    if (changedFields.includes('user_permanent_address') && !formData.user_permanent_address?.trim()) {
-      newErrors.user_permanent_address = 'Địa chỉ không được để trống';
-    }
-
-    // Validate ngày sinh nếu đã thay đổi
-    if (changedFields.includes('user_date_of_birth') && !formData.user_date_of_birth) {
-      newErrors.user_date_of_birth = 'Ngày sinh không được để trống';
-    }
-
-    // Validate khoa nếu đã thay đổi
-    if (changedFields.includes('user_faculty') && !formData.user_faculty) {
-      newErrors.user_faculty = 'Vui lòng chọn khoa';
-    }
-
-    // Validate chuyên ngành nếu đã thay đổi
-    if (changedFields.includes('user_major') && !formData.user_major) {
-      newErrors.user_major = 'Vui lòng chọn chuyên ngành';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleInputChange = (field, value) => {
-    if (field === 'user_faculty') {
-      setFormData(prev => {
-        const majorsOfFaculty = majors.filter(m => m.major_faculty === value);
-        const shouldResetMajor = !majorsOfFaculty.some(m => m._id === prev.user_major);
-        return {
-          ...prev,
-          [field]: value,
-          user_major: shouldResetMajor ? '' : prev.user_major
-        };
-      });
-      setSelectedFaculty(value);
-    } else if (field === 'user_major') {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
-
-    // Clear error when user types
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: undefined
-      }));
     }
   };
 
@@ -678,7 +533,8 @@ const LecturerList = () => {
         setImportSuccess('Import dữ liệu giảng viên thành công!');
         fetchLecturers();
       } catch (error) {
-        setImportError('Có lỗi xảy ra khi import file: ' + error.message);
+        const msg = error.response?.data?.message || error.message || "Có lỗi xảy ra khi import file";
+        setImportError(msg);
       }
     };
 
@@ -687,9 +543,6 @@ const LecturerList = () => {
 
   const handleExportExcel = () => {
     try {
-      // Tạo workbook mới
-      const wb = XLSX.utils.book_new();
-      
       // Chuẩn bị dữ liệu để xuất
       const exportData = lecturers.map(lecturer => ({
         'Mã số': lecturer.user_id,
@@ -698,25 +551,209 @@ const LecturerList = () => {
         'CCCD': lecturer.user_CCCD,
         'Số điện thoại': lecturer.user_phone,
         'Địa chỉ thường trú': lecturer.user_permanent_address,
-        'Ngày sinh': lecturer.user_date_of_birth,
+        'Ngày sinh': lecturer.user_date_of_birth && typeof lecturer.user_date_of_birth === 'string' && lecturer.user_date_of_birth.match(/^\d{4}-\d{2}-\d{2}$/)
+          ? lecturer.user_date_of_birth
+          : '',
         'Khoa': faculties.find(f => f._id === lecturer.user_faculty)?.faculty_title || '',
         'Chuyên ngành': majors.find(m => m._id === lecturer.user_major)?.major_title || ''
       }));
 
       // Tạo worksheet từ dữ liệu
-      const ws = XLSX.utils.json_to_sheet(exportData);
+      const ws = XLSX.utils.json_to_sheet(exportData, { cellStyles: true });
 
-      // Thêm worksheet vào workbook
-      XLSX.utils.book_append_sheet(wb, ws, "Danh sách giảng viên");
+      // Tự động căn chỉnh độ rộng cột
+      const colWidths = Object.keys(exportData[0] || {}).map(key => {
+        const maxLen = Math.max(
+          key.length,
+          ...exportData.map(row => (row[key] ? row[key].toString().length : 0))
+        );
+        return { wch: Math.min(Math.max(maxLen + 2, 10), 30) };
+      });
+      ws['!cols'] = colWidths;
+
+      // In đậm dòng tiêu đề, căn giữa tiêu đề, wrap text cho tất cả các ô
+      const range = XLSX.utils.decode_range(ws['!ref']);
+      for (let C = range.s.c; C <= range.e.c; ++C) {
+        const cell = ws[XLSX.utils.encode_cell({ r: 0, c: C })];
+        if (cell && !cell.s) cell.s = {};
+        if (cell) {
+          cell.s = {
+            font: { bold: true },
+            alignment: { horizontal: 'center', vertical: 'center', wrapText: true },
+            border: {
+              top: { style: 'thin' },
+              bottom: { style: 'thin' },
+              left: { style: 'thin' },
+              right: { style: 'thin' }
+            }
+          };
+        }
+      }
+      // Căn trái nội dung, wrap text, border cho các ô còn lại
+      for (let R = 1; R <= range.e.r; ++R) {
+        for (let C = range.s.c; C <= range.e.c; ++C) {
+          const cell = ws[XLSX.utils.encode_cell({ r: R, c: C })];
+          if (cell) {
+            cell.s = {
+              alignment: { horizontal: 'left', vertical: 'center', wrapText: true },
+              border: {
+                top: { style: 'thin' },
+                bottom: { style: 'thin' },
+                left: { style: 'thin' },
+                right: { style: 'thin' }
+              }
+            };
+          }
+        }
+      }
+
+      // Tạo workbook và thêm worksheet
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, 'Danh sách giảng viên');
 
       // Xuất file Excel
-      XLSX.writeFile(wb, "danh_sach_giang_vien.xlsx");
-      
+      XLSX.writeFile(wb, 'Danh_sach_giang_vien.xlsx');
       message.success('Xuất file Excel thành công!');
     } catch (error) {
       console.error('Error exporting Excel:', error);
       message.error('Có lỗi xảy ra khi xuất file Excel');
     }
+  };
+
+  const handleInputChange = (field, value) => {
+    if (field === 'user_faculty') {
+      setFormData(prev => {
+        const majorsOfFaculty = majors.filter(m => m.major_faculty === value);
+        const shouldResetMajor = !majorsOfFaculty.some(m => m._id === prev.user_major);
+        return {
+          ...prev,
+          [field]: value,
+          user_major: shouldResetMajor ? '' : prev.user_major
+        };
+      });
+      setSelectedFaculty(value);
+    } else if (field === 'user_major') {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
+
+    // Clear error when user types
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }));
+    }
+  };
+
+  const validateForm = async () => {
+    const newErrors = {};
+    const changedFields = Object.keys(formData);
+
+    // Validate họ tên nếu đã thay đổi
+    if (changedFields.includes('user_name')) {
+      if (!formData.user_name?.trim()) {
+        newErrors.user_name = 'Họ tên không được để trống';
+      } else if (/\d|[!@#$%^&*(),.?":{}|<>]/.test(formData.user_name)) {
+        newErrors.user_name = 'Họ tên không được chứa số hoặc ký tự đặc biệt';
+      }
+    }
+
+    // Validate email nếu đã thay đổi
+    if (changedFields.includes('email')) {
+      if (!formData.email?.trim()) {
+        newErrors.email = 'Email không được để trống';
+      } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)) {
+        newErrors.email = 'Email không hợp lệ';
+      } else {
+        // Kiểm tra email trùng
+        try {
+          const response = await axios.get(`http://localhost:5000/api/database/collections/User`, {
+            params: {
+              email: formData.email,
+              excludeId: selectedLecturer?._id // Loại trừ ID hiện tại khi kiểm tra
+            }
+          });
+          const existingUser = response.data.find(user => user.email === formData.email && user._id !== selectedLecturer?._id);
+          if (existingUser) {
+            newErrors.email = 'Email này đã được sử dụng';
+          }
+        } catch (error) {
+          console.error('Error checking email:', error);
+        }
+      }
+    }
+
+    // Validate mã số nếu đã thay đổi
+    if (changedFields.includes('user_id')) {
+      if (!formData.user_id?.trim()) {
+        newErrors.user_id = 'Mã số không được để trống';
+      } else {
+        // Kiểm tra mã số trùng
+        try {
+          const response = await axios.get(`http://localhost:5000/api/database/collections/User`, {
+            params: {
+              user_id: formData.user_id,
+              excludeId: selectedLecturer?._id // Loại trừ ID hiện tại khi kiểm tra
+            }
+          });
+          const existingUser = response.data.find(user => user.user_id === formData.user_id && user._id !== selectedLecturer?._id);
+          if (existingUser) {
+            newErrors.user_id = 'Mã số đã tồn tại';
+          }
+        } catch (error) {
+          console.error('Error checking user ID:', error);
+        }
+      }
+    }
+
+    // Validate CCCD nếu đã thay đổi
+    if (changedFields.includes('user_CCCD')) {
+      if (!formData.user_CCCD?.trim()) {
+        newErrors.user_CCCD = 'CCCD không được để trống';
+      } else if (!/^\d{12}$/.test(formData.user_CCCD)) {
+        newErrors.user_CCCD = 'CCCD phải có 12 chữ số';
+      }
+    }
+
+    // Validate số điện thoại nếu đã thay đổi
+    if (changedFields.includes('user_phone')) {
+      if (!formData.user_phone?.trim()) {
+        newErrors.user_phone = 'Số điện thoại không được để trống';
+      } else if (!/^\d{10}$/.test(formData.user_phone)) {
+        newErrors.user_phone = 'Số điện thoại phải có 10 chữ số';
+      }
+    }
+
+    // Validate địa chỉ nếu đã thay đổi
+    if (changedFields.includes('user_permanent_address') && !formData.user_permanent_address?.trim()) {
+      newErrors.user_permanent_address = 'Địa chỉ không được để trống';
+    }
+
+    // Validate ngày sinh nếu đã thay đổi
+    if (changedFields.includes('user_date_of_birth') && !formData.user_date_of_birth) {
+      newErrors.user_date_of_birth = 'Ngày sinh không được để trống';
+    }
+
+    // Validate khoa nếu đã thay đổi
+    if (changedFields.includes('user_faculty') && !formData.user_faculty) {
+      newErrors.user_faculty = 'Vui lòng chọn khoa';
+    }
+
+    // Validate chuyên ngành nếu đã thay đổi
+    if (changedFields.includes('user_major') && !formData.user_major) {
+      newErrors.user_major = 'Vui lòng chọn chuyên ngành';
+    }
+
+    setErrors(newErrors);
+    return Object.keys(newErrors).length === 0;
   };
 
   return (

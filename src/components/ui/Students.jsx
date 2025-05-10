@@ -24,22 +24,10 @@ const majorsByDepartment = {
 };
 
 const disabledDate = (current) => {
-  // Không cho chọn ngày trong tương lai
-  if (current && current > new Date()) {
-    return true;
-  }
-  
-  // Tính tuổi
-  let calculatedAge = new Date().getFullYear() - current.year();
-  const monthDiff = new Date().getMonth() - current.month();
-  const dayDiff = new Date().getDate() - current.date();
-  
-  // Kiểm tra nếu chưa đủ 18 tuổi
-  if (monthDiff < 0 || (monthDiff === 0 && dayDiff < 0)) {
-    calculatedAge--;
-  }
-  
-  return calculatedAge < 18;
+  if (!current) return false;
+  const year = current.year();
+  const nowYear = new Date().getFullYear();
+  return year > nowYear - 18;
 };
 
 const VIETNAMESE_TO_FIELD = {
@@ -268,9 +256,58 @@ const Students = () => {
     }
   };
 
-  const handleSuccess = () => {
-    setIsModalVisible(false);
-      fetchStudents();
+  const handleInputChange = (field, value) => {
+    if (field === 'user_faculty') {
+      setFormData(prev => {
+        // Lấy danh sách chuyên ngành thuộc khoa mới
+        const majorsOfFaculty = majors.filter(m => m.major_faculty === value);
+        // Nếu chuyên ngành hiện tại không thuộc khoa mới, reset về rỗng
+        const shouldResetMajor = !majorsOfFaculty.some(m => m._id === prev.user_major);
+        return {
+          ...prev,
+          [field]: value,
+          user_major: shouldResetMajor ? '' : prev.user_major
+        };
+      });
+      setSelectedFaculty(value);
+    } else if (field === 'user_major') {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    } else {
+      setFormData(prev => ({
+        ...prev,
+        [field]: value
+      }));
+    }
+
+    // Clear error when user types
+    if (errors[field]) {
+      setErrors(prev => ({
+        ...prev,
+        [field]: undefined
+      }));
+    }
+  };
+
+  const handleImageUpload = async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      
+      const response = await axios.post('http://localhost:5000/api/database/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+
+      return response.data.url;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      message.error('Không thể tải lên ảnh. Vui lòng thử lại.');
+      return null;
+    }
   };
 
   const validateForm = async () => {
@@ -281,7 +318,7 @@ const Students = () => {
     if (changedFields.includes('user_name')) {
       if (!formData.user_name?.trim()) {
         newErrors.user_name = 'Họ tên không được để trống';
-      } else if (/[\d!@#$%^&*(),.?":{}|<>]/.test(formData.user_name)) {
+      } else if (/\d|[!@#$%^&*(),.?":{}|<>]/.test(formData.user_name)) {
         newErrors.user_name = 'Họ tên không được chứa số hoặc ký tự đặc biệt';
       }
     }
@@ -303,13 +340,7 @@ const Students = () => {
           });
           const existingUser = response.data.find(user => user.email === formData.email && user._id !== selectedStudent?._id);
           if (existingUser) {
-            if (existingUser.role === 'sinhvien') {
-              newErrors.email = 'Email này đã được sử dụng bởi một sinh viên';
-            } else if (existingUser.role === 'giangvien') {
-              newErrors.email = 'Email này đã được sử dụng bởi một giảng viên';
-            } else {
-              newErrors.email = 'Email này đã được sử dụng';
-            }
+            newErrors.email = 'Email này đã được sử dụng';
           }
         } catch (error) {
           console.error('Error checking email:', error);
@@ -380,60 +411,6 @@ const Students = () => {
 
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
-  };
-
-  const handleInputChange = (field, value) => {
-    if (field === 'user_faculty') {
-      setFormData(prev => {
-        // Lấy danh sách chuyên ngành thuộc khoa mới
-        const majorsOfFaculty = majors.filter(m => m.major_faculty === value);
-        // Nếu chuyên ngành hiện tại không thuộc khoa mới, reset về rỗng
-        const shouldResetMajor = !majorsOfFaculty.some(m => m._id === prev.user_major);
-        return {
-          ...prev,
-          [field]: value,
-          user_major: shouldResetMajor ? '' : prev.user_major
-        };
-      });
-      setSelectedFaculty(value);
-    } else if (field === 'user_major') {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    } else {
-      setFormData(prev => ({
-        ...prev,
-        [field]: value
-      }));
-    }
-
-    // Clear error when user types
-    if (errors[field]) {
-      setErrors(prev => ({
-        ...prev,
-        [field]: undefined
-      }));
-    }
-  };
-
-  const handleImageUpload = async (file) => {
-    try {
-      const formData = new FormData();
-      formData.append('avatar', file);
-      
-      const response = await axios.post('http://localhost:5000/api/database/upload', formData, {
-        headers: {
-          'Content-Type': 'multipart/form-data'
-        }
-      });
-
-      return response.data.url;
-    } catch (error) {
-      console.error('Error uploading image:', error);
-      message.error('Không thể tải lên ảnh. Vui lòng thử lại.');
-      return null;
-    }
   };
 
   const handleUpdate = async () => {
@@ -591,7 +568,6 @@ const Students = () => {
       } else {
         // For updating existing student
         const currentFacultyId = formData.user_faculty || selectedStudent.user_faculty;
-        const currentMajorId = formData.user_major || selectedStudent.user_major;
 
         // If changing major, verify it belongs to the current faculty
         if (formData.user_major && formData.user_major !== selectedStudent.user_major) {
@@ -644,7 +620,7 @@ const Students = () => {
         
         if (response.data) {
           setIsSuccessModalVisible(true);
-          handleSuccess();
+          fetchStudents();
         }
       } else {
         // Adding new student
@@ -689,7 +665,7 @@ const Students = () => {
 
           if (response.data) {
             setIsSuccessModalVisible(true);
-            handleSuccess();
+            fetchStudents();
           }
         } catch (error) {
           console.error('Registration error:', error.response?.data || error);
@@ -760,7 +736,8 @@ const Students = () => {
         setImportSuccess('Import dữ liệu sinh viên thành công!');
         fetchStudents();
       } catch (error) {
-        setImportError('Có lỗi xảy ra khi import file: ' + error.message);
+        const msg = error.response?.data?.message || error.message || "Có lỗi xảy ra khi import file";
+        setImportError(msg);
       }
     };
 

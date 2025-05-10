@@ -12,6 +12,50 @@ const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee
   // Lấy userId từ localStorage hoặc context
   const user = JSON.parse(localStorage.getItem('user'));
 
+  // State để lưu file đã chọn
+  const [outlineFile, setOutlineFile] = useState(null);
+  const [finalFile, setFinalFile] = useState(null);
+
+  const handleOutlineFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.name.endsWith('.docx')) {
+        // TODO: Chuyển đổi .docx sang .pdf (có thể dùng thư viện như docx2pdf hoặc gọi API)
+        alert('File .docx sẽ được chuyển sang .pdf. Chức năng đang được phát triển.');
+      }
+      setOutlineFile(file);
+    }
+  };
+
+  const handleFinalFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      if (file.name.endsWith('.docx')) {
+        // TODO: Chuyển đổi .docx sang .pdf (có thể dùng thư viện như docx2pdf hoặc gọi API)
+        alert('File .docx sẽ được chuyển sang .pdf. Chức năng đang được phát triển.');
+      }
+      setFinalFile(file);
+    }
+  };
+
+  const handleUploadOutline = () => {
+    if (outlineFile) {
+      // TODO: Gọi API để upload file outlineFile
+      alert('Upload Đề cương thành công!');
+    } else {
+      alert('Vui lòng chọn file Đề cương.');
+    }
+  };
+
+  const handleUploadFinal = () => {
+    if (finalFile) {
+      // TODO: Gọi API để upload file finalFile
+      alert('Upload Báo cáo cuối cùng thành công!');
+    } else {
+      alert('Vui lòng chọn file Báo cáo cuối cùng.');
+    }
+  };
+
   const handleCancelRegistration = async () => {
     if (!window.confirm('Bạn có chắc chắn muốn hủy đăng ký đề tài này?')) return;
     try {
@@ -127,30 +171,101 @@ const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee
       {/* Tài liệu quan trọng */}
       <div className="mt-8">
         <h3 className="text-md font-semibold text-gray-700 mb-2">Tài liệu quan trọng</h3>
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+          {/* Đề cương (Outline) */}
           <div className="bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col items-center">
-            <span className="font-medium mb-2">1. Đơn xin hướng dẫn khóa luận</span>
-            <span className="text-red-500 mb-2">Không có tệp nào.</span>
-            <div className="flex gap-2">
-              <button className="bg-gray-200 px-3 py-1 rounded text-sm">Chọn file</button>
-              <button className="bg-blue-500 text-white px-3 py-1 rounded text-sm">Tải lên</button>
+            <span className="font-medium mb-2 text-blue-700 flex items-center gap-2">
+              <FaFileAlt className="text-xl" /> Đề cương (Outline)
+            </span>
+            {topic.outlineFile ? (
+              <a
+                href={topic.outlineFile}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-700 underline mb-2 hover:text-green-900"
+              >
+                {topic.outlineFile.split('/').pop()}
+              </a>
+            ) : (
+              <span className="text-red-500 mb-2">Chưa có file.</span>
+            )}
+            <div className="flex gap-2 mt-2">
+              <input
+                type="file"
+                id="outline-upload"
+                className="hidden"
+                onChange={handleOutlineFileChange}
+              />
+              <label htmlFor="outline-upload">
+                <button
+                  className="bg-gray-200 px-3 py-1 rounded text-sm hover:bg-gray-300 transition-colors"
+                  type="button"
+                >
+                  Chọn file
+                </button>
+              </label>
+              <button
+                className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors"
+                type="button"
+                onClick={handleUploadOutline}
+              >
+                Tải lên
+              </button>
             </div>
+            {outlineFile && <span className="text-sm text-gray-600 mt-1">{outlineFile.name}</span>}
           </div>
+          {/* Báo cáo cuối cùng */}
           <div className="bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col items-center">
-            <span className="font-medium mb-2">2. Đơn xin bảo vệ khóa luận</span>
-            <span className="text-red-500 mb-2">Không có tệp nào.</span>
-            <div className="flex gap-2">
-              <button className="bg-gray-200 px-3 py-1 rounded text-sm">Chọn file</button>
-              <button className="bg-blue-500 text-white px-3 py-1 rounded text-sm">Tải lên</button>
+            <span className="font-medium mb-2 text-blue-700 flex items-center gap-2">
+              <FaFileAlt className="text-xl" /> Báo cáo cuối cùng
+            </span>
+            {topic.finalReportFile ? (
+              <a
+                href={topic.finalReportFile}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-green-700 underline mb-2 hover:text-green-900"
+              >
+                {topic.finalReportFile.split('/').pop()}
+              </a>
+            ) : (
+              <span className="text-red-500 mb-2">Chưa có file.</span>
+            )}
+            <div className="flex gap-2 mt-2">
+              <input
+                type="file"
+                id="final-upload"
+                className="hidden"
+                onChange={handleFinalFileChange}
+                disabled={topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'}
+              />
+              <label htmlFor="final-upload">
+                <button
+                  className={`px-3 py-1 rounded text-sm transition-colors ${
+                    topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-gray-200 hover:bg-gray-300'
+                  }`}
+                  type="button"
+                  disabled={topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'}
+                >
+                  Chọn file
+                </button>
+              </label>
+              <button
+                className={`px-3 py-1 rounded text-sm transition-colors ${
+                  topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'
+                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                    : 'bg-blue-500 text-white hover:bg-blue-600'
+                }`}
+                type="button"
+                onClick={handleUploadFinal}
+                disabled={topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'}
+              >
+                Tải lên
+              </button>
             </div>
-          </div>
-          <div className="bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col items-center">
-            <span className="font-medium mb-2">3. Báo cáo cuối cùng</span>
-            <span className="text-red-500 mb-2">Không có tệp nào.</span>
-            <div className="flex gap-2">
-              <button className="bg-gray-200 px-3 py-1 rounded text-sm">Chọn file</button>
-              <button className="bg-blue-500 text-white px-3 py-1 rounded text-sm">Tải lên</button>
-            </div>
+            {finalFile && <span className="text-sm text-gray-600 mt-1">{finalFile.name}</span>}
           </div>
         </div>
       </div>

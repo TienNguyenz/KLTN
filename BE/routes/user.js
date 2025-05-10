@@ -76,18 +76,15 @@ router.post('/database/collections/User/bulk', async (req, res) => {
         }
         user.user_major = major._id;
       }
-      // Nếu thiếu password, tự động sinh password từ ngày sinh (ddmmyyyy), nếu không có ngày sinh thì dùng '12345678'
+      // Bắt buộc phải có ngày sinh đúng định dạng yyyy-mm-dd
+      if (!user.user_date_of_birth || typeof user.user_date_of_birth !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(user.user_date_of_birth)) {
+        console.error('Import lỗi: Thiếu hoặc sai định dạng ngày sinh cho user:', user.user_id || user.email || user.user_name);
+        return res.status(400).json({ message: `Thiếu hoặc sai định dạng ngày sinh (yyyy-mm-dd) cho user: ${user.user_id || user.email || user.user_name}` });
+      }
+      // Nếu thiếu password, tự động sinh password từ ngày sinh (ddmmyyyy)
       if (!user.password) {
-        if (user.user_date_of_birth) {
-          const parts = user.user_date_of_birth.split('-');
-          if (parts.length === 3) {
-            user.password = `${parts[2]}${parts[1]}${parts[0]}`;
-          } else {
-            user.password = '12345678';
-          }
-        } else {
-          user.password = '12345678';
-        }
+        const parts = user.user_date_of_birth.split('-');
+        user.password = `${parts[2]}${parts[1]}${parts[0]}`;
       }
     }
 
@@ -95,10 +92,39 @@ router.post('/database/collections/User/bulk', async (req, res) => {
     console.log('Số user insert thành công:', result.length);
     res.status(200).json({ message: `Import thành công! Đã thêm ${result.length} user.` });
   } catch (err) {
-    if (err && err.writeErrors) {
-      err.writeErrors.forEach((e, idx) => {
-        console.error(`User lỗi ở dòng ${idx + 1}:`, e.errmsg || e.message);
-      });
+    if (err && err.writeErrors && err.writeErrors.length > 0) {
+      // Lấy lỗi đầu tiên để báo cho FE
+      const firstError = err.writeErrors[0];
+      const errmsg = firstError.errmsg || (firstError.err && firstError.err.errmsg) || '';
+      console.error('firstError.errmsg:', errmsg);
+      let userMsg = 'Import thất bại!';
+      if (errmsg.includes('duplicate key error')) {
+        let match = errmsg.match(/email: "(.+?)"/);
+        if (match) {
+          userMsg = `Email đã tồn tại: ${match[1]}`;
+        } else {
+          match = errmsg.match(/user_id: "(.+?)"/);
+          if (match) {
+            userMsg = `Mã số đã tồn tại: ${match[1]}`;
+          } else {
+            match = errmsg.match(/user_CCCD: "(.+?)"/);
+            if (match) {
+              userMsg = `CCCD đã tồn tại: ${match[1]}`;
+            } else {
+              match = errmsg.match(/user_phone: "(.+?)"/);
+              if (match) {
+                userMsg = `Số điện thoại đã tồn tại: ${match[1]}`;
+              } else {
+                userMsg = errmsg;
+              }
+            }
+          }
+        }
+      } else if (errmsg) {
+        userMsg = errmsg;
+      }
+      console.error('Import user lỗi trả về FE:', userMsg);
+      return res.status(400).json({ message: userMsg });
     }
     console.error('Import user lỗi:', err);
     res.status(500).json({ message: 'Import thất bại!', error: err.message });
