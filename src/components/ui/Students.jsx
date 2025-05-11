@@ -340,7 +340,7 @@ const Students = () => {
           });
           const existingUser = response.data.find(user => user.email === formData.email && user._id !== selectedStudent?._id);
           if (existingUser) {
-            newErrors.email = 'Email này đã được sử dụng';
+              newErrors.email = 'Email này đã được sử dụng';
           }
         } catch (error) {
           console.error('Error checking email:', error);
