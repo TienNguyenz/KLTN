@@ -20,77 +20,76 @@ export default function GioiThieu() {
 
       <div className="container mx-auto px-4 py-8 grid grid-cols-1 md:grid-cols-2 gap-12 items-start">
         <div className="space-y-6">
-          <h2 className="text-3xl font-bold text-gray-800">Về Đại Học Thủ Dầu Một</h2>
+          <h2 className="text-3xl font-bold text-gray-800">Về Đại Học Sài Gòn (SGU)</h2>
           <p className="text-gray-600 leading-relaxed">
-            Đại học Thủ Dầu Một (TDMU) tự hào là một trong những cơ sở giáo dục đại học công lập uy tín tại Bình Dương, 
-            cam kết đào tạo nguồn nhân lực chất lượng cao, đẩy mạnh nghiên cứu khoa học và chuyển giao công nghệ, 
-            góp phần vào sự phát triển bền vững của khu vực và đất nước.
+            Trường Đại học Sài Gòn (SGU) là trường đại học công lập đa ngành, trực thuộc UBND TP.HCM, được thành lập từ năm 1976. SGU đào tạo nguồn nhân lực chất lượng cao, nghiên cứu khoa học, chuyển giao công nghệ phục vụ phát triển kinh tế - xã hội khu vực phía Nam và cả nước.
           </p>
-          <h3 className="text-2xl font-semibold text-gray-700 pt-4">Những Điểm Nổi Bật</h3>
-          <ul className="space-y-3 text-gray-600">
-            <li className="flex items-start">
-              <i className="fas fa-check-circle text-[#008bc3] mr-3 mt-1"></i>
-              <span><strong className="font-semibold">Chương trình đạt chuẩn:</strong> Nhiều chương trình đào tạo đã được kiểm định chất lượng giáo dục quốc gia.</span>
-            </li>
-            <li className="flex items-start">
-              <i className="fas fa-check-circle text-[#008bc3] mr-3 mt-1"></i>
-              <span><strong className="font-semibold">Đội ngũ giảng viên:</strong> Giàu kinh nghiệm, năng động, nhiệt huyết, chuyên môn cao và có kinh nghiệm thực tiễn.</span>
-            </li>
-            <li className="flex items-start">
-              <i className="fas fa-check-circle text-[#008bc3] mr-3 mt-1"></i>
-              <span><strong className="font-semibold">Chứng chỉ quốc tế:</strong> Cơ hội nhận các chứng chỉ quốc tế uy tín trong quá trình học.</span>
-            </li>
-            <li className="flex items-start">
-              <i className="fas fa-check-circle text-[#008bc3] mr-3 mt-1"></i>
-              <span><strong className="font-semibold">Đào tạo chất lượng:</strong> Tập trung vào cả lý thuyết và thực hành, đảm bảo sinh viên vững vàng kiến thức và kỹ năng.</span>
-            </li>
-             <li className="flex items-start">
-              <i className="fas fa-check-circle text-[#008bc3] mr-3 mt-1"></i>
-              <span><strong className="font-semibold">Hoạt động ngoại khóa:</strong> Môi trường năng động với nhiều câu lạc bộ và hoạt động phong phú.</span>
-            </li>
-          </ul>
+          <div className="bg-gray-50 p-6 rounded-xl shadow mb-4">
+            <h3 className="text-2xl font-semibold text-[#008bc3] mb-2">Sứ mệnh</h3>
+            <p className="text-gray-700">Đào tạo nguồn nhân lực chất lượng cao, nghiên cứu khoa học, chuyển giao công nghệ phục vụ phát triển kinh tế - xã hội khu vực phía Nam và cả nước.</p>
+          </div>
+          <div className="bg-gray-50 p-6 rounded-xl shadow mb-4">
+            <h3 className="text-2xl font-semibold text-[#008bc3] mb-2">Tầm nhìn</h3>
+            <p className="text-gray-700">Đến năm 2030, trở thành trường đại học định hướng ứng dụng hàng đầu khu vực phía Nam, hội nhập quốc tế.</p>
+          </div>
+          <div className="bg-gray-50 p-6 rounded-xl shadow mb-4">
+            <h3 className="text-2xl font-semibold text-[#008bc3] mb-2">Giá trị cốt lõi</h3>
+            <ul className="list-disc pl-6 text-gray-700 space-y-1">
+              <li>Chất lượng - Sáng tạo - Hội nhập - Trách nhiệm xã hội</li>
+            </ul>
+          </div>
+          <div className="bg-gray-50 p-6 rounded-xl shadow mb-4">
+            <h3 className="text-2xl font-semibold text-[#008bc3] mb-2">Thành tựu nổi bật</h3>
+            <ul className="list-disc pl-6 text-gray-700 space-y-1">
+              <li>Top 50 trường đại học hàng đầu Việt Nam</li>
+              <li>30+ ngành đào tạo đại học, 7 ngành sau đại học</li>
+              <li>Hơn 20.000 sinh viên, 800 cán bộ giảng viên</li>
+              <li>Hợp tác quốc tế với nhiều trường đại học lớn trên thế giới</li>
+              <li>Nhiều sinh viên đạt giải thưởng quốc gia, quốc tế</li>
+            </ul>
+          </div>
         </div>
 
-        <div className="mt-6 md:mt-0">
-          <img 
-            src="/images/Thongtinnghiencuu.jpg" 
-            alt="Giới thiệu Đại học Thủ Dầu Một" 
-            className="w-full h-auto object-cover rounded-lg shadow-lg"
+        <div className="mt-6 md:mt-0 flex flex-col gap-6">
+          <img
+            src="/images/sgu_campus2.jpg"
+            alt="Khuôn viên Đại học Sài Gòn"
+            className="w-full h-64 object-cover rounded-lg shadow-lg mb-4"
+          />
+          <img
+            src="/images/sgu_students.jpg"
+            alt="Sinh viên SGU"
+            className="w-full h-64 object-cover rounded-lg shadow-lg"
           />
         </div>
       </div>
 
       <div className="bg-gray-50 py-16 mt-8">
         <div className="container mx-auto px-4 text-center">
-          <h2 className="text-3xl font-bold mb-4">Hoạt Động Sinh Viên</h2>
-          <p className="text-gray-600 mb-10 max-w-2xl mx-auto">Khám phá môi trường học tập năng động và sáng tạo qua các hoạt động ngoại khóa tại TDMU.</p>
+          <h2 className="text-3xl font-bold mb-4">Hoạt Động Sinh Viên SGU</h2>
+          <p className="text-gray-600 mb-10 max-w-2xl mx-auto">SGU tạo điều kiện cho sinh viên phát triển toàn diện qua các hoạt động ngoại khóa, câu lạc bộ, phong trào tình nguyện, nghiên cứu khoa học, giao lưu quốc tế...</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[ { title: "Nhiệt huyết", img: "team1" }, 
-               { title: "Năng động", img: "team2" }, 
-               { title: "Sáng tạo", img: "team3" }, 
-               { title: "Kỷ luật", img: "team4" } 
+            {[ { title: "Năng động", img: "sgu_team1" }, 
+               { title: "Sáng tạo", img: "sgu_team2" }, 
+               { title: "Hội nhập", img: "sgu_team3" }, 
+               { title: "Trách nhiệm", img: "sgu_team4" } 
              ].map((item) => (
-              <div key={item.title} className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1">
-                <img 
-                  src={`/images/${item.img}.jpg`} 
-                  alt={item.title} 
+              <div key={item.title} className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1 flex flex-col items-center">
+                <img
+                  src={`/images/${item.img}.jpg`}
+                  alt={item.title}
                   className="w-full h-48 object-cover rounded-md mb-5 shadow-sm"
                 />
                 <h3 className="text-xl font-semibold mb-3 text-gray-800">{item.title}</h3>
-                <div className="flex justify-center space-x-3">
-                  <a href="#" className="w-9 h-9 flex items-center justify-center bg-[#008bc3] rounded-full text-white hover:bg-[#0073a8] transition-colors">
-                    <i className="fab fa-facebook-f text-lg"></i>
-                  </a>
-                  <a href="#" className="w-9 h-9 flex items-center justify-center bg-[#008bc3] rounded-full text-white hover:bg-[#0073a8] transition-colors">
-                    <i className="fab fa-twitter text-lg"></i>
-                  </a>
-                  <a href="#" className="w-9 h-9 flex items-center justify-center bg-[#008bc3] rounded-full text-white hover:bg-[#0073a8] transition-colors">
-                    <i className="fab fa-instagram text-lg"></i>
-                </a>
+                <button
+                  className="mt-auto px-6 py-2 bg-[#008bc3] text-white rounded-full font-semibold hover:bg-[#0073a8] transition-all duration-300 shadow"
+                  onClick={() => alert(`Thông tin chi tiết về hoạt động: ${item.title}`)}
+                >
+                  Xem chi tiết
+                </button>
               </div>
-            </div>
-          ))}
+            ))}
           </div>
         </div>
       </div>

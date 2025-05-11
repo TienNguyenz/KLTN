@@ -18,19 +18,18 @@ const Footer = () => {
                                 <p><strong>Trường Trung học Thực hành Sài Gòn:</strong> 220 Trần Bình Trọng – Phường 4 – Quận 5</p>
                                 <p><strong>Trường Tiểu học Thực hành Đại học Sài Gòn:</strong> 18 – 20 Ngô Thời Nhiệm – Phường Võ Thị Sáu – Quận 3</p>
                             </div>
-
                         </li>
                         <li className="flex items-center space-x-4">
                             <img src="/src/images/Communication-gmail-icon.png" alt="Email" className="w-8 h-8" />
-                            <a href="mailto:daihocsaigon@sgu.edu.vn" className="hover:underline">
-                            daihocsaigon@sgu.edu.vn
+                            <a href="mailto:sgu@sgu.edu.vn" className="hover:underline">
+                            sgu@sgu.edu.vn
                             </a>
                         </li>
                         <li className="flex items-center space-x-4">
                             <img src="/src/images/6658756.png" alt="Phone" className="w-8 h-8" />
                             <span>
                             Điện thoại:
-                            (84-28) 38.354409 - 38.352309
+                            (028) 38 354 409 - 38 352 309
                             </span>
                         </li>
                     </ul>
@@ -94,9 +93,7 @@ const Footer = () => {
             {/* Bản quyền */}
             <div className="text-center mt-8">
                 <p>
-                    &copy; 2022 TDMU. Designed by 
-                    <a href="http://www.vandelaydesign.com/" className="text-blue-400 hover:underline"> TDMU</a>. 
-                    All rights reserved.
+                    &copy; {new Date().getFullYear()} SGU. Designed by SGU. All rights reserved.
                 </p>
             </div>
         </footer>

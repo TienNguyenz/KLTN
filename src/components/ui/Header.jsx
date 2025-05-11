@@ -16,7 +16,7 @@ export default function Header() {
         <Link to="/">
           <img 
             src="/src/images/SGU-LOGO.png" 
-            alt="Logo TDMU" 
+            alt="Logo SGU" 
             className="w-16 h-16 object-contain mr-4"
           />
         </Link>
