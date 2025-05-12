@@ -15,35 +15,53 @@ const LecturerDashboard = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
+  const [recentTopics, setRecentTopics] = useState([]);
+  // eslint-disable-next-line no-unused-vars
   const [stats, setStats] = useState({
     totalTopics: 0,
     supervisedTopics: 0,
     reviewTopics: 0,
     committeeTopics: 0
   });
-  const [recentTopics, setRecentTopics] = useState([]);
 
   useEffect(() => {
     const loadData = async () => {
       setLoading(true);
       try {
-        // Lấy thống kê tổng quan
-        const statsResponse = await axios.get(`/api/lecturers/${user?._id}/stats`);
-        setStats(statsResponse.data);
+        // Log user object để debug
+        console.log('User object:', user);
+        // Bỏ phần gọi API stats vì backend không có route này
+        // const statsResponse = await axios.get(`/api/lecturers/${user?.id}/stats`);
+        // setStats(statsResponse.data);
 
         // Lấy danh sách đề tài gần đây
-        const recentTopicsResponse = await axios.get(`/api/lecturers/${user?._id}/recent-topics`);
-        setRecentTopics(recentTopicsResponse.data);
+        const recentTopicsResponse = await axios.get(`/api/topics/instructor/${user?.id}/all`);
+        const topics = recentTopicsResponse.data;
+
+        // Tính toán số lượng
+        const totalTopics = topics.length;
+        const supervisedTopics = topics.filter(t => t.topic_teacher_status === 'approved').length;
+        const reviewTopics = topics.filter(t => t.topic_leader_status === 'approved').length;
+        const committeeTopics = topics.filter(t => t.topic_admin_status === 'approved').length;
+
+        setStats({
+          totalTopics,
+          supervisedTopics,
+          reviewTopics,
+          committeeTopics
+        });
+
+        setRecentTopics(topics.slice(0, 5));
       } catch (error) {
         console.error('Error loading dashboard data:', error);
       }
       setLoading(false);
     };
 
-    if (user?._id) {
-    loadData();
+    if (user?.id) {
+      loadData();
     }
-  }, [user?._id]);
+  }, [user?.id]);
 
   const recentTopicsColumns = [
     {
@@ -57,35 +75,39 @@ const LecturerDashboard = () => {
       ),
     },
     {
-      title: 'Loại',
-      dataIndex: 'topic_category',
-      key: 'topic_category',
-      width: '15%',
-      render: (category) => category?.type_name || 'N/A',
+      title: 'GVHD',
+      dataIndex: ['topic_instructor', 'user_name'],
+      key: 'topic_instructor',
+      render: (text, record) => record.topic_instructor?.user_name || '-',
     },
     {
-      title: 'Trạng thái',
-      dataIndex: 'topic_status',
-      key: 'topic_status',
-      width: '15%',
-      render: (status) => {
-        const statusConfig = {
-          'PENDING': { color: 'processing', text: 'Chờ duyệt' },
-          'APPROVED': { color: 'success', text: 'Đã duyệt' },
-          'REJECTED': { color: 'error', text: 'Từ chối' },
-          'IN_PROGRESS': { color: 'warning', text: 'Đang thực hiện' },
-          'COMPLETED': { color: 'success', text: 'Hoàn thành' }
-        };
-        const config = statusConfig[status] || { color: 'default', text: status };
-        return <Tag color={config.color}>{config.text}</Tag>;
-      },
+      title: 'Loại đề tài',
+      dataIndex: ['topic_category', 'type_name'],
+      key: 'topic_category',
+      render: (text, record) => record.topic_category?.type_name || record.topic_category?.topic_category_title || '-',
+    },
+    {
+      title: 'SV thực hiện',
+      dataIndex: 'topic_max_members',
+      key: 'topic_max_members',
+      render: (text) => text || '-',
+    },
+    {
+      title: 'Giảng viên',
+      dataIndex: 'topic_teacher_status',
+      key: 'topic_teacher_status',
+      render: (status) => status === 'approved' ? <Tag color="green">Đã duyệt</Tag> : status === 'pending' ? <Tag color="orange">Chờ duyệt</Tag> : status === 'rejected' ? <Tag color="red">Từ chối</Tag> : status,
+    },
+    {
+      title: 'Giáo vụ',
+      dataIndex: 'topic_admin_status',
+      key: 'topic_admin_status',
+      render: (status) => status === 'approved' ? <Tag color="green">Đã duyệt</Tag> : status === 'pending' ? <Tag color="orange">Chờ duyệt</Tag> : status === 'rejected' ? <Tag color="red">Từ chối</Tag> : status,
     },
   ];
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      <h1 className="text-2xl font-bold mb-6">Tổng quan</h1>
-
       {/* Thống kê */}
       <Row gutter={[16, 16]} className="mb-6">
         <Col xs={24} sm={12} lg={6}>
@@ -129,6 +151,7 @@ const LecturerDashboard = () => {
           </Card>
         </Col>
       </Row>
+      <h1 className="text-2xl font-bold mb-6">Tổng quan</h1>
 
       {/* Danh sách đề tài gần đây */}
       <Card 

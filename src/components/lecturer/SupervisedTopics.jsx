@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Tag, Space, Typography, Input, Button } from 'antd';
-import { SearchOutlined, FileExcelOutlined } from '@ant-design/icons';
+import { SearchOutlined, FileExcelOutlined, EditOutlined } from '@ant-design/icons';
 import Highlighter from 'react-highlight-words';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
@@ -111,6 +111,10 @@ const SupervisedTopics = () => {
     navigate(`/lecturer/supervised-topics/${topicId}`);
   };
 
+  const handleEditTopic = (topicId) => {
+    navigate(`/lecturer/topics/${topicId}/edit`);
+  };
+
   const columns = [
     {
       title: 'Tên đề tài',
@@ -181,6 +185,16 @@ const SupervisedTopics = () => {
         <Tag color={status === 'ACTIVE' ? 'success' : 'processing'} className="px-3 py-1">
           {status}
         </Tag>
+      ),
+    },
+    {
+      title: 'Hành động',
+      key: 'action',
+      render: (_, record) => (
+        <Button
+          icon={<EditOutlined />}
+          onClick={() => handleEditTopic(record.id)}
+        />
       ),
     },
   ];

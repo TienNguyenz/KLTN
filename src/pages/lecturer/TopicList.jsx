@@ -1,12 +1,14 @@
 import React, { useState } from 'react';
 import { Table, Button, Modal, Space, Input, Select, Tooltip } from 'antd';
 import { EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
+import { useNavigate } from 'react-router-dom';
 import { getTopics } from '../../data/mockThesisData';
 
 const { TextArea } = Input;
 const { Option } = Select;
 
 const TopicList = () => {
+  const navigate = useNavigate();
   const [selectedTopic, setSelectedTopic] = useState(null);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
   const [isEditModalVisible, setIsEditModalVisible] = useState(false);
@@ -23,14 +25,7 @@ const TopicList = () => {
   };
 
   const showEditModal = (topic) => {
-    setSelectedTopic(topic);
-    setEditForm({
-      name: topic.name,
-      major: topic.major,
-      type: topic.type,
-      description: topic.description
-    });
-    setIsEditModalVisible(true);
+    navigate(`/lecturer/topics/${topic._id}/edit`);
   };
 
   const handleClose = () => {
