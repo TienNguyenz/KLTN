@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Spin, Alert, Input, Select, Form } from 'antd';
+import { Button, Spin, Alert, Input, Select, Form, Card } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
-import { FaSave } from 'react-icons/fa';
+import { FaSave, FaArrowLeft, FaTrash, FaPaperPlane } from 'react-icons/fa';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -14,6 +14,30 @@ const EditTopic = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [form] = Form.useForm();
+  const [semesters, setSemesters] = useState([]);
+  const [majors, setMajors] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [isEditMode, setIsEditMode] = useState(false);
+
+  useEffect(() => {
+    const fetchDropdowns = async () => {
+      try {
+        const [semRes, majorRes, catRes] = await Promise.all([
+          axios.get('/api/semesters'),
+          axios.get('/api/majors'),
+          axios.get('/api/topics/topic-types')
+        ]);
+        setSemesters(semRes.data);
+        setMajors(majorRes.data);
+        setCategories(catRes.data);
+      } catch {
+        setSemesters([]);
+        setMajors([]);
+        setCategories([]);
+      }
+    };
+    fetchDropdowns();
+  }, []);
 
   useEffect(() => {
     const loadTopic = async () => {
@@ -21,30 +45,88 @@ const EditTopic = () => {
       setError(null);
       try {
         const res = await axios.get(`/api/topics/${id}`);
-        setTopic(res.data);
-        form.setFieldsValue({
-          topic_title: res.data.topic_title,
-          topic_description: res.data.topic_description,
-          topic_major: res.data.topic_major?._id,
-          topic_category: res.data.topic_category?._id,
-          topic_max_members: res.data.topic_max_members
-        });
-      } catch (err) {
+        console.log('Topic data:', res.data);
+        const topicData = res.data && res.data.data ? res.data.data : null;
+        if (!topicData) {
+          setError('Không có dữ liệu đề tài.');
+          setTopic(null);
+          return;
+        }
+        setTopic(topicData);
+      } catch (e) {
         setError('Không tìm thấy đề tài hoặc có lỗi khi tải dữ liệu.');
+        console.error('Lỗi khi gọi API /api/topics/:id:', e);
       } finally {
         setLoading(false);
       }
     };
     loadTopic();
-  }, [id, form]);
+  }, [id]);
+
+  useEffect(() => {
+    if (isEditMode && topic) {
+      form.setFieldsValue({
+        topic_title: topic.topic_title || '',
+        topic_description: topic.topic_description || '',
+        topic_major: (topic.topic_major && topic.topic_major._id) || topic.topic_major || '',
+        topic_category: (topic.topic_category && topic.topic_category._id) || topic.topic_category || '',
+        topic_max_members: topic.topic_max_members || '',
+        topic_registration_period: (topic.topic_registration_period && topic.topic_registration_period._id) || topic.topic_registration_period || ''
+      });
+    }
+  }, [isEditMode, topic, form]);
 
   const handleSubmit = async (values) => {
     try {
       await axios.put(`/api/topics/${id}`, values);
-      navigate('/lecturer/topics');
-    } catch (err) {
-      console.error('Error updating topic:', err);
+      const res = await axios.get(`/api/topics/${id}`);
+      const topicData = res.data && res.data.data ? res.data.data : null;
+      if (!topicData) {
+        setError('Không có dữ liệu đề tài sau khi cập nhật.');
+        setTopic(null);
+        setIsEditMode(false);
+        return;
+      }
+      setTopic(topicData);
+      setIsEditMode(false);
+    } catch (error) {
+      console.error('Error updating topic:', error);
     }
+  };
+
+  const handleDelete = async () => {
+    if (window.confirm('Bạn có chắc chắn muốn xóa đề tài này?')) {
+      try {
+        await axios.delete(`/api/topics/${id}`);
+        navigate('/lecturer/topics');
+      } catch {
+        alert('Có lỗi khi xóa đề tài!');
+      }
+    }
+  };
+
+  const handleSubmitRegister = async () => {
+    alert('Gửi đăng ký thành công! (Demo)');
+  };
+
+  // Helper để render an toàn các trường có thể là object hoặc string
+  const renderMajor = (major) => {
+    if (!major) return '';
+    if (typeof major === 'string') return major;
+    if (typeof major === 'object') return major.major_name || major.major_title || major.name || '';
+    return '';
+  };
+  const renderCategory = (cat) => {
+    if (!cat) return '';
+    if (typeof cat === 'string') return cat;
+    if (typeof cat === 'object') return cat.type_name || cat.topic_category_title || cat.name || '';
+    return '';
+  };
+  const renderSemester = (sem) => {
+    if (!sem) return '';
+    if (typeof sem === 'string') return sem;
+    if (typeof sem === 'object') return sem.semester || sem.title || '';
+    return '';
   };
 
   if (loading) {
@@ -64,7 +146,11 @@ const EditTopic = () => {
           type="error"
           showIcon
           action={
-            <Button onClick={() => navigate('/lecturer/topics')} size="small">
+            <Button 
+              onClick={() => navigate('/lecturer/topics')} 
+              size="small"
+              className="bg-red-500 hover:bg-red-600 text-white"
+            >
               Quay lại
             </Button>
           }
@@ -73,14 +159,116 @@ const EditTopic = () => {
     );
   }
 
+  // Chế độ XEM CHI TIẾT
+  if (!isEditMode) {
+    // Chỉ render khi đã có topic
+    if (!topic) {
+      return (
+        <div className="flex justify-center items-center min-h-screen">
+          <Spin size="large" />
+        </div>
+      );
+    }
+    return (
+      <div className="p-6 max-w-4xl mx-auto">
+        <Card className="shadow-lg border border-gray-200">
+          <div className="flex justify-between items-center mb-8">
+            <h1 className="text-3xl font-bold text-gray-800">Chi tiết đề tài</h1>
+            <Button onClick={() => navigate('/lecturer/topics')} className="bg-gray-400 hover:bg-gray-500 text-white font-semibold border-0 shadow-md flex items-center rounded px-4 py-2">Quay lại</Button>
+          </div>
+          <div className="space-y-7">
+            <div>
+              <div className="text-sm text-gray-500 mb-1">Tên đề tài</div>
+              <div className="text-xl font-bold text-gray-900 bg-gray-50 rounded px-4 py-2 border border-gray-200">{topic?.topic_title}</div>
+            </div>
+            <div className="grid grid-cols-3 gap-6">
+              <div>
+                <div className="text-sm text-gray-500 mb-1">Chuyên ngành</div>
+                <div className="text-base bg-gray-50 rounded px-3 py-1 border border-gray-200 min-h-[40px] flex items-center">{renderMajor(topic?.topic_major)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-500 mb-1">Loại đề tài</div>
+                <div className="text-base bg-gray-50 rounded px-3 py-1 border border-gray-200 min-h-[40px] flex items-center">{renderCategory(topic?.topic_category)}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-500 mb-1">Học kỳ</div>
+                <div className="text-base bg-gray-50 rounded px-3 py-1 border border-gray-200 min-h-[40px] flex items-center">{renderSemester(topic?.topic_registration_period)}</div>
+              </div>
+            </div>
+            <div>
+              <div className="text-sm text-gray-500 mb-1">Mô tả đề tài</div>
+              <div className="text-base whitespace-pre-line border rounded-lg p-4 bg-gray-50 min-h-[100px] border-gray-200">{topic?.topic_description}</div>
+            </div>
+            <div className="grid grid-cols-2 gap-6">
+              <div>
+                <div className="text-sm text-gray-500 mb-1">Số lượng sinh viên tối đa</div>
+                <div className="text-base font-semibold text-gray-700 bg-gray-50 rounded px-3 py-1 border border-gray-200 min-h-[40px] flex items-center">{topic?.topic_max_members}</div>
+              </div>
+              <div>
+                <div className="text-sm text-gray-500 mb-1">Sinh viên thực hiện</div>
+                <div className="flex flex-wrap gap-2 mt-1 min-h-[40px]">
+                  {topic?.topic_group_student && topic.topic_group_student.length > 0 ? (
+                    topic.topic_group_student.map((sv, idx) => (
+                      <span key={sv._id || idx} className="inline-block bg-gray-200 text-gray-800 rounded-full px-3 py-1 text-sm font-medium">
+                        {typeof sv === 'string'
+                          ? sv
+                          : (sv.user_name || sv.name || sv.title || JSON.stringify(sv))}
+                      </span>
+                    ))
+                  ) : (
+                    <span className="text-gray-400">Chưa có sinh viên thực hiện</span>
+                  )}
+                </div>
+              </div>
+            </div>
+          </div>
+          <div className="w-full flex flex-row justify-center gap-4 items-center mt-10">
+            <Button 
+              style={{ display: 'flex', alignItems: 'center', borderRadius: 999, padding: '12px 32px', fontSize: 18, fontWeight: 600, background: '#ef4444', color: '#fff', border: 'none', boxShadow: '0 2px 8px rgba(239,68,68,0.15)' }}
+              className="hover:bg-red-700 shadow-md"
+              icon={<FaTrash className="mr-2" />} 
+              size="large"
+              onClick={handleDelete}
+            >
+              Xóa
+            </Button>
+            <Button 
+              style={{ display: 'flex', alignItems: 'center', borderRadius: 999, padding: '12px 32px', fontSize: 18, fontWeight: 600, background: '#22c55e', color: '#fff', border: 'none', boxShadow: '0 2px 8px rgba(34,197,94,0.15)' }}
+              className="hover:bg-green-600 shadow-md"
+              icon={<FaPaperPlane className="mr-2" />} 
+              size="large"
+              onClick={handleSubmitRegister}
+            >
+              Gửi đăng ký
+            </Button>
+            <Button 
+              type="primary"
+              icon={<FaPaperPlane className="mr-2" />} 
+              size="large"
+              style={{ display: 'flex', alignItems: 'center', borderRadius: 999, padding: '14px 40px', fontSize: 20, fontWeight: 700 }}
+              className="bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg"
+              onClick={() => setIsEditMode(true)}
+              disabled={topic?.topic_group_student && topic.topic_group_student.length > 0}
+            >
+              Cập nhật đề tài
+            </Button>
+          </div>
+        </Card>
+      </div>
+    );
+  }
+
+  // Chế độ CHỈNH SỬA
   return (
     <div className="p-6 max-w-4xl mx-auto">
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-2xl font-bold">Chỉnh sửa đề tài</h1>
-        <Button onClick={() => navigate('/lecturer/topics')}>Quay lại</Button>
-      </div>
+      <Card className="shadow-lg">
+        <div className="flex justify-between items-center mb-6">
+          <h1 className="text-2xl font-bold text-gray-800">Chỉnh sửa đề tài</h1>
+          <Button onClick={() => setIsEditMode(false)} className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-pink-500 hover:to-purple-500 text-white shadow-lg border-0 flex items-center font-semibold px-6 py-2 rounded-lg">
+            <FaArrowLeft className="mr-2" /> Quay lại
+          </Button>
+        </div>
 
-      <div className="bg-white p-6 rounded-lg shadow">
         <Form
           form={form}
           layout="vertical"
@@ -90,65 +278,119 @@ const EditTopic = () => {
             topic_description: topic?.topic_description,
             topic_major: topic?.topic_major?._id,
             topic_category: topic?.topic_category?._id,
-            topic_max_members: topic?.topic_max_members
+            topic_max_members: topic?.topic_max_members,
+            topic_registration_period: topic?.topic_registration_period?._id || topic?.topic_registration_period
           }}
         >
-          <Form.Item
-            name="topic_title"
-            label="Tên đề tài"
-            rules={[{ required: true, message: 'Vui lòng nhập tên đề tài' }]}
-          >
-            <Input placeholder="Nhập tên đề tài" />
-          </Form.Item>
-
-          <div className="grid grid-cols-2 gap-6">
+          <div className="grid grid-cols-3 gap-6">
             <Form.Item
-              name="topic_major"
-              label="Chuyên ngành"
-              rules={[{ required: true, message: 'Vui lòng chọn chuyên ngành' }]}
+              name="topic_registration_period"
+              label={<span className="text-gray-700 font-medium">Học kỳ</span>}
+              rules={[{ required: true, message: 'Vui lòng chọn học kỳ' }]}
             >
-              <Select placeholder="Chọn chuyên ngành">
-                <Option value="CNTT">Công nghệ thông tin</Option>
-                <Option value="CNPM">Công nghệ phần mềm</Option>
-                <Option value="HTTT">Hệ thống thông tin</Option>
+              <Select placeholder="Chọn học kỳ" className="rounded-md">
+                {semesters.map(s => (
+                  <Option key={s._id} value={s._id}>{s.semester}</Option>
+                ))}
               </Select>
             </Form.Item>
-
+            <Form.Item
+              name="topic_major"
+              label={<span className="text-gray-700 font-medium">Chuyên ngành</span>}
+              rules={[{ required: true, message: 'Vui lòng chọn chuyên ngành' }]}
+            >
+              <Select 
+                placeholder="Chọn chuyên ngành"
+                className="rounded-md"
+              >
+                {majors.map(m => (
+                  <Option key={m._id} value={m._id}>{m.major_title || m.name}</Option>
+                ))}
+              </Select>
+            </Form.Item>
             <Form.Item
               name="topic_category"
-              label="Loại đề tài"
+              label={<span className="text-gray-700 font-medium">Loại đề tài</span>}
               rules={[{ required: true, message: 'Vui lòng chọn loại đề tài' }]}
             >
-              <Select placeholder="Chọn loại đề tài">
-                <Option value="KLTN">Khóa luận tốt nghiệp</Option>
-                <Option value="TTTN">Thực tập tốt nghiệp</Option>
-                <Option value="NCKH">Nghiên cứu khoa học</Option>
+              <Select 
+                placeholder="Chọn loại đề tài"
+                className="rounded-md"
+              >
+                {categories.map(c => (
+                  <Option key={c._id} value={c._id}>{c.topic_category_title || c.name}</Option>
+                ))}
               </Select>
             </Form.Item>
           </div>
 
           <Form.Item
-            name="topic_description"
-            label="Mô tả đề tài"
+            name="topic_title"
+            label={<span className="text-gray-700 font-medium">Tên đề tài</span>}
+            rules={[{ required: true, message: 'Vui lòng nhập tên đề tài' }]}
           >
-            <TextArea rows={6} placeholder="Nhập mô tả đề tài" />
+            <Input 
+              placeholder="Nhập tên đề tài" 
+              className="rounded-md"
+            />
+          </Form.Item>
+
+          <Form.Item
+            name="topic_description"
+            label={<span className="text-gray-700 font-medium">Mô tả đề tài</span>}
+          >
+            <TextArea 
+              rows={6} 
+              placeholder="Nhập mô tả đề tài"
+              className="rounded-md"
+            />
           </Form.Item>
 
           <Form.Item
             name="topic_max_members"
-            label="Số lượng sinh viên tối đa"
+            label={<span className="text-gray-700 font-medium">Số lượng sinh viên tối đa</span>}
             rules={[{ required: true, message: 'Vui lòng nhập số lượng sinh viên' }]}
           >
-            <Input type="number" min={1} max={3} />
+            <Input 
+              type="number" 
+              min={1} 
+              max={3}
+              className="rounded-md"
+            />
           </Form.Item>
 
-          <Form.Item className="mb-0 flex justify-end">
-            <Button type="primary" htmlType="submit" icon={<FaSave className="mr-2" />} size="large">
-              Lưu thay đổi
+          <div className="w-full flex flex-row justify-center gap-4 items-center mt-8">
+            <Button 
+              style={{ display: 'flex', alignItems: 'center', borderRadius: 999, padding: '12px 32px', fontSize: 18, fontWeight: 600, background: '#ef4444', color: '#fff', border: 'none', boxShadow: '0 2px 8px rgba(239,68,68,0.15)' }}
+              className="hover:bg-red-700 shadow-md"
+              icon={<FaTrash className="mr-2" />} 
+              size="large"
+              onClick={handleDelete}
+            >
+              Xóa
             </Button>
-          </Form.Item>
+            <Button 
+              style={{ display: 'flex', alignItems: 'center', borderRadius: 999, padding: '12px 32px', fontSize: 18, fontWeight: 600, background: '#22c55e', color: '#fff', border: 'none', boxShadow: '0 2px 8px rgba(34,197,94,0.15)' }}
+              className="hover:bg-green-600 shadow-md"
+              icon={<FaPaperPlane className="mr-2" />} 
+              size="large"
+              onClick={handleSubmitRegister}
+            >
+              Gửi đăng ký
+            </Button>
+            <Button 
+              type="primary" 
+              htmlType="submit" 
+              icon={<FaPaperPlane className="mr-2" />} 
+              size="large"
+              style={{ display: 'flex', alignItems: 'center', borderRadius: 999, padding: '14px 40px', fontSize: 20, fontWeight: 700 }}
+              className="bg-indigo-500 hover:bg-indigo-600 text-white shadow-lg"
+            >
+              Cập nhật đề tài
+            </Button>
+          </div>
         </Form>
-      </div>
+      </Card>
     </div>
   );
 };
