@@ -5,6 +5,7 @@ const User = require('../models/User');
 const Topic = require('../models/Topic');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
 // Cấu hình multer để lưu file
 const storage = multer.diskStorage({
@@ -189,6 +190,46 @@ router.delete('/collections/User/:id', async (req, res) => {
             error: error.message 
         });
     }
+});
+
+// Xóa file upload (avatar cũ)
+router.delete('/uploads/:filename', (req, res) => {
+  const filename = req.params.filename;
+  const filePath = path.join(__dirname, '../uploads', filename);
+  fs.unlink(filePath, (err) => {
+    if (err) {
+      return res.status(404).json({ message: 'Không tìm thấy file hoặc đã bị xóa!' });
+    }
+    res.json({ message: 'Xóa file thành công!' });
+  });
+});
+
+// Đổi mật khẩu với kiểm tra current password (hash hoặc plain text)
+router.put('/collections/User/:id/change-password', async (req, res) => {
+  try {
+    const userId = req.params.id;
+    const { currentPassword, newPassword } = req.body;
+    if (!currentPassword || !newPassword) {
+      return res.status(400).json({ message: 'Thiếu mật khẩu hiện tại hoặc mật khẩu mới.' });
+    }
+    if (currentPassword === newPassword) {
+      return res.status(400).json({ message: 'Mật khẩu mới không được trùng với mật khẩu hiện tại.' });
+    }
+    const user = await User.findById(userId);
+    if (!user) {
+      return res.status(404).json({ message: 'Không tìm thấy user.' });
+    }
+    const isMatch = await user.comparePassword(currentPassword);
+    if (!isMatch) {
+      return res.status(400).json({ message: 'Mật khẩu hiện tại không đúng.' });
+    }
+    user.password = newPassword;
+    await user.save();
+    res.json({ message: 'Đổi mật khẩu thành công!' });
+  } catch (error) {
+    console.error('Lỗi khi đổi mật khẩu:', error);
+    res.status(500).json({ message: 'Lỗi máy chủ khi đổi mật khẩu.' });
+  }
 });
 
 module.exports = router; 

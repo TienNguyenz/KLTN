@@ -98,7 +98,7 @@ const EditTopic = () => {
     if (window.confirm('Bạn có chắc chắn muốn xóa đề tài này?')) {
       try {
         await axios.delete(`/api/topics/${id}`);
-        navigate('/lecturer/topics');
+      navigate('/lecturer/topics');
       } catch {
         alert('Có lỗi khi xóa đề tài!');
       }
@@ -262,12 +262,12 @@ const EditTopic = () => {
   return (
     <div className="p-6 max-w-4xl mx-auto">
       <Card className="shadow-lg">
-        <div className="flex justify-between items-center mb-6">
+      <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold text-gray-800">Chỉnh sửa đề tài</h1>
           <Button onClick={() => setIsEditMode(false)} className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-pink-500 hover:to-purple-500 text-white shadow-lg border-0 flex items-center font-semibold px-6 py-2 rounded-lg">
             <FaArrowLeft className="mr-2" /> Quay lại
           </Button>
-        </div>
+      </div>
 
         <Form
           form={form}
@@ -283,17 +283,17 @@ const EditTopic = () => {
           }}
         >
           <div className="grid grid-cols-3 gap-6">
-            <Form.Item
+          <Form.Item
               name="topic_registration_period"
               label={<span className="text-gray-700 font-medium">Học kỳ</span>}
               rules={[{ required: true, message: 'Vui lòng chọn học kỳ' }]}
-            >
+          >
               <Select placeholder="Chọn học kỳ" className="rounded-md">
                 {semesters.map(s => (
                   <Option key={s._id} value={s._id}>{s.semester}</Option>
                 ))}
               </Select>
-            </Form.Item>
+          </Form.Item>
             <Form.Item
               name="topic_major"
               label={<span className="text-gray-700 font-medium">Chuyên ngành</span>}

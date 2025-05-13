@@ -567,36 +567,7 @@ const Students = () => {
         }
       } else {
         // For updating existing student
-        const currentFacultyId = formData.user_faculty || selectedStudent.user_faculty;
-
-        // If changing major, verify it belongs to the current faculty
-        if (formData.user_major && formData.user_major !== selectedStudent.user_major) {
-          const majorBelongsToFaculty = majors.some(m => 
-            m._id === formData.user_major && 
-            m.major_faculty === currentFacultyId
-          );
-          if (!majorBelongsToFaculty) {
-            throw new Error('Chuyên ngành đã chọn không thuộc khoa hiện tại');
-          }
-        }
-
-        // If changing faculty, must also select a valid major for that faculty
-        if (formData.user_faculty && formData.user_faculty !== selectedStudent.user_faculty) {
-          if (!formData.user_major) {
-            throw new Error('Vui lòng chọn chuyên ngành cho khoa mới');
-          }
-          const majorBelongsToNewFaculty = majors.some(m => 
-            m._id === formData.user_major && 
-            m.major_faculty === formData.user_faculty
-          );
-          if (!majorBelongsToNewFaculty) {
-            throw new Error('Vui lòng chọn chuyên ngành thuộc khoa mới');
-          }
-        }
-      }
-
-      if (selectedStudent) {
-        // Updating existing student
+        const oldAvatar = selectedStudent.user_avatar;
         const updatedData = {
           ...selectedStudent,
           ...formData,
@@ -619,58 +590,13 @@ const Students = () => {
         console.log('Update response:', response.data);
         
         if (response.data) {
+          // Xóa file avatar cũ nếu có và khác file mới
+          if (oldAvatar && oldAvatar !== user_avatar) {
+            const filename = oldAvatar.split('/').pop();
+            await axios.delete(`http://localhost:5000/api/database/uploads/${filename}`);
+          }
           setIsSuccessModalVisible(true);
           fetchStudents();
-        }
-      } else {
-        // Adding new student
-        const newStudentData = {
-          user_name: formData.user_name,
-          email: formData.email,
-          user_id: formData.user_id,
-          password: formattedPassword,
-          user_CCCD: formData.user_CCCD || '',
-          user_phone: formData.user_phone || '',
-          user_permanent_address: formData.user_permanent_address || '',
-          user_temporary_address: formData.user_temporary_address || '',
-          user_date_of_birth: formData.user_date_of_birth || '',
-          user_faculty: formData.user_faculty,
-          user_major: formData.user_major,
-          user_avatar: user_avatar || '',
-          role: 'sinhvien',
-          user_status: 'active',
-          user_department: formData.user_faculty || ''
-        };
-
-        // Validate required fields
-        const requiredFields = ['user_name', 'email', 'user_id', 'password', 'user_faculty', 'user_major', 'user_date_of_birth'];
-        const missingFields = requiredFields.filter(field => !newStudentData[field]);
-        
-        if (missingFields.length > 0) {
-          throw new Error(`Missing required fields: ${missingFields.join(', ')}`);
-        }
-
-        console.log('Sending create request with data:', newStudentData);
-        try {
-          const response = await axios.post(
-            'http://localhost:5000/api/auth/register',
-            newStudentData,
-            {
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            }
-          );
-          console.log('Create response:', response.data);
-
-          if (response.data) {
-            setIsSuccessModalVisible(true);
-            fetchStudents();
-          }
-        } catch (error) {
-          console.error('Registration error:', error.response?.data || error);
-          const errorMessage = error.response?.data?.message || 'Lỗi khi đăng ký sinh viên mới';
-          throw new Error(errorMessage);
         }
       }
     } catch (error) {
