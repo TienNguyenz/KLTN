@@ -11,7 +11,9 @@ import {
   faCalendarAlt,
   faMapMarkerAlt,
   faIdCard,
+  faKey,
 } from "@fortawesome/free-solid-svg-icons";
+import { Modal, Input, message } from 'antd';
 
 const LecturerProfile = () => {
   console.log("LecturerProfile component được render");
@@ -21,6 +23,18 @@ const LecturerProfile = () => {
   const [error, setError] = useState("");
   const [isEditing, setIsEditing] = useState(false);
   const [tempProfileData, setTempProfileData] = useState({});
+  const [isPasswordModalVisible, setIsPasswordModalVisible] = useState(false);
+  const [passwordData, setPasswordData] = useState({
+    currentPassword: '',
+    newPassword: '',
+    confirmPassword: ''
+  });
+  const [isResultModalVisible, setIsResultModalVisible] = useState(false);
+  const [resultMessage, setResultMessage] = useState('');
+  const [resultType, setResultType] = useState('success'); // 'success' hoặc 'error'
+  const [isSaveModalVisible, setIsSaveModalVisible] = useState(false);
+  const [saveMessage, setSaveMessage] = useState('');
+  const [saveType, setSaveType] = useState('success');
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -77,6 +91,14 @@ const LecturerProfile = () => {
   };
 
   const handleSaveClick = async () => {
+    // Validate số điện thoại
+    const phone = tempProfileData.user_phone || '';
+    if (!/^\d{10}$/.test(phone)) {
+      setSaveMessage('Số điện thoại phải có đúng 10 chữ số!');
+      setSaveType('error');
+      setIsSaveModalVisible(true);
+      return;
+    }
     setLoading(true);
     setError("");
     try {
@@ -85,6 +107,9 @@ const LecturerProfile = () => {
         setError("Bạn chưa đăng nhập hoặc không có quyền truy cập.");
         setLoading(false);
         setIsEditing(false);
+        setSaveMessage("Bạn chưa đăng nhập hoặc không có quyền truy cập.");
+        setSaveType('error');
+        setIsSaveModalVisible(true);
         return;
       }
 
@@ -92,8 +117,6 @@ const LecturerProfile = () => {
         user_phone: tempProfileData.user_phone,
         user_permanent_address: tempProfileData.user_permanent_address,
       };
-      console.log('Dữ liệu gửi đi (handleSaveClick):', JSON.stringify(dataToSend));
-
       const response = await fetch("/api/profile", {
         method: "PUT",
         headers: {
@@ -105,19 +128,149 @@ const LecturerProfile = () => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        throw new Error(
-          errorData.message || "Cập nhật thông tin giảng viên thất bại."
-        );
+        setSaveMessage(errorData.message || "Cập nhật thông tin giảng viên thất bại.");
+        setSaveType('error');
+        setIsSaveModalVisible(true);
+        throw new Error(errorData.message || "Cập nhật thông tin giảng viên thất bại.");
       }
 
       const updatedData = await response.json();
       setProfileData(updatedData);
       setIsEditing(false);
+      setSaveMessage("Lưu thông tin thành công!");
+      setSaveType('success');
+      setIsSaveModalVisible(true);
     } catch (error) {
       setError(error.message);
+      setSaveMessage(error.message || "Lưu thông tin thất bại!");
+      setSaveType('error');
+      setIsSaveModalVisible(true);
       console.error("Lỗi khi cập nhật thông tin giảng viên:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handlePasswordChange = async () => {
+    // Validate password mới
+    if (passwordData.newPassword.length < 6) {
+      setResultMessage('Mật khẩu mới phải có ít nhất 6 ký tự!');
+      setResultType('error');
+      setIsResultModalVisible(true);
+      return;
+    }
+    if (passwordData.newPassword !== passwordData.confirmPassword) {
+      setResultMessage('Mật khẩu mới không khớp!');
+      setResultType('error');
+      setIsResultModalVisible(true);
+      return;
+    }
+
+    try {
+      const requestBody = {
+        currentPassword: passwordData.currentPassword,
+        newPassword: passwordData.newPassword
+      };
+      const response = await fetch(`http://localhost:5000/api/database/collections/User/${profileData._id}/change-password`, {
+        method: 'PUT',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: JSON.stringify(requestBody)
+      });
+      const data = await response.json();
+      if (!response.ok) {
+        setResultMessage(data.message || 'Đổi mật khẩu thất bại!');
+        setResultType('error');
+        setIsResultModalVisible(true);
+        throw new Error(data.message || 'Đổi mật khẩu thất bại!');
+      }
+      setResultMessage('Đổi mật khẩu thành công!');
+      setResultType('success');
+      setIsResultModalVisible(true);
+      setTimeout(() => setIsPasswordModalVisible(false), 700);
+      setPasswordData({
+        currentPassword: '',
+        newPassword: '',
+        confirmPassword: ''
+      });
+    } catch (error) {
+      setResultMessage(error.message || 'Có lỗi xảy ra khi đổi mật khẩu');
+      setResultType('error');
+      setIsResultModalVisible(true);
+      console.error('=== CHI TIẾT LỖI ===');
+      console.error('Error name:', error.name);
+      console.error('Error message:', error.message);
+      console.error('Error stack:', error.stack);
+    }
+  };
+
+  const handleAvatarUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    // Kiểm tra kích thước file (max 5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      message.error('Kích thước file không được vượt quá 5MB');
+      return;
+    }
+
+    // Kiểm tra định dạng file
+    if (!file.type.startsWith('image/')) {
+      message.error('File phải là hình ảnh');
+      return;
+    }
+
+    const formData = new FormData();
+    formData.append('avatar', file);
+
+    // Lưu avatar cũ trước khi upload mới
+    const oldAvatar = profileData.user_avatar;
+
+    try {
+      const response = await fetch('http://localhost:5000/api/database/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${user.token}`
+        },
+        body: formData
+      });
+
+      if (!response.ok) {
+        throw new Error('Upload avatar thất bại');
+      }
+
+      const data = await response.json();
+      if (data.url) {
+        // Gọi API cập nhật user_avatar vào database
+        const updateRes = await fetch(`http://localhost:5000/api/database/collections/User/${profileData._id}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${user.token}`
+          },
+          body: JSON.stringify({ user_avatar: data.url })
+        });
+        if (!updateRes.ok) {
+          throw new Error('Cập nhật avatar vào hồ sơ thất bại');
+        }
+        // Cập nhật lại profileData để avatar mới hiển thị ngay
+        setProfileData(prev => ({ ...prev, user_avatar: data.url }));
+        message.success('Upload avatar thành công!');
+        // Xóa file avatar cũ nếu có và khác file mới
+        if (oldAvatar && oldAvatar !== data.url) {
+          const filename = oldAvatar.split('/').pop();
+          await fetch(`http://localhost:5000/api/database/uploads/${filename}`, {
+            method: 'DELETE',
+            headers: {
+              'Authorization': `Bearer ${user.token}`
+            }
+          });
+        }
+      }
+    } catch (error) {
+      message.error('Upload avatar thất bại: ' + error.message);
     }
   };
 
@@ -143,21 +296,29 @@ const LecturerProfile = () => {
         <h2 className="text-3xl font-semibold text-gray-800">
           <FontAwesomeIcon icon={faUserCircle} className="mr-3 text-blue-500" /> Hồ Sơ Giảng Viên
         </h2>
-        {!isEditing ? (
+        <div className="space-x-4">
           <button
-            onClick={handleEditClick}
-            className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:shadow-outline"
+            onClick={() => setIsPasswordModalVisible(true)}
+            className="bg-yellow-500 hover:bg-yellow-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:shadow-outline"
           >
-            <FontAwesomeIcon icon={faEdit} className="mr-2" /> Chỉnh Sửa
+            <FontAwesomeIcon icon={faKey} className="mr-2" /> Đổi Mật Khẩu
           </button>
-        ) : (
-          <button
-            onClick={handleSaveClick}
-            className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:shadow-outline"
-          >
-            <FontAwesomeIcon icon={faSave} className="mr-2" /> Lưu
-          </button>
-        )}
+          {!isEditing ? (
+            <button
+              onClick={handleEditClick}
+              className="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:shadow-outline"
+            >
+              <FontAwesomeIcon icon={faEdit} className="mr-2" /> Chỉnh Sửa
+            </button>
+          ) : (
+            <button
+              onClick={handleSaveClick}
+              className="bg-green-500 hover:bg-green-700 text-white font-bold py-2 px-4 rounded-lg transition-all duration-300 ease-in-out transform hover:scale-105 focus:outline-none focus:shadow-outline"
+            >
+              <FontAwesomeIcon icon={faSave} className="mr-2" /> Lưu
+            </button>
+          )}
+        </div>
       </div>
 
       {profileData && (
@@ -184,28 +345,7 @@ const LecturerProfile = () => {
                     type="file"
                     accept="image/*"
                     className="hidden"
-                    onChange={async (e) => {
-                      const file = e.target.files[0];
-                      if (file) {
-                        const formData = new FormData();
-                        formData.append('avatar', file);
-                        try {
-                          const response = await fetch('http://localhost:5000/api/database/upload', {
-                            method: 'POST',
-                            body: formData
-                          });
-                          const data = await response.json();
-                          if (data.url) {
-                            setTempProfileData(prev => ({
-                              ...prev,
-                              user_avatar: data.url
-                            }));
-                          }
-                        } catch (error) {
-                          console.error('Error uploading avatar:', error);
-                        }
-                      }
-                    }}
+                    onChange={handleAvatarUpload}
                   />
                   <FontAwesomeIcon icon={faEdit} />
                 </label>
@@ -284,6 +424,81 @@ const LecturerProfile = () => {
       {!profileData && !loading && !error && (
         <p className="text-gray-700">Không có thông tin cá nhân giảng viên.</p>
       )}
+
+      {/* Password Change Modal */}
+      <Modal
+        title="Đổi Mật Khẩu"
+        open={isPasswordModalVisible}
+        onOk={handlePasswordChange}
+        onCancel={() => setIsPasswordModalVisible(false)}
+        okText="Đổi Mật Khẩu"
+        cancelText="Hủy"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Mật khẩu hiện tại</label>
+            <Input.Password
+              value={passwordData.currentPassword}
+              onChange={(e) => setPasswordData(prev => ({ ...prev, currentPassword: e.target.value }))}
+              placeholder="Nhập mật khẩu hiện tại"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Mật khẩu mới</label>
+            <Input.Password
+              value={passwordData.newPassword}
+              onChange={(e) => setPasswordData(prev => ({ ...prev, newPassword: e.target.value }))}
+              placeholder="Nhập mật khẩu mới"
+            />
+          </div>
+          <div>
+            <label className="block text-sm font-medium text-gray-700">Xác nhận mật khẩu mới</label>
+            <Input.Password
+              value={passwordData.confirmPassword}
+              onChange={(e) => setPasswordData(prev => ({ ...prev, confirmPassword: e.target.value }))}
+              placeholder="Nhập lại mật khẩu mới"
+            />
+          </div>
+        </div>
+      </Modal>
+
+      {/* Modal thông báo kết quả đổi mật khẩu */}
+      <Modal
+        open={isResultModalVisible}
+        onOk={() => setIsResultModalVisible(false)}
+        onCancel={() => setIsResultModalVisible(false)}
+        okText="Đóng"
+        cancelButtonProps={{ style: { display: 'none' } }}
+        centered
+      >
+        <div className="text-center py-4">
+          {resultType === 'success' ? (
+            <span style={{ fontSize: 48, color: '#52c41a' }}>✔️</span>
+          ) : (
+            <span style={{ fontSize: 48, color: '#ff4d4f' }}>❌</span>
+          )}
+          <p className="mt-4 text-lg">{resultMessage}</p>
+        </div>
+      </Modal>
+
+      {/* Modal thông báo lưu thông tin */}
+      <Modal
+        open={isSaveModalVisible}
+        onOk={() => setIsSaveModalVisible(false)}
+        onCancel={() => setIsSaveModalVisible(false)}
+        okText="Đóng"
+        cancelButtonProps={{ style: { display: 'none' } }}
+        centered
+      >
+        <div className="text-center py-4">
+          {saveType === 'success' ? (
+            <span style={{ fontSize: 48, color: '#52c41a' }}>✔️</span>
+          ) : (
+            <span style={{ fontSize: 48, color: '#ff4d4f' }}>❌</span>
+          )}
+          <p className="mt-4 text-lg">{saveMessage}</p>
+        </div>
+      </Modal>
     </div>
   );
 };
