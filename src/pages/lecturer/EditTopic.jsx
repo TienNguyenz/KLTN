@@ -45,7 +45,6 @@ const EditTopic = () => {
       setError(null);
       try {
         const res = await axios.get(`/api/topics/${id}`);
-        console.log('Topic data:', res.data);
         const topicData = res.data && res.data.data ? res.data.data : null;
         if (!topicData) {
           setError('Không có dữ liệu đề tài.');
@@ -55,7 +54,6 @@ const EditTopic = () => {
         setTopic(topicData);
       } catch (e) {
         setError('Không tìm thấy đề tài hoặc có lỗi khi tải dữ liệu.');
-        console.error('Lỗi khi gọi API /api/topics/:id:', e);
       } finally {
         setLoading(false);
       }
@@ -106,7 +104,20 @@ const EditTopic = () => {
   };
 
   const handleSubmitRegister = async () => {
-    alert('Gửi đăng ký thành công! (Demo)');
+    try {
+      await axios.put(`/api/topics/${id}/submit`);
+      alert('Đã gửi đề tài lên admin chờ duyệt!');
+      // Reload lại dữ liệu đề tài để cập nhật trạng thái
+      const res = await axios.get(`/api/topics/${id}`);
+      const topicData = res.data && res.data.data ? res.data.data : null;
+      if (topicData) setTopic(topicData);
+    } catch (error) {
+      if (error.response && error.response.data && error.response.data.message) {
+        alert(error.response.data.message);
+      } else {
+        alert('Có lỗi khi gửi duyệt đề tài!');
+      }
+    }
   };
 
   // Helper để render an toàn các trường có thể là object hoặc string

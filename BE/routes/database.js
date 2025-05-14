@@ -229,7 +229,7 @@ router.put('/collections/User/:id/change-password', async (req, res) => {
   } catch (error) {
     console.error('Lỗi khi đổi mật khẩu:', error);
     res.status(500).json({ message: 'Lỗi máy chủ khi đổi mật khẩu.' });
-  }
+    }
 });
 
 module.exports = router; 

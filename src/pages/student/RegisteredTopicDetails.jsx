@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
-import { FaBook, FaUserGraduate, FaUsers, FaInfoCircle, FaEye, FaCheckCircle, FaTimesCircle, FaFileAlt } from 'react-icons/fa';
+import { FaBook, FaUserGraduate, FaUsers, FaInfoCircle, FaEye, FaCheckCircle, FaTimesCircle, FaFileAlt, FaFilePdf } from 'react-icons/fa';
 import axios from 'axios';
+import { toast } from 'react-toastify';
 
 const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee }) => {
   const statusMap = {
@@ -15,14 +16,13 @@ const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee
   // State để lưu file đã chọn
   const [outlineFile, setOutlineFile] = useState(null);
   const [finalFile, setFinalFile] = useState(null);
+  const [isUploadingOutline, setIsUploadingOutline] = useState(false);
+  const [isUploadingFinal, setIsUploadingFinal] = useState(false);
+  const [modalUpload, setModalUpload] = useState({ open: false, type: '', message: '' });
 
   const handleOutlineFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.name.endsWith('.docx')) {
-        // TODO: Chuyển đổi .docx sang .pdf (có thể dùng thư viện như docx2pdf hoặc gọi API)
-        alert('File .docx sẽ được chuyển sang .pdf. Chức năng đang được phát triển.');
-      }
       setOutlineFile(file);
     }
   };
@@ -30,29 +30,53 @@ const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee
   const handleFinalFileChange = (e) => {
     const file = e.target.files[0];
     if (file) {
-      if (file.name.endsWith('.docx')) {
-        // TODO: Chuyển đổi .docx sang .pdf (có thể dùng thư viện như docx2pdf hoặc gọi API)
-        alert('File .docx sẽ được chuyển sang .pdf. Chức năng đang được phát triển.');
-      }
       setFinalFile(file);
     }
   };
 
-  const handleUploadOutline = () => {
-    if (outlineFile) {
-      // TODO: Gọi API để upload file outlineFile
-      alert('Upload Đề cương thành công!');
-    } else {
-      alert('Vui lòng chọn file Đề cương.');
+  const handleUploadOutline = async () => {
+    if (!outlineFile) {
+      setModalUpload({ open: true, type: 'error', message: 'Vui lòng chọn file Đề cương.' });
+      return;
+    }
+    setIsUploadingOutline(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', outlineFile);
+      await axios.post(`/api/topics/${topic._id}/upload-outline`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setModalUpload({ open: true, type: 'success', message: 'Upload Đề cương thành công!' });
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Upload Đề cương thất bại!';
+      setModalUpload({ open: true, type: 'error', message: 'Upload Đề cương thất bại!\n' + msg });
+      setTimeout(() => window.location.reload(), 2500);
+    } finally {
+      setIsUploadingOutline(false);
     }
   };
 
-  const handleUploadFinal = () => {
-    if (finalFile) {
-      // TODO: Gọi API để upload file finalFile
-      alert('Upload Báo cáo cuối cùng thành công!');
-    } else {
-      alert('Vui lòng chọn file Báo cáo cuối cùng.');
+  const handleUploadFinal = async () => {
+    if (!finalFile) {
+      setModalUpload({ open: true, type: 'error', message: 'Vui lòng chọn file Báo cáo cuối cùng.' });
+      return;
+    }
+    setIsUploadingFinal(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', finalFile);
+      await axios.post(`/api/topics/${topic._id}/upload-final`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setModalUpload({ open: true, type: 'success', message: 'Upload Báo cáo cuối cùng thành công!' });
+      setTimeout(() => window.location.reload(), 2000);
+    } catch (err) {
+      const msg = err?.response?.data?.message || err.message || 'Upload Báo cáo cuối cùng thất bại!';
+      setModalUpload({ open: true, type: 'error', message: 'Upload Báo cáo cuối cùng thất bại!\n' + msg });
+      setTimeout(() => window.location.reload(), 2500);
+    } finally {
+      setIsUploadingFinal(false);
     }
   };
 
@@ -66,13 +90,13 @@ const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee
       });
       const data = await res.json();
       if (res.ok) {
-        alert('Hủy đăng ký đề tài thành công!');
-        window.location.reload();
+        toast.success('Hủy đăng ký đề tài thành công!');
+        setTimeout(() => window.location.reload(), 1200);
       } else {
-        alert(data.message || 'Có lỗi xảy ra khi hủy đăng ký!');
+        toast.error(data.message || 'Có lỗi xảy ra khi hủy đăng ký!');
       }
     } catch (err) {
-      alert('Có lỗi xảy ra khi hủy đăng ký!');
+      toast.error('Có lỗi xảy ra khi hủy đăng ký!');
     }
   };
 
@@ -175,34 +199,29 @@ const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee
           {/* Đề cương (Outline) */}
           <div className="bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col items-center">
             <span className="font-medium mb-2 text-blue-700 flex items-center gap-2">
-              <FaFileAlt className="text-xl" /> Đề cương (Outline)
+              <FaFilePdf className="text-2xl text-red-600" /> Đề cương (Outline)
             </span>
-            {topic.outlineFile ? (
+            {topic.topic_outline_file ? (
               <a
-                href={topic.outlineFile}
+                href={topic.topic_outline_file}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-green-700 underline mb-2 hover:text-green-900"
+                className="text-green-700 underline mb-2 hover:text-green-900 flex items-center gap-2"
               >
-                {topic.outlineFile.split('/').pop()}
+                {(topic.topic_outline_file_original_name || topic.topic_outline_file.split('/').pop()).replace(/\.(docx|pdf)$/i, '')}
               </a>
             ) : (
               <span className="text-red-500 mb-2">Chưa có file.</span>
             )}
             <div className="flex gap-2 mt-2">
-              <input
-                type="file"
-                id="outline-upload"
-                className="hidden"
-                onChange={handleOutlineFileChange}
-              />
-              <label htmlFor="outline-upload">
-                <button
-                  className="bg-gray-200 px-3 py-1 rounded text-sm hover:bg-gray-300 transition-colors"
-                  type="button"
-                >
-                  Chọn file
-                </button>
+              <label className="bg-gray-200 px-3 py-1 rounded text-sm hover:bg-gray-300 transition-colors cursor-pointer">
+                Chọn file
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".docx"
+                  onChange={handleOutlineFileChange}
+                />
               </label>
               <button
                 className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors"
@@ -217,40 +236,30 @@ const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee
           {/* Báo cáo cuối cùng */}
           <div className="bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col items-center">
             <span className="font-medium mb-2 text-blue-700 flex items-center gap-2">
-              <FaFileAlt className="text-xl" /> Báo cáo cuối cùng
+              <FaFilePdf className="text-2xl text-red-600" /> Báo cáo cuối cùng
             </span>
-            {topic.finalReportFile ? (
+            {topic.topic_final_report ? (
               <a
-                href={topic.finalReportFile}
+                href={topic.topic_final_report}
                 target="_blank"
                 rel="noopener noreferrer"
-                className="text-green-700 underline mb-2 hover:text-green-900"
+                className="text-green-700 underline mb-2 hover:text-green-900 flex items-center gap-2"
               >
-                {topic.finalReportFile.split('/').pop()}
+                {(topic.topic_final_report_original_name || topic.topic_final_report.split('/').pop()).replace(/\.(docx|pdf)$/i, '')}
               </a>
             ) : (
               <span className="text-red-500 mb-2">Chưa có file.</span>
             )}
             <div className="flex gap-2 mt-2">
-              <input
-                type="file"
-                id="final-upload"
-                className="hidden"
-                onChange={handleFinalFileChange}
-                disabled={topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'}
-              />
-              <label htmlFor="final-upload">
-                <button
-                  className={`px-3 py-1 rounded text-sm transition-colors ${
-                    topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-gray-200 hover:bg-gray-300'
-                  }`}
-                  type="button"
+              <label className="bg-gray-200 px-3 py-1 rounded text-sm hover:bg-gray-300 transition-colors cursor-pointer">
+                Chọn file
+                <input
+                  type="file"
+                  className="hidden"
+                  accept=".docx"
+                  onChange={handleFinalFileChange}
                   disabled={topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'}
-                >
-                  Chọn file
-                </button>
+                />
               </label>
               <button
                 className={`px-3 py-1 rounded text-sm transition-colors ${
@@ -305,6 +314,28 @@ const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee
           <span className="text-gray-400 italic">Chưa có thông tin hội đồng phản biện.</span>
         </div>
       </div>
+      {/* Overlay loading khi upload */}
+      {(isUploadingOutline || isUploadingFinal) && (
+        <div style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',background:'rgba(0,0,0,0.3)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}}>
+          <div style={{background:'#fff',padding:32,borderRadius:12,boxShadow:'0 2px 8px #0002',display:'flex',flexDirection:'column',alignItems:'center',gap:16}}>
+            <svg className="animate-spin" width="40" height="40" viewBox="0 0 40 40"><circle cx="20" cy="20" r="16" stroke="#008bc3" strokeWidth="4" fill="none" strokeDasharray="80" strokeDashoffset="60"/></svg>
+            <div style={{fontWeight:600,color:'#008bc3',fontSize:18}}>Đang chuyển file Word sang PDF, vui lòng chờ...</div>
+          </div>
+        </div>
+      )}
+      {/* Modal thông báo upload */}
+      {modalUpload.open && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center min-w-[320px] max-w-[90vw]">
+            <div className={`text-3xl mb-2 ${modalUpload.type === 'success' ? 'text-green-600' : 'text-red-600'}`}>{modalUpload.type === 'success' ? '✔️' : '❌'}</div>
+            <div className="text-lg font-semibold mb-2 text-center whitespace-pre-line">{modalUpload.message}</div>
+            <button
+              className="mt-2 px-4 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
+              onClick={() => { setModalUpload({ ...modalUpload, open: false }); window.location.reload(); }}
+            >Đóng</button>
+          </div>
+        </div>
+      )}
     </div>
   );
 };

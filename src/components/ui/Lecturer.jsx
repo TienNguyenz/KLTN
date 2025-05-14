@@ -392,8 +392,8 @@ const LecturerList = () => {
             const filename = oldAvatar.split('/').pop();
             await axios.delete(`http://localhost:5000/api/database/uploads/${filename}`);
           }
-          console.log('API update thành công, response:', response.data);
-          setIsSuccessModalVisible(true);
+            console.log('API update thành công, response:', response.data);
+            setIsSuccessModalVisible(true);
         }
       }
     } catch (error) {

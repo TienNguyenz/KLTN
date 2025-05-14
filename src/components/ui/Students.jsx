@@ -595,8 +595,8 @@ const Students = () => {
             const filename = oldAvatar.split('/').pop();
             await axios.delete(`http://localhost:5000/api/database/uploads/${filename}`);
           }
-          setIsSuccessModalVisible(true);
-          fetchStudents();
+            setIsSuccessModalVisible(true);
+            fetchStudents();
         }
       }
     } catch (error) {
