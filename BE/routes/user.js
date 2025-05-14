@@ -10,7 +10,10 @@ const Faculty = require('../models/Faculty');
 // Lấy danh sách giảng viên
 router.get('/instructors', async (req, res) => {
   try {
-    const instructors = await User.find({ role: 'giangvien' });
+    const { facultyId } = req.query;
+    let query = { role: 'giangvien' };
+    if (facultyId) query.user_faculty = facultyId;
+    const instructors = await User.find(query);
     res.json(instructors);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -20,7 +23,10 @@ router.get('/instructors', async (req, res) => {
 // Lấy danh sách sinh viên
 router.get('/students', async (req, res) => {
   try {
-    const students = await User.find({ role: 'sinhvien' });
+    const { facultyId } = req.query;
+    let query = { role: 'sinhvien' };
+    if (facultyId) query.user_faculty = facultyId;
+    const students = await User.find(query);
     res.json(students);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -30,7 +36,10 @@ router.get('/students', async (req, res) => {
 // Lấy danh sách chuyên ngành
 router.get('/majors', async (req, res) => {
   try {
-    const majors = await Major.find();
+    const { facultyId } = req.query;
+    let query = {};
+    if (facultyId) query.major_faculty = facultyId;
+    const majors = await Major.find(query);
     res.json(majors);
   } catch (err) {
     res.status(500).json({ error: err.message });
