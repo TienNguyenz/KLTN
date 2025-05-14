@@ -121,9 +121,9 @@ const AddTopic = () => {
         alert('Vui lòng chọn đủ số lượng sinh viên.');
         return;
       }
-      const canProceed = await checkStudentsRegistration();
-      if (!canProceed) {
-        return;
+    const canProceed = await checkStudentsRegistration();
+    if (!canProceed) {
+      return;
       }
     }
 

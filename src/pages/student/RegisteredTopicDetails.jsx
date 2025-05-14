@@ -1,9 +1,8 @@
-import React, { useEffect, useState } from 'react';
+import React, { useState } from 'react';
 import { FaBook, FaUserGraduate, FaUsers, FaInfoCircle, FaEye, FaCheckCircle, FaTimesCircle, FaFileAlt, FaFilePdf } from 'react-icons/fa';
 import axios from 'axios';
-import { toast } from 'react-toastify';
 
-const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee }) => {
+const RegisteredTopicDetails = ({ topic, onViewGrades, onViewCommittee }) => {
   const statusMap = {
     approved: 'Đã duyệt',
     pending: 'Chờ duyệt',
@@ -19,84 +18,65 @@ const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee
   const [isUploadingOutline, setIsUploadingOutline] = useState(false);
   const [isUploadingFinal, setIsUploadingFinal] = useState(false);
   const [modalUpload, setModalUpload] = useState({ open: false, type: '', message: '' });
+  const [modalConfirm, setModalConfirm] = useState({ open: false });
 
-  const handleOutlineFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setOutlineFile(file);
-    }
-  };
+  // Kiểm tra xem user hiện tại có phải là trưởng nhóm không (so sánh user_id)
+  const leaderId = topic.topic_group_student && topic.topic_group_student.length > 0
+    ? topic.topic_group_student[0].user_id
+    : null;
+  const isLeader = leaderId === user.user_id;
 
-  const handleFinalFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setFinalFile(file);
-    }
-  };
+  const handleOutlineFileChange = (e) => setOutlineFile(e.target.files[0] || null);
+  const handleFinalFileChange = (e) => setFinalFile(e.target.files[0] || null);
 
-  const handleUploadOutline = async () => {
-    if (!outlineFile) {
-      setModalUpload({ open: true, type: 'error', message: 'Vui lòng chọn file Đề cương.' });
+  const handleUpload = async (type) => {
+    const file = type === 'outline' ? outlineFile : finalFile;
+    if (!file) {
+      setModalUpload({ open: true, type: 'error', message: `Vui lòng chọn file ${type === 'outline' ? 'Đề cương' : 'Báo cáo cuối cùng'}.` });
       return;
     }
-    setIsUploadingOutline(true);
+    type === 'outline' ? setIsUploadingOutline(true) : setIsUploadingFinal(true);
     try {
       const formData = new FormData();
-      formData.append('file', outlineFile);
-      await axios.post(`/api/topics/${topic._id}/upload-outline`, formData, {
+      formData.append('file', file);
+      await axios.post(`/api/topics/${topic._id}/upload-${type}`, formData, {
         headers: { 'Content-Type': 'multipart/form-data' }
       });
-      setModalUpload({ open: true, type: 'success', message: 'Upload Đề cương thành công!' });
+      setModalUpload({ open: true, type: 'success', message: `Upload ${type === 'outline' ? 'Đề cương' : 'Báo cáo cuối cùng'} thành công!` });
       setTimeout(() => window.location.reload(), 2000);
     } catch (err) {
-      const msg = err?.response?.data?.message || err.message || 'Upload Đề cương thất bại!';
-      setModalUpload({ open: true, type: 'error', message: 'Upload Đề cương thất bại!\n' + msg });
+      setModalUpload({ open: true, type: 'error', message: `Upload ${type === 'outline' ? 'Đề cương' : 'Báo cáo cuối cùng'} thất bại!\n${err?.response?.data?.message || err.message}` });
       setTimeout(() => window.location.reload(), 2500);
     } finally {
-      setIsUploadingOutline(false);
+      type === 'outline' ? setIsUploadingOutline(false) : setIsUploadingFinal(false);
     }
   };
 
-  const handleUploadFinal = async () => {
-    if (!finalFile) {
-      setModalUpload({ open: true, type: 'error', message: 'Vui lòng chọn file Báo cáo cuối cùng.' });
+  const handleCancelRegistration = () => {
+    if (!isLeader) {
+      setModalUpload({ open: true, type: 'error', message: 'Chỉ trưởng nhóm mới có quyền hủy đề tài.' });
       return;
     }
-    setIsUploadingFinal(true);
-    try {
-      const formData = new FormData();
-      formData.append('file', finalFile);
-      await axios.post(`/api/topics/${topic._id}/upload-final`, formData, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      setModalUpload({ open: true, type: 'success', message: 'Upload Báo cáo cuối cùng thành công!' });
-      setTimeout(() => window.location.reload(), 2000);
-    } catch (err) {
-      const msg = err?.response?.data?.message || err.message || 'Upload Báo cáo cuối cùng thất bại!';
-      setModalUpload({ open: true, type: 'error', message: 'Upload Báo cáo cuối cùng thất bại!\n' + msg });
-      setTimeout(() => window.location.reload(), 2500);
-    } finally {
-      setIsUploadingFinal(false);
-    }
+    setModalConfirm({ open: true });
   };
 
-  const handleCancelRegistration = async () => {
-    if (!window.confirm('Bạn có chắc chắn muốn hủy đăng ký đề tài này?')) return;
+  const doCancelRegistration = async () => {
+    setModalConfirm({ open: false });
     try {
       const res = await fetch(`/api/topics/${topic._id}/cancel-registration`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ studentId: user.user_id })
+        body: JSON.stringify({ studentId: topic.topic_group_student[0]._id })
       });
       const data = await res.json();
       if (res.ok) {
-        toast.success('Hủy đăng ký đề tài thành công!');
+        setModalUpload({ open: true, type: 'success', message: 'Hủy đăng ký đề tài thành công!' });
         setTimeout(() => window.location.reload(), 1200);
       } else {
-        toast.error(data.message || 'Có lỗi xảy ra khi hủy đăng ký!');
+        setModalUpload({ open: true, type: 'error', message: data.message || 'Có lỗi xảy ra khi hủy đăng ký!' });
       }
-    } catch (err) {
-      toast.error('Có lỗi xảy ra khi hủy đăng ký!');
+    } catch {
+      setModalUpload({ open: true, type: 'error', message: 'Có lỗi xảy ra khi hủy đăng ký!' });
     }
   };
 
@@ -200,6 +180,18 @@ const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee
           <div className="bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col items-center">
             <span className="font-medium mb-2 text-blue-700 flex items-center gap-2">
               <FaFilePdf className="text-2xl text-red-600" /> Đề cương (Outline)
+              <a
+                href="/templates/outline_template.docx"
+                download
+                className="ml-2 text-blue-500 hover:text-blue-700 text-base flex items-center"
+                title="Tải file mẫu đề cương"
+              >
+                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                  <path d="M.5 9.9a.5.5 0 0 1 .5.5V13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2.6a.5.5 0 0 1 1 0V13a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3v-2.6a.5.5 0 0 1 .5-.5z"/>
+                  <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                </svg>
+                <span className="ml-1 underline">Tải mẫu</span>
+              </a>
             </span>
             {topic.topic_outline_file ? (
               <a
@@ -226,7 +218,7 @@ const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee
               <button
                 className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors"
                 type="button"
-                onClick={handleUploadOutline}
+                onClick={() => handleUpload('outline')}
               >
                 Tải lên
               </button>
@@ -268,7 +260,7 @@ const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee
                     : 'bg-blue-500 text-white hover:bg-blue-600'
                 }`}
                 type="button"
-                onClick={handleUploadFinal}
+                onClick={() => handleUpload('final')}
                 disabled={topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'}
               >
                 Tải lên
@@ -333,6 +325,18 @@ const RegisteredTopicDetails = ({ topic, onCancel, onViewGrades, onViewCommittee
               className="mt-2 px-4 py-1 bg-blue-500 text-white rounded hover:bg-blue-600"
               onClick={() => { setModalUpload({ ...modalUpload, open: false }); window.location.reload(); }}
             >Đóng</button>
+          </div>
+        </div>
+      )}
+      {modalConfirm.open && (
+        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black bg-opacity-40">
+          <div className="bg-white rounded-lg shadow-lg p-8 flex flex-col items-center min-w-[320px] max-w-[90vw]">
+            <div className="text-3xl mb-2 text-orange-500">⚠️</div>
+            <div className="text-lg font-semibold mb-2 text-center">Bạn có chắc chắn muốn hủy đăng ký đề tài này?</div>
+            <div className="flex gap-4 mt-2">
+              <button className="px-4 py-1 bg-gray-300 rounded hover:bg-gray-400" onClick={() => setModalConfirm({ open: false })}>Không</button>
+              <button className="px-4 py-1 bg-red-500 text-white rounded hover:bg-red-600" onClick={doCancelRegistration}>Có, hủy đề tài</button>
+            </div>
           </div>
         </div>
       )}

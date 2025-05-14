@@ -25,7 +25,6 @@ import {
 } from '@mui/material';
 import { Edit as EditIcon } from '@mui/icons-material';
 import axios from 'axios';
-import { useNavigate } from 'react-router-dom';
 import MuiAlert from '@mui/material/Alert';
 
 const ThesisApproval = ({ setSelected }) => {
@@ -34,23 +33,9 @@ const ThesisApproval = ({ setSelected }) => {
   const [selectedThesis, setSelectedThesis] = useState(null);
   const [page, setPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
-  const [formData, setFormData] = useState({
-    status: '',
-    comment: ''
-  });
+  const [formData, setFormData] = useState({ status: '', comment: '' });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
-
   const rowsPerPage = 5;
-
-  const statusMap = {
-    approved: 'Đã duyệt',
-    pending: 'Chờ duyệt',
-    rejected: 'Từ chối',
-    in_progress: 'Đang thực hiện',
-    completed: 'Đã hoàn thành',
-  };
-
-  const navigate = useNavigate();
 
   useEffect(() => {
     fetchTheses();
@@ -58,7 +43,7 @@ const ThesisApproval = ({ setSelected }) => {
 
   const fetchTheses = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/topics/admin/pending-topics');
+      const response = await axios.get('http://localhost:5000/api/topics/leader/pending-topics');
       const data = response.data;
       setTheses(data);
       setTotalPages(Math.ceil(data.length / rowsPerPage));
@@ -73,61 +58,28 @@ const ThesisApproval = ({ setSelected }) => {
 
   const handleOpen = (thesis) => {
     setSelectedThesis(thesis);
-    setFormData({
-      status: thesis.status || '',
-      comment: thesis.comment || ''
-    });
+    setFormData({ status: thesis.status || '', comment: thesis.comment || '' });
     setOpen(true);
   };
 
   const handleClose = () => {
     setOpen(false);
     setSelectedThesis(null);
-    setFormData({
-      status: '',
-      comment: ''
-    });
+    setFormData({ status: '', comment: '' });
   };
 
   const handleChange = (e) => {
     const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
+    setFormData(prev => ({ ...prev, [name]: value }));
   };
 
-  const handleSubmit = async () => {
-    try {
-      if (formData.status === 'approved') {
-        await axios.put(`http://localhost:5000/api/topics/${selectedThesis._id}/approve-by-admin`, { comment: formData.comment });
-        setSnackbar({ open: true, message: 'Đã duyệt đề tài thành công!', severity: 'success' });
-      } else if (formData.status === 'rejected') {
-        await axios.put(`http://localhost:5000/api/topics/${selectedThesis._id}/reject-by-admin`, { comment: formData.comment });
-        setSnackbar({ open: true, message: 'Đã từ chối đề tài và gửi thông báo cho sinh viên, giảng viên!', severity: 'error' });
-      } else {
-        setSnackbar({ open: true, message: 'Vui lòng chọn trạng thái duyệt!', severity: 'warning' });
-        return;
-      }
-      fetchTheses();
-      handleClose();
-      setTimeout(() => setSelected("topic-list"), 500);
-    } catch (error) {
-      console.error('Error updating thesis:', error);
-      setSnackbar({ open: true, message: 'Có lỗi xảy ra khi cập nhật đề tài. Vui lòng thử lại sau.', severity: 'error' });
-    }
-  };
-
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString('vi-VN');
-  };
+  const formatDate = (dateString) => new Date(dateString).toLocaleDateString('vi-VN');
 
   return (
     <Box sx={{ p: 3 }}>
       <Typography variant="h5" component="h2" sx={{ mb: 3 }}>
         Đề tài chờ xét duyệt
       </Typography>
-
       <TableContainer component={Paper}>
         <Table>
           <TableHead>
@@ -144,41 +96,29 @@ const ThesisApproval = ({ setSelected }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {theses
-              .slice((page - 1) * rowsPerPage, page * rowsPerPage)
-              .map((thesis, index) => (
-                <TableRow key={thesis._id}>
-                  <TableCell>{(page - 1) * rowsPerPage + index + 1}</TableCell>
-                  <TableCell>{thesis.topic_title}</TableCell>
-                  <TableCell>{thesis.topic_instructor?.user_name || 'Chưa có GVHD'}</TableCell>
-                  <TableCell>{thesis.topic_category?.topic_category_title || '-'}</TableCell>
-                  <TableCell>{thesis.topic_registration_period || '-'}</TableCell>
-                  <TableCell>{formatDate(thesis.createdAt)}</TableCell>
-                  <TableCell>{thesis.topic_max_members || 1}</TableCell>
-                  <TableCell>{thesis.academic_staff || '-'}</TableCell>
-                  <TableCell>
-                    <IconButton
-                      color="primary"
-                      onClick={() => handleOpen(thesis)}
-                    >
-                      <EditIcon />
-                    </IconButton>
-                  </TableCell>
-                </TableRow>
+            {theses.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((thesis, index) => (
+              <TableRow key={thesis._id}>
+                <TableCell>{(page - 1) * rowsPerPage + index + 1}</TableCell>
+                <TableCell>{thesis.topic_title}</TableCell>
+                <TableCell>{thesis.topic_instructor?.user_name || 'Chưa có GVHD'}</TableCell>
+                <TableCell>{thesis.topic_category?.topic_category_title || '-'}</TableCell>
+                <TableCell>{thesis.topic_registration_period || '-'}</TableCell>
+                <TableCell>{formatDate(thesis.createdAt)}</TableCell>
+                <TableCell>{thesis.topic_max_members || 1}</TableCell>
+                <TableCell>{thesis.academic_staff || '-'}</TableCell>
+                <TableCell>
+                  <IconButton color="primary" onClick={() => handleOpen(thesis)}>
+                    <EditIcon />
+                  </IconButton>
+                </TableCell>
+              </TableRow>
             ))}
           </TableBody>
         </Table>
       </TableContainer>
-
       <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center' }}>
-        <Pagination
-          count={totalPages}
-          page={page}
-          onChange={handlePageChange}
-          color="primary"
-        />
+        <Pagination count={totalPages} page={page} onChange={handlePageChange} color="primary" />
       </Box>
-
       <Dialog open={open} onClose={handleClose} maxWidth="sm" fullWidth>
         <DialogTitle>Xét duyệt đề tài</DialogTitle>
         <DialogContent>
@@ -221,22 +161,20 @@ const ThesisApproval = ({ setSelected }) => {
                     </Box>
                   </Box>
                 </Box>
-
                 {/* Mô tả chi tiết */}
                 <Box sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: 2, background: '#f0f4ff' }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#1976d2', mb: 1 }}>
                     Mô tả chi tiết
-                </Typography>
+                  </Typography>
                   <Typography variant="body2" sx={{ whiteSpace: 'pre-line', color: '#333' }}>
                     {selectedThesis.topic_description}
-                </Typography>
+                  </Typography>
                 </Box>
-
                 {/* Danh sách sinh viên */}
                 <Box sx={{ mb: 2, p: 2, border: '1px solid #e0e0e0', borderRadius: 2, background: '#f9fafb' }}>
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#1976d2', mb: 1 }}>
                     Danh sách sinh viên
-                </Typography>
+                  </Typography>
                   <table style={{ width: '100%', borderCollapse: 'collapse', background: 'white' }}>
                     <thead>
                       <tr style={{ background: '#f0f4ff' }}>
@@ -258,7 +196,6 @@ const ThesisApproval = ({ setSelected }) => {
                 </Box>
               </>
             )}
-
             <TextField
               fullWidth
               label="Nhận xét"
@@ -274,13 +211,13 @@ const ThesisApproval = ({ setSelected }) => {
           <Button
             onClick={async () => {
               try {
-                const response = await axios.put(`http://localhost:5000/api/topics/${selectedThesis._id}/reject-by-admin`, { comment: formData.comment });
+                const response = await axios.put(`http://localhost:5000/api/topics/${selectedThesis._id}/reject-by-leader`, { comment: formData.comment });
                 if (response.data.message) {
                   setSnackbar({ open: true, message: 'Đã từ chối đề tài và gửi thông báo cho sinh viên, giảng viên!', severity: 'error' });
                   handleClose();
                   setTimeout(() => setSelected("topic-list"), 500);
                 }
-              } catch (error) {
+              } catch {
                 setSnackbar({ open: true, message: 'Có lỗi khi từ chối đề tài!', severity: 'error' });
               }
             }}
@@ -293,13 +230,13 @@ const ThesisApproval = ({ setSelected }) => {
           <Button
             onClick={async () => {
               try {
-                const response = await axios.put(`http://localhost:5000/api/topics/${selectedThesis._id}/approve-by-admin`, { comment: formData.comment });
+                const response = await axios.put(`http://localhost:5000/api/topics/${selectedThesis._id}/approve-by-leader`, { comment: formData.comment });
                 if (response.data.message) {
                   setSnackbar({ open: true, message: 'Đã duyệt đề tài thành công!', severity: 'success' });
                   handleClose();
                   setTimeout(() => setSelected("topic-list"), 500);
                 }
-              } catch (error) {
+              } catch {
                 setSnackbar({ open: true, message: 'Có lỗi khi duyệt đề tài!', severity: 'error' });
               }
             }}
