@@ -24,21 +24,21 @@ const TopicRegistration = () => {
   useEffect(() => {
     const fetchTopic = async () => {
       try {
-        setIsLoading(true);
+    setIsLoading(true);
         const response = await axios.get(`/api/topics/${topicId}`);
         console.log('API /api/topics/:id response:', response.data);
         if (response.data && response.data.data) {
           setTopic(response.data.data);
         } else if (response.data) {
           setTopic(response.data);
-        } else {
-          setError('Không tìm thấy thông tin đề tài với ID này.');
-        }
+      } else {
+        setError('Không tìm thấy thông tin đề tài với ID này.');
+      }
       } catch (error) {
         console.error('Error fetching topic:', error);
         setError(error.response?.data?.message || 'Có lỗi xảy ra khi tải thông tin đề tài.');
       } finally {
-        setIsLoading(false);
+      setIsLoading(false);
       }
     };
 
@@ -56,13 +56,18 @@ const TopicRegistration = () => {
   }, [topicId, user?.user_id, facultyId]);
 
   const handleMemberChange = (selectedOption, memberType) => {
+    console.log('Selected option:', selectedOption);
+    console.log('Current selectedMembers:', selectedMembers);
+    
     const isAlreadySelected = Object.values(selectedMembers).some(member => 
       member && member.value === selectedOption?.value
     );
+
     if (isAlreadySelected) {
       alert('Sinh viên này đã được chọn!');
-      return; 
+        return; 
     }
+    
     setSelectedMembers(prev => ({
       ...prev,
       [memberType]: selectedOption
@@ -72,6 +77,7 @@ const TopicRegistration = () => {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     try {
+      // Lấy _id của trưởng nhóm (user hiện tại)
       let leaderId = user._id;
       if (!leaderId) {
         const leader = students.find(s => s.user_id === user.user_id);
@@ -81,9 +87,11 @@ const TopicRegistration = () => {
         alert('Không xác định được ID của trưởng nhóm.');
         return;
       }
+      // Tạo object chứa thông tin đăng ký
       const registrationData = {
         studentId: leaderId,
       };
+      // Thêm các thành viên được chọn vào data
       for (let i = 2; i <= topic.topic_max_members; i++) {
         const memberId = selectedMembers[`member${i}`]?.value;
         if (memberId) {
@@ -92,8 +100,9 @@ const TopicRegistration = () => {
       }
       await axios.post(`/api/topics/${topicId}/register`, registrationData);
       alert('Đăng ký đề tài thành công!');
-      navigate('/student');
+    navigate('/student'); 
     } catch (error) {
+      console.error('Error registering topic:', error);
       if (error.response?.data?.registeredMembers) {
         alert(error.response.data.registeredMembers.join('\n'));
       } else if (error.response?.data?.message) {
@@ -163,7 +172,7 @@ const TopicRegistration = () => {
                <label className="block text-sm font-medium text-gray-500 mb-1">Giảng viên hướng dẫn</label>
                <p className="text-md text-gray-800 flex items-center">
                   <FaUserGraduate className="text-[#008bc3] mr-2 flex-shrink-0" /> 
-              {topic.topic_instructor?.user_name}
+              {topic.topic_instructor?.name || topic.topic_instructor || 'Chưa có giảng viên'}
                 </p>
              </div>
               <div>
@@ -214,7 +223,7 @@ const TopicRegistration = () => {
                 return (
                   <div key={memberIndex}>
                     <label className="block text-sm font-medium text-gray-600 mb-2">
-                      Sinh viên {memberIndex} {memberIndex === 2 ? '(Chọn ít nhất 1 thành viên)' : ''}
+                      Sinh viên {memberIndex}
                     </label>
                     <Select
                       options={studentOptions}

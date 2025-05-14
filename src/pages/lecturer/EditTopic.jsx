@@ -45,6 +45,7 @@ const EditTopic = () => {
       setError(null);
       try {
         const res = await axios.get(`/api/topics/${id}`);
+        console.log('Topic data:', res.data);
         const topicData = res.data && res.data.data ? res.data.data : null;
         if (!topicData) {
           setError('Không có dữ liệu đề tài.');
@@ -54,6 +55,7 @@ const EditTopic = () => {
         setTopic(topicData);
       } catch (e) {
         setError('Không tìm thấy đề tài hoặc có lỗi khi tải dữ liệu.');
+        console.error('Lỗi khi gọi API /api/topics/:id:', e);
       } finally {
         setLoading(false);
       }
