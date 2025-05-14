@@ -288,6 +288,7 @@ const TopicsList = () => {
 // Component Đề xuất Đề tài
 const Proposals = () => {
   const { user } = useAuth();
+  const facultyId = user?.user_faculty; // Lấy facultyId của sinh viên
   const [formData, setFormData] = useState({
     topicName: '',
     supervisorId: '',
@@ -318,20 +319,15 @@ const Proposals = () => {
           topicTypesRes,
           studentsRes
         ] = await Promise.all([
-          // Lấy danh sách giảng viên
-          axios.get('/api/instructors'),
-          // Lấy danh sách chuyên ngành
-          axios.get('/api/majors'),
-          // Lấy danh sách loại đề tài
+          axios.get(`/api/instructors?facultyId=${facultyId}`),
+          axios.get(`/api/majors?facultyId=${facultyId}`),
           axios.get('/api/topics/topic-types'),
-          // Lấy danh sách sinh viên
-          axios.get('/api/students')
+          axios.get(`/api/students?facultyId=${facultyId}`)
         ]);
 
         setInstructors(instructorsRes.data);
         setMajors(majorsRes.data);
         setTopicTypes(topicTypesRes.data);
-        // Lọc bỏ user hiện tại khỏi danh sách sinh viên
         setStudents(studentsRes.data.filter(s => s._id !== user?.user_id));
       } catch (error) {
         console.error('Error fetching data:', error);
@@ -340,8 +336,8 @@ const Proposals = () => {
       }
     };
 
-    fetchData();
-  }, [user?.user_id]);
+    if (facultyId) fetchData();
+  }, [user?.user_id, facultyId]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
