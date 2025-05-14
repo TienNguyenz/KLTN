@@ -15,6 +15,8 @@ const topicSchema = new mongoose.Schema({
     topic_leader_status: { type: String, enum: ['pending', 'approved', 'rejected'], default: 'pending' },
     topic_advisor_request: String,
     topic_final_report: String,
+    topic_outline_file_original_name: String,
+    topic_final_report_original_name: String,
     topic_defense_request: String,
     rubric_instructor: String,
     rubric_reviewer: String,

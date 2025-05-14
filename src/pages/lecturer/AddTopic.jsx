@@ -98,8 +98,8 @@ const AddTopic = () => {
     e.preventDefault();
     
     // Kiểm tra thông tin cơ bản
-    if (!topicName || !semester || !topicType || !description || selectedStudents.length !== studentCount) {
-      alert('Vui lòng điền đầy đủ thông tin và chọn đủ số lượng sinh viên.');
+    if (!topicName || !semester || !topicType || !description) {
+      alert('Vui lòng điền đầy đủ thông tin bắt buộc.');
       return;
     }
 
@@ -114,10 +114,17 @@ const AddTopic = () => {
       return;
     }
 
-    // Kiểm tra sinh viên đã đăng ký đề tài khác chưa
-    const canProceed = await checkStudentsRegistration();
-    if (!canProceed) {
-      return;
+    // Không bắt buộc phải chọn sinh viên
+    // Nếu có chọn sinh viên thì kiểm tra số lượng và đã đăng ký đề tài khác chưa
+    if (selectedStudents.length > 0) {
+      if (selectedStudents.length !== studentCount) {
+        alert('Vui lòng chọn đủ số lượng sinh viên.');
+        return;
+      }
+      const canProceed = await checkStudentsRegistration();
+      if (!canProceed) {
+        return;
+      }
     }
 
     try {

@@ -599,7 +599,7 @@ const Proposals = () => {
                   {students
                     .filter(student => {
                       // Không hiển thị người dùng hiện tại (trưởng nhóm)
-                      if (student._id === user._id) return false;
+                      if (student._id === user._id || student.user_id === user.user_id) return false;
                       // Kiểm tra xem sinh viên đã được chọn ở ô khác chưa
                       const isSelectedInOtherField = Object.entries(formData)
                         .filter(([key]) => key.startsWith('student'))

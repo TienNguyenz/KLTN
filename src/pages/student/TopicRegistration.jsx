@@ -8,6 +8,7 @@ import Select from 'react-select';
 const TopicRegistration = () => {
   const { topicId } = useParams();
   const { user } = useAuth();
+  const facultyId = user?.user_faculty;
   const navigate = useNavigate();
   
   const [topic, setTopic] = useState(null);
@@ -23,51 +24,45 @@ const TopicRegistration = () => {
   useEffect(() => {
     const fetchTopic = async () => {
       try {
-    setIsLoading(true);
+        setIsLoading(true);
         const response = await axios.get(`/api/topics/${topicId}`);
-        if (response.data) {
+        console.log('API /api/topics/:id response:', response.data);
+        if (response.data && response.data.data) {
+          setTopic(response.data.data);
+        } else if (response.data) {
           setTopic(response.data);
-      } else {
-        setError('Không tìm thấy thông tin đề tài với ID này.');
-      }
+        } else {
+          setError('Không tìm thấy thông tin đề tài với ID này.');
+        }
       } catch (error) {
         console.error('Error fetching topic:', error);
         setError(error.response?.data?.message || 'Có lỗi xảy ra khi tải thông tin đề tài.');
       } finally {
-      setIsLoading(false);
+        setIsLoading(false);
       }
     };
 
     const fetchStudents = async () => {
       try {
-        const response = await axios.get('/api/students');
-        console.log('Current user:', user);
-        console.log('All students:', response.data);
-        const filteredStudents = response.data.filter(student => student.user_id !== user?.user_id);
-        console.log('Filtered students:', filteredStudents);
-        setStudents(filteredStudents);
+        const response = await axios.get(`/api/students?facultyId=${facultyId}`);
+        setStudents(response.data);
       } catch (error) {
         console.error('Error fetching students:', error);
       }
     };
 
     fetchTopic();
-    fetchStudents();
-  }, [topicId, user?.user_id]);
+    if (facultyId) fetchStudents();
+  }, [topicId, user?.user_id, facultyId]);
 
   const handleMemberChange = (selectedOption, memberType) => {
-    console.log('Selected option:', selectedOption);
-    console.log('Current selectedMembers:', selectedMembers);
-    
     const isAlreadySelected = Object.values(selectedMembers).some(member => 
       member && member.value === selectedOption?.value
     );
-
     if (isAlreadySelected) {
       alert('Sinh viên này đã được chọn!');
-        return; 
+      return; 
     }
-    
     setSelectedMembers(prev => ({
       ...prev,
       [memberType]: selectedOption
@@ -76,28 +71,32 @@ const TopicRegistration = () => {
 
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
-    
     try {
-      // Tạo object chứa thông tin đăng ký
+      let leaderId = user._id;
+      if (!leaderId) {
+        const leader = students.find(s => s.user_id === user.user_id);
+        leaderId = leader?._id;
+      }
+      if (!leaderId) {
+        alert('Không xác định được ID của trưởng nhóm.');
+        return;
+      }
       const registrationData = {
-        studentId: user?.user_id,
+        studentId: leaderId,
       };
-    
-      // Thêm các thành viên được chọn vào data
       for (let i = 2; i <= topic.topic_max_members; i++) {
         const memberId = selectedMembers[`member${i}`]?.value;
         if (memberId) {
           registrationData[`member${i}Id`] = memberId;
         }
       }
-
       await axios.post(`/api/topics/${topicId}/register`, registrationData);
-      
       alert('Đăng ký đề tài thành công!');
-    navigate('/student'); 
+      navigate('/student');
     } catch (error) {
-      console.error('Error registering topic:', error);
-      if (error.response?.data?.message) {
+      if (error.response?.data?.registeredMembers) {
+        alert(error.response.data.registeredMembers.join('\n'));
+      } else if (error.response?.data?.message) {
         alert(error.response.data.message);
       } else {
         alert('Có lỗi xảy ra khi đăng ký đề tài.');
@@ -119,26 +118,16 @@ const TopicRegistration = () => {
 
   const studentOptions = students
     .filter(student => {
-      console.log('Checking student:', student);
-      console.log('Against selected members:', selectedMembers);
-      
-      if (student.user_id === user?.user_id) {
-        console.log('Filtering out current user:', student.user_id);
-        return false;
-      }
-
+      // Không hiển thị trưởng nhóm (user hiện tại) trong dropdown
+      if (student._id === user._id || student.user_id === user?.user_id) return false;
+      // ...các filter khác
       const isSelected = Object.values(selectedMembers).some(member => 
         member && (
           member.value === student._id || 
           member.label.includes(student.user_id)
         )
       );
-
-      if (isSelected) {
-        console.log('Filtering out selected member:', student.user_id);
-        return false;
-      }
-
+      if (isSelected) return false;
       return true;
     })
     .map(student => ({
@@ -220,12 +209,12 @@ const TopicRegistration = () => {
            </div>
            
               {/* Các thành viên còn lại */}
-              {Array.from({ length: topic.topic_max_members - 1 }, (_, idx) => {
+              {topic.topic_max_members > 1 && Array.from({ length: topic.topic_max_members - 1 }, (_, idx) => {
                 const memberIndex = idx + 2;
                 return (
                   <div key={memberIndex}>
                     <label className="block text-sm font-medium text-gray-600 mb-2">
-                      Sinh viên {memberIndex}
+                      Sinh viên {memberIndex} {memberIndex === 2 ? '(Chọn ít nhất 1 thành viên)' : ''}
                     </label>
                     <Select
                       options={studentOptions}
