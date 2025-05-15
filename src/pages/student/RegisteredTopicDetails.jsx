@@ -208,12 +208,12 @@ const RegisteredTopicDetails = ({ topic, onViewGrades, onViewCommittee }) => {
             <div className="flex gap-2 mt-2">
               <label className="bg-gray-200 px-3 py-1 rounded text-sm hover:bg-gray-300 transition-colors cursor-pointer">
                 Chọn file
-                <input
-                  type="file"
-                  className="hidden"
+              <input
+                type="file"
+                className="hidden"
                   accept=".docx"
-                  onChange={handleOutlineFileChange}
-                />
+                onChange={handleOutlineFileChange}
+              />
               </label>
               <button
                 className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors"
@@ -245,11 +245,11 @@ const RegisteredTopicDetails = ({ topic, onViewGrades, onViewCommittee }) => {
             <div className="flex gap-2 mt-2">
               <label className="bg-gray-200 px-3 py-1 rounded text-sm hover:bg-gray-300 transition-colors cursor-pointer">
                 Chọn file
-                <input
-                  type="file"
-                  className="hidden"
+              <input
+                type="file"
+                className="hidden"
                   accept=".docx"
-                  onChange={handleFinalFileChange}
+                onChange={handleFinalFileChange}
                   disabled={topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'}
                 />
               </label>

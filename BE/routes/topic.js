@@ -812,4 +812,19 @@ router.put('/:id/submit', async (req, res) => {
   }
 });
 
+// Gán giảng viên phản biện cho đề tài
+router.put('/:id/assign-reviewer', async (req, res) => {
+  try {
+    const { reviewerId } = req.body;
+    const topic = await Topic.findByIdAndUpdate(
+      req.params.id,
+      { topic_reviewer: reviewerId },
+      { new: true }
+    );
+    res.json(topic);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
 module.exports = router; 
