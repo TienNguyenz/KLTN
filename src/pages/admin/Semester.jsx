@@ -5,8 +5,6 @@ import { FaEdit, FaTrash } from 'react-icons/fa';
 import moment from 'moment';
 import axios from 'axios';
 
-const { confirm } = Modal;
-
 const Semester = () => {
   const [semesters, setSemesters] = useState([]);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -40,37 +38,23 @@ const Semester = () => {
   }, []);
 
   const showDeleteConfirm = (record) => {
-    confirm({
-      title: 'Xác nhận xóa',
-      icon: <ExclamationCircleFilled />,
-      content: `Bạn có chắc chắn muốn xóa ${record.semester}?`,
-      okText: 'Xóa',
-      okType: 'danger',
-      cancelText: 'Hủy',
-      onOk() {
-        return new Promise((resolve, reject) => {
-          axios.delete(`http://localhost:5000/api/semesters/${record._id}`)
-            .then((response) => {
-              console.log('Delete response:', response);
-              setSuccessMessage('Xóa học kỳ thành công!');
-              setIsSuccessModalVisible(true);
-              fetchSemesters();
-              resolve();
-            })
-            .catch((error) => {
-              console.error('Delete error:', error);
-              if (error.response) {
-                message.error(error.response.data.message || 'Lỗi khi xóa học kỳ');
-              } else if (error.request) {
-                message.error('Không thể kết nối đến server');
-              } else {
-                message.error('Lỗi khi xóa học kỳ');
-              }
-              reject();
-            });
+    if (window.confirm(`Bạn có chắc chắn muốn xóa ${record.semester}?`)) {
+      axios.delete(`http://localhost:5000/api/semesters/${record._id}`)
+        .then(() => {
+          setSuccessMessage('Xóa học kỳ thành công!');
+          setIsSuccessModalVisible(true);
+          fetchSemesters();
+        })
+        .catch((error) => {
+          if (error.response) {
+            message.error(error.response.data.message || 'Lỗi khi xóa học kỳ');
+          } else if (error.request) {
+            message.error('Không thể kết nối đến server');
+          } else {
+            message.error('Lỗi khi xóa học kỳ');
+          }
         });
-      },
-    });
+    }
   };
 
   const columns = [

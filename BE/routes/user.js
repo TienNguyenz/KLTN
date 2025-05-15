@@ -160,4 +160,28 @@ router.get('/export/majors', async (req, res) => {
   }
 });
 
+// Lấy danh sách giảng viên theo chuyên ngành (major)
+router.get('/lecturers', async (req, res) => {
+  try {
+    const { majorId } = req.query; // majorId là ObjectId của chuyên ngành
+    let query = { role: 'giangvien' };
+    if (majorId) query.user_major = majorId;
+    // Populate chuyên ngành để FE hiển thị tên chuyên ngành nếu cần
+    const lecturers = await User.find(query).populate('user_major', 'major_title');
+    res.json(lecturers);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Lấy bảng điểm (transcript) của sinh viên
+router.get('/transcript', async (req, res) => {
+  const { studentId } = req.query;
+  if (!studentId) return res.status(400).json({ message: 'Thiếu studentId' });
+  const user = await User.findById(studentId);
+  if (!user) return res.status(404).json({ message: 'Không tìm thấy sinh viên' });
+  if (!user.user_transcript) return res.status(404).json({ message: 'Chưa có bảng điểm' });
+  res.json({ user_transcript: user.user_transcript });
+});
+
 module.exports = router; 

@@ -1,7 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Space, Input, Select, message, Modal } from 'antd';
 import { FaEdit, FaTrash, FaEye } from 'react-icons/fa';
+import { EyeOutlined } from '@ant-design/icons';
 import axios from 'axios';
+import * as XLSX from 'xlsx';
 
 const { Search } = Input;
 const { Option } = Select;
@@ -16,6 +18,9 @@ const ThesisList = () => {
   const [majors, setMajors] = useState([]);
   const [selectedThesis, setSelectedThesis] = useState(null);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
+  const [isReviewerModalOpen, setIsReviewerModalOpen] = useState(false);
+  const [reviewerList, setReviewerList] = useState([]);
+  const [selectedReviewer, setSelectedReviewer] = useState(null);
 
   useEffect(() => {
     fetchFacultiesAndMajors();
@@ -59,10 +64,13 @@ const ThesisList = () => {
             return false;
           }
         }
-        if (filterFaculty && thesis.topic_category !== filterFaculty) {
-          return false;
+        if (filterFaculty) {
+          const majorObj = majors.find(m => m._id === thesis.topic_major || m._id === thesis.topic_major?._id);
+          if (!majorObj || majorObj.major_faculty !== filterFaculty) {
+            return false;
+          }
         }
-        if (filterMajor && thesis.topic_major !== filterMajor) {
+        if (filterMajor && (thesis.topic_major !== filterMajor && thesis.topic_major?._id !== filterMajor)) {
           return false;
         }
         return true;
@@ -81,6 +89,134 @@ const ThesisList = () => {
   const handleView = (thesis) => {
     setSelectedThesis(thesis);
     setIsViewModalVisible(true);
+  };
+
+  const handleOpenReviewerModal = async () => {
+    if (!selectedThesis?.topic_major?.major_title) return;
+    try {
+      // Gọi API lấy danh sách giảng viên phản biện theo chuyên ngành
+      const res = await axios.get('/api/lecturers', {
+        params: { major: selectedThesis.topic_major.major_title }
+      });
+      setReviewerList(res.data);
+      setIsReviewerModalOpen(true);
+    } catch {
+      message.error('Không thể tải danh sách giảng viên phản biện');
+    }
+  };
+
+  const handleSelectReviewer = async () => {
+    try {
+      await axios.put(`/api/topics/${selectedThesis._id}/assign-reviewer`, {
+        reviewerId: selectedReviewer._id
+      });
+      message.success('Gán giảng viên phản biện thành công!');
+      setIsReviewerModalOpen(false);
+      setSelectedReviewer(null);
+    } catch (error) {
+      message.error('Gán giảng viên phản biện thất bại: ' + (error.response?.data?.message || error.message));
+    }
+  };
+
+  const handleExportExcel = () => {
+    const dataExport = theses.map((thesis, idx) => ({
+      'STT': idx + 1,
+      'Tên đề tài': thesis.topic_title,
+      'Giảng viên hướng dẫn': thesis.topic_instructor?.user_name || '',
+      'Loại đề tài': thesis.topic_category?.topic_category_title || thesis.topic_category?.type_name || '',
+      'Chuyên ngành': thesis.topic_major?.major_title || '',
+      'Học kì': thesis.topic_registration_period?.semester_name || thesis.topic_registration_period?.name || '',
+      'Thời gian tạo': thesis.createdAt ? new Date(thesis.createdAt).toLocaleDateString('vi-VN') : '',
+      'Số lượng SV': thesis.topic_max_members,
+      'Trạng thái': (() => {
+        const statusMap = {
+          approved: 'Đã duyệt',
+          pending: 'Chờ duyệt',
+          rejected: 'Từ chối',
+          in_progress: 'Đang thực hiện',
+          completed: 'Đã hoàn thành',
+        };
+        return statusMap[thesis.topic_teacher_status?.toLowerCase()] || thesis.topic_teacher_status;
+      })()
+    }));
+
+    const ws = XLSX.utils.json_to_sheet(dataExport);
+
+    // Tự động set độ rộng cột theo nội dung
+    const colWidths = Object.keys(dataExport[0] || {}).map(key => ({
+      wch: Math.max(
+        key.length + 2,
+        ...dataExport.map(row => (row[key] ? row[key].toString().length : 0))
+      ) + 2
+    }));
+    ws['!cols'] = colWidths;
+
+    // Căn giữa và in đậm header
+    Object.keys(dataExport[0] || {}).forEach((key, idx) => {
+      const cell = ws[XLSX.utils.encode_cell({ r: 0, c: idx })];
+      if (cell) {
+        cell.s = {
+          font: { bold: true, sz: 13 },
+          alignment: { horizontal: 'center', vertical: 'center' },
+          border: {
+            top: { style: 'thin' }, left: { style: 'thin' },
+            bottom: { style: 'thin' }, right: { style: 'thin' }
+          }
+        };
+      }
+    });
+
+    // Căn giữa dữ liệu
+    for (let r = 1; r <= dataExport.length; r++) {
+      for (let c = 0; c < colWidths.length; c++) {
+        const cell = ws[XLSX.utils.encode_cell({ r, c })];
+        if (cell) {
+          cell.s = {
+            alignment: { horizontal: 'center', vertical: 'center' },
+            border: {
+              top: { style: 'thin' }, left: { style: 'thin' },
+              bottom: { style: 'thin' }, right: { style: 'thin' }
+            }
+          };
+        }
+      }
+    }
+
+    const wb = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, ws, 'Danh sách đề tài');
+    XLSX.writeFile(wb, 'Danh_sach_de_tai.xlsx');
+  };
+
+  const handleViewScore = async (student) => {
+    try {
+      const res = await axios.get(`/api/users/transcript?studentId=${student._id}`);
+      if (res.data && res.data.user_transcript) {
+        Modal.info({
+          title: 'Bảng điểm sinh viên',
+          content: (
+            <div>
+              <a
+                href={res.data.user_transcript}
+                target="_blank"
+                rel="noopener noreferrer"
+                style={{ color: '#1976d2', fontWeight: 600 }}
+              >
+                Xem file bảng điểm (PDF)
+              </a>
+            </div>
+          ),
+          width: 400,
+        });
+      } else {
+        Modal.info({
+          title: 'Bảng điểm sinh viên',
+          content: <div>Chưa có bảng điểm</div>,
+          width: 400,
+        });
+      }
+    } catch {
+      Modal.error({ title: 'Lỗi', content: 'Không thể lấy bảng điểm' });
+    }
   };
 
   const columns = [
@@ -155,10 +291,99 @@ const ThesisList = () => {
     },
   ];
 
+  const ReviewerSelectModal = ({
+    open,
+    onCancel,
+    onOk,
+    reviewers,
+    loading,
+    selectedReviewer,
+    setSelectedReviewer,
+  }) => {
+    const [search, setSearch] = useState('');
+    const filtered = reviewers.filter(
+      r =>
+        (r.user_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+        (r.email?.toLowerCase() || '').includes(search.toLowerCase())
+    );
+    const columns = [
+      {
+        title: 'Email',
+        dataIndex: 'email',
+        align: 'center',
+        render: text => <span className="font-medium">{text}</span>,
+      },
+      {
+        title: 'Họ tên',
+        dataIndex: 'user_name',
+        align: 'center',
+        render: text => <span className="font-semibold text-blue-700">{text}</span>,
+      },
+      {
+        title: 'Mã số',
+        dataIndex: 'user_id',
+        align: 'center',
+      },
+      {
+        title: 'Chuyên ngành',
+        dataIndex: ['user_major', 'major_title'],
+        align: 'center',
+        render: (text, record) => <span className="text-gray-700">{record.user_major?.major_title || ''}</span>,
+      },
+      {
+        title: 'Số lượng phản biện',
+        dataIndex: 'review_count',
+        align: 'center',
+        render: text => <span className="text-purple-600">{text || 0}</span>,
+      },
+    ];
+    return (
+      <Modal
+        title={<span className="text-lg font-bold text-blue-700">Chọn giảng viên phản biện</span>}
+        open={open}
+        onCancel={onCancel}
+        width={800}
+        footer={[
+          <Button key="cancel" onClick={onCancel}>Hủy</Button>,
+          <Button key="ok" type="primary" onClick={onOk} disabled={!selectedReviewer} className="bg-blue-600">Xác nhận</Button>,
+        ]}
+      >
+        <div className="mb-3 flex justify-between items-center">
+          <Input.Search
+            placeholder="Tìm kiếm theo tên hoặc email"
+            allowClear
+            onChange={e => setSearch(e.target.value)}
+            style={{ width: 300 }}
+          />
+          <Button onClick={() => setSearch('')}>Xóa tìm kiếm</Button>
+        </div>
+        <Table
+          rowSelection={{
+            type: 'radio',
+            selectedRowKeys: selectedReviewer ? [selectedReviewer._id] : [],
+            onChange: (selectedRowKeys, selectedRows) => setSelectedReviewer(selectedRows[0]),
+          }}
+          columns={columns}
+          dataSource={filtered}
+          rowKey="_id"
+          loading={loading}
+          pagination={{ pageSize: 5, showSizeChanger: false }}
+          bordered
+          size="middle"
+        />
+      </Modal>
+    );
+  };
+
   return (
     <div className="p-4">
       <div className="mb-4">
         <div className="text-2xl font-bold mb-4">Danh sách đề tài</div>
+        <div className="flex gap-4 mb-2">
+          <Button type="primary" onClick={handleExportExcel} style={{ minWidth: 180 }}>
+            Tải xuống Excel
+          </Button>
+        </div>
         <div className="flex gap-4">
           <Search
             placeholder="Tìm kiếm theo tên đề tài"
@@ -215,59 +440,118 @@ const ThesisList = () => {
         open={isViewModalVisible}
         onCancel={() => setIsViewModalVisible(false)}
         footer={null}
-        width={800}
+        width={900}
       >
         <div style={{ padding: 24 }}>
           <h2 style={{ fontWeight: 700, fontSize: 22, color: '#1976d2', marginBottom: 16 }}>Chi tiết đề tài</h2>
-          <div style={{ marginBottom: 16 }}>
-            <b>Tên đề tài:</b> <span>{selectedThesis?.topic_title}</span>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Tên đề tài</label>
+              <input
+                className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                value={selectedThesis?.topic_title || ''}
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Mã đề tài</label>
+              <input
+                className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                value={selectedThesis?._id || ''}
+                disabled
+              />
+            </div>
+            <div className="md:col-span-2">
+              <label className="block text-sm font-medium text-gray-500 mb-1">Mô tả đề tài</label>
+              <textarea
+                className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                value={selectedThesis?.topic_description || ''}
+                rows={3}
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Giảng viên hướng dẫn</label>
+              <input
+                className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                value={selectedThesis?.topic_instructor?.user_name || 'Chưa có GVHD'}
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Giảng viên phản biện</label>
+              <div className="flex gap-2">
+                <input
+                  className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                  value={selectedThesis?.topic_reviewer?.user_name || selectedThesis?.topic_reviewer || ''}
+                  disabled
+                />
+                <Button type="primary" onClick={handleOpenReviewerModal}>Chọn</Button>
+              </div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Chuyên ngành</label>
+              <input
+                className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                value={selectedThesis?.topic_major?.major_title || ''}
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Loại đề tài</label>
+              <input
+                className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                value={selectedThesis?.topic_category?.topic_category_title || ''}
+                disabled
+              />
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Số lượng thực hiện</label>
+              <input
+                className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                value={selectedThesis?.topic_max_members || ''}
+                disabled
+              />
+            </div>
           </div>
-          <div style={{ marginBottom: 16 }}>
-            <b>Mô tả:</b>
-            <div style={{ background: '#f9fafb', padding: 12, borderRadius: 6, marginTop: 4 }}>{selectedThesis?.topic_description}</div>
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Đề cương hướng dẫn:</label>
+              <div className="text-red-500">✗ Chưa có file</div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Đơn xin báo vệ:</label>
+              <div className="text-red-500">✗ Chưa có file</div>
+            </div>
+            <div>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Báo cáo tổng kết:</label>
+              <div className="text-red-500">✗ Chưa có file</div>
+            </div>
           </div>
-          <div style={{ marginBottom: 16 }}>
-            <b>GVHD:</b> <span>{selectedThesis?.topic_instructor?.user_name || 'Chưa có GVHD'}</span>
-            </div>
-          <div style={{ marginBottom: 16 }}>
-            <b>Loại đề tài:</b> <span>{selectedThesis?.topic_category?.topic_category_title || '-'}</span>
-            </div>
-          <div style={{ marginBottom: 16 }}>
-            <b>Chuyên ngành:</b> <span>{selectedThesis?.topic_major?.major_title || '-'}</span>
-            </div>
-          <div style={{ marginBottom: 16 }}>
-            <b>Học kỳ:</b> <span>{selectedThesis?.topic_registration_period?.semester_name || selectedThesis?.topic_registration_period || '-'}</span>
-            </div>
-          <div style={{ marginBottom: 16 }}>
-            <b>Số lượng sinh viên tối đa:</b> <span>{selectedThesis?.topic_max_members}</span>
-            </div>
-          <div style={{ marginBottom: 16 }}>
-            <b>Trạng thái:</b> <span>{
-              {
-                approved: 'Đã duyệt',
-                pending: 'Chờ duyệt',
-                rejected: 'Từ chối',
-                in_progress: 'Đang thực hiện',
-                completed: 'Đã hoàn thành'
-              }[selectedThesis?.topic_teacher_status] || selectedThesis?.topic_teacher_status
-            }</span>
-            </div>
-          <div style={{ marginBottom: 16 }}>
-            <b>Nhóm sinh viên thực hiện:</b>
-            <table style={{ width: '100%', borderCollapse: 'collapse', marginTop: 8, background: '#fff' }}>
-              <thead>
-                <tr style={{ background: '#f0f4ff' }}>
-                  <th style={{ border: '1px solid #e0e0e0', padding: 6 }}>STT</th>
-                  <th style={{ border: '1px solid #e0e0e0', padding: 6 }}>Họ tên</th>
-                  <th style={{ border: '1px solid #e0e0e0', padding: 6 }}>MSSV</th>
+          <div className="mb-6">
+            <label className="block text-sm font-medium text-gray-500 mb-1">Nhóm thực hiện</label>
+            <table className="w-full border border-gray-200 rounded mt-2">
+              <thead className="bg-gray-100">
+                <tr>
+                  <th className="border px-2 py-1">STT</th>
+                  <th className="border px-2 py-1">Họ tên</th>
+                  <th className="border px-2 py-1">MSSV</th>
+                  <th className="border px-2 py-1">Xem điểm</th>
                 </tr>
               </thead>
               <tbody>
                 {(selectedThesis?.topic_group_student || []).map((sv, idx) => (
                   <tr key={sv._id}>
-                    <td style={{ border: '1px solid #e0e0e0', padding: 6, textAlign: 'center' }}>{idx + 1}</td>
-                    <td style={{ border: '1px solid #e0e0e0', padding: 6 }}>{sv.user_name}</td>
-                    <td style={{ border: '1px solid #e0e0e0', padding: 6 }}>{sv.user_id}</td>
+                    <td className="border px-2 py-1 text-center">{idx + 1}</td>
+                    <td className="border px-2 py-1">{sv.user_name}</td>
+                    <td className="border px-2 py-1">{sv.user_id}</td>
+                    <td className="border px-2 py-1 text-center">
+                      <Button
+                        icon={<EyeOutlined />}
+                        onClick={() => handleViewScore(sv)}
+                        size="small"
+                      />
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -275,6 +559,16 @@ const ThesisList = () => {
           </div>
         </div>
       </Modal>
+
+      <ReviewerSelectModal
+        open={isReviewerModalOpen}
+        onCancel={() => setIsReviewerModalOpen(false)}
+        onOk={handleSelectReviewer}
+        reviewers={reviewerList}
+        loading={false}
+        selectedReviewer={selectedReviewer}
+        setSelectedReviewer={setSelectedReviewer}
+      />
     </div>
   );
 };

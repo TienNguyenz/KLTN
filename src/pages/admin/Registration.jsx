@@ -6,8 +6,6 @@ import moment from 'moment';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';
 
-const { confirm } = Modal;
-
 const Registration = () => {
   const navigate = useNavigate();
   const [registrations, setRegistrations] = useState([]);
@@ -106,48 +104,42 @@ const Registration = () => {
   const validateDates = async (_, value) => {
     if (!value) return Promise.resolve();
 
-    const currentForm = _.field.includes('registration_period_start') ? form : editForm;
+    const currentForm = isModalVisible ? form : editForm;
     const semesterId = currentForm.getFieldValue('registration_period_semester');
-    
-    // Find selected semester
+    if (!semesterId) {
+      return Promise.reject('Vui lòng chọn học kỳ trước!');
+    }
+
     const selectedSemester = semesters.find(s => s._id === semesterId);
     if (!selectedSemester) {
       return Promise.reject('Vui lòng chọn học kỳ trước!');
     }
 
-    // Convert all dates to moment objects with time set to start of day
-    const selectedDate = moment(value).startOf('day');
-    const semesterStart = moment(selectedSemester.school_year_start).startOf('day');
-    const semesterEnd = moment(selectedSemester.school_year_end).startOf('day');
+    const selectedDate = moment(value, 'DD-MM-YYYY').startOf('day');
+    const semesterEnd = moment(selectedSemester.school_year_end, 'YYYY-MM-DD').startOf('day');
 
-    // Kiểm tra thời gian bắt đầu đăng ký
+    // Validate ngày bắt đầu
     if (_.field.includes('registration_period_start')) {
-      // Kiểm tra thời gian bắt đầu đăng ký với thời gian kết thúc học kỳ
       if (selectedDate.isAfter(semesterEnd)) {
         return Promise.reject(`Thời gian bắt đầu đăng ký không được sau ${semesterEnd.format('DD/MM/YYYY')}`);
       }
-
-      // Kiểm tra với thời gian kết thúc đăng ký nếu đã có
       const endDate = currentForm.getFieldValue('registration_period_end');
       if (endDate) {
-        const endMoment = moment(endDate).startOf('day');
+        const endMoment = moment(endDate, 'DD-MM-YYYY').startOf('day');
         if (selectedDate.isAfter(endMoment)) {
           return Promise.reject('Thời gian bắt đầu đăng ký phải trước thời gian kết thúc đăng ký');
         }
       }
     }
-    
-    // Kiểm tra thời gian kết thúc đăng ký
+
+    // Validate ngày kết thúc
     if (_.field.includes('registration_period_end')) {
-      // Kiểm tra thời gian kết thúc đăng ký với thời gian kết thúc học kỳ
       if (selectedDate.isAfter(semesterEnd)) {
         return Promise.reject(`Thời gian kết thúc đăng ký không được sau ${semesterEnd.format('DD/MM/YYYY')}`);
       }
-
-      // Kiểm tra với thời gian bắt đầu đăng ký nếu đã có
       const startDate = currentForm.getFieldValue('registration_period_start');
       if (startDate) {
-        const startMoment = moment(startDate).startOf('day');
+        const startMoment = moment(startDate, 'DD-MM-YYYY').startOf('day');
         if (selectedDate.isBefore(startMoment)) {
           return Promise.reject('Thời gian kết thúc đăng ký phải sau thời gian bắt đầu đăng ký');
         }
@@ -189,18 +181,9 @@ const Registration = () => {
   };
 
   const showDeleteConfirm = (record) => {
-    confirm({
-      title: 'Xác nhận xóa',
-      icon: <ExclamationCircleFilled style={{ color: '#ff4d4f' }} />,
-      content: `Bạn có chắc chắn muốn xóa đợt đăng ký của ${record.semester} không?`,
-      okText: 'Xóa',
-      okType: 'danger',
-      cancelText: 'Hủy',
-      centered: true,
-      onOk() {
-        return handleDelete(record);
-      },
-    });
+    if (window.confirm(`Bạn có chắc chắn muốn xóa đợt đăng ký của ${record.semester} không?`)) {
+      handleDelete(record);
+    }
   };
 
   const handleDelete = async (record) => {
