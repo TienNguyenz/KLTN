@@ -1,33 +1,19 @@
+/* eslint-disable no-undef */
+// Route: Hội đồng (Council)
 const express = require('express');
 const router = express.Router();
 const councilController = require('../controllers/councilController');
 
-// Get all councils
+// Lấy tất cả hội đồng
 router.get('/database/collections/assemblies', councilController.getAllCouncils);
 
-// Create new council
-router.post('/database/collections/assemblies', (req, res) => {
-    if (req.query.action === 'insert') {
-        councilController.createCouncil(req, res);
-    } else if (req.query.action === 'update') {
-        councilController.updateCouncil(req, res);
-    } else if (req.query.action === 'delete') {
-        councilController.deleteCouncil(req, res);
-    } else {
-        councilController.createCouncil(req, res); // Mặc định là tạo mới nếu không có action
-    }
-});
+// Tạo hội đồng mới
+router.post('/database/collections/assemblies', councilController.createCouncil);
 
-// Update council
-router.put('/database/collections/assemblies/:id', (req, res) => {
-    req.params.id = req.params.id;
-    councilController.updateCouncil(req, res);
-});
+// Cập nhật hội đồng
+router.put('/database/collections/assemblies/:id', councilController.updateCouncil);
 
-// Delete council
-router.delete('/database/collections/assemblies/:id', (req, res) => {
-    req.params.id = req.params.id;
-    councilController.deleteCouncil(req, res);
-});
+// Xóa hội đồng
+router.delete('/database/collections/assemblies/:id', councilController.deleteCouncil);
 
 module.exports = router; 

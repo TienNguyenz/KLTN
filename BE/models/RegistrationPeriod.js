@@ -1,18 +1,21 @@
+// RegistrationPeriod Schema: Quản lý các đợt đăng ký theo học kỳ
 const mongoose = require('mongoose');
 
 const registrationPeriodSchema = new mongoose.Schema({
   registration_period_semester: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Semester',
-    required: true
+    required: [true, 'Học kỳ là bắt buộc']
   },
   registration_period_start: {
     type: Number,
-    required: true
+    required: [true, 'Thời gian bắt đầu là bắt buộc'],
+    min: [0, 'Thời gian bắt đầu không hợp lệ']
   },
   registration_period_end: {
     type: Number,
-    required: true
+    required: [true, 'Thời gian kết thúc là bắt buộc'],
+    min: [0, 'Thời gian kết thúc không hợp lệ']
   },
   registration_period_status: {
     type: Boolean,
@@ -26,18 +29,16 @@ const registrationPeriodSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Add validation for start and end dates
+// Validate start < end
 registrationPeriodSchema.pre('save', function(next) {
   if (this.registration_period_start >= this.registration_period_end) {
-    next(new Error('Thời gian bắt đầu phải trước thời gian kết thúc'));
+    return next(new Error('Thời gian bắt đầu phải nhỏ hơn thời gian kết thúc!'));
   }
   next();
 });
 
-// Add index for better query performance
+// Indexes
 registrationPeriodSchema.index({ registration_period_semester: 1 });
 registrationPeriodSchema.index({ registration_period_status: 1 });
 
-const RegistrationPeriod = mongoose.model('RegistrationPeriod', registrationPeriodSchema);
-
-module.exports = RegistrationPeriod; 
+module.exports = mongoose.model('RegistrationPeriod', registrationPeriodSchema); 

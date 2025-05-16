@@ -1,3 +1,5 @@
+/* eslint-disable no-undef */
+// Route: Người dùng (User)
 const express = require('express');
 const router = express.Router();
 const User = require('../models/User');
@@ -14,9 +16,9 @@ router.get('/instructors', async (req, res) => {
     let query = { role: 'giangvien' };
     if (facultyId) query.user_faculty = facultyId;
     const instructors = await User.find(query);
-    res.json(instructors);
+    res.json({ success: true, data: instructors });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -27,9 +29,9 @@ router.get('/students', async (req, res) => {
     let query = { role: 'sinhvien' };
     if (facultyId) query.user_faculty = facultyId;
     const students = await User.find(query);
-    res.json(students);
+    res.json({ success: true, data: students });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -40,9 +42,9 @@ router.get('/majors', async (req, res) => {
     let query = {};
     if (facultyId) query.major_faculty = facultyId;
     const majors = await Major.find(query);
-    res.json(majors);
+    res.json({ success: true, data: majors });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -61,51 +63,37 @@ router.post('/database/collections/User/bulk', async (req, res) => {
   try {
     let users = req.body;
     if (!Array.isArray(users) || users.length === 0) {
-      console.error('Import lỗi: Dữ liệu gửi lên không phải mảng user!');
-      return res.status(400).json({ message: 'Dữ liệu gửi lên phải là một mảng user!' });
+      return res.status(400).json({ success: false, message: 'Dữ liệu gửi lên phải là một mảng user!' });
     }
-
-    // Map tên khoa/chuyên ngành sang ObjectId nếu cần
     for (let user of users) {
-      // Map Khoa
       if (user.user_faculty && typeof user.user_faculty === 'string' && user.user_faculty.length < 30) {
         const faculty = await Faculty.findOne({ faculty_title: user.user_faculty });
         if (!faculty) {
-          console.error('Import lỗi: Không tìm thấy khoa:', user.user_faculty);
-          return res.status(400).json({ message: `Không tìm thấy khoa: ${user.user_faculty}` });
+          return res.status(400).json({ success: false, message: `Không tìm thấy khoa: ${user.user_faculty}` });
         }
         user.user_faculty = faculty._id;
       }
-      // Map Chuyên ngành
       if (user.user_major && typeof user.user_major === 'string' && user.user_major.length < 30) {
         const major = await Major.findOne({ major_title: user.user_major });
         if (!major) {
-          console.error('Import lỗi: Không tìm thấy chuyên ngành:', user.user_major);
-          return res.status(400).json({ message: `Không tìm thấy chuyên ngành: ${user.user_major}` });
+          return res.status(400).json({ success: false, message: `Không tìm thấy chuyên ngành: ${user.user_major}` });
         }
         user.user_major = major._id;
       }
-      // Bắt buộc phải có ngày sinh đúng định dạng yyyy-mm-dd
       if (!user.user_date_of_birth || typeof user.user_date_of_birth !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(user.user_date_of_birth)) {
-        console.error('Import lỗi: Thiếu hoặc sai định dạng ngày sinh cho user:', user.user_id || user.email || user.user_name);
-        return res.status(400).json({ message: `Thiếu hoặc sai định dạng ngày sinh (yyyy-mm-dd) cho user: ${user.user_id || user.email || user.user_name}` });
+        return res.status(400).json({ success: false, message: `Thiếu hoặc sai định dạng ngày sinh (yyyy-mm-dd) cho user: ${user.user_id || user.email || user.user_name}` });
       }
-      // Nếu thiếu password, tự động sinh password từ ngày sinh (ddmmyyyy)
       if (!user.password) {
         const parts = user.user_date_of_birth.split('-');
         user.password = `${parts[2]}${parts[1]}${parts[0]}`;
       }
     }
-
     const result = await User.insertMany(users, { ordered: false });
-    console.log('Số user insert thành công:', result.length);
-    res.status(200).json({ message: `Import thành công! Đã thêm ${result.length} user.` });
+    res.status(200).json({ success: true, message: `Import thành công! Đã thêm ${result.length} user.` });
   } catch (err) {
     if (err && err.writeErrors && err.writeErrors.length > 0) {
-      // Lấy lỗi đầu tiên để báo cho FE
       const firstError = err.writeErrors[0];
       const errmsg = firstError.errmsg || (firstError.err && firstError.err.errmsg) || '';
-      console.error('firstError.errmsg:', errmsg);
       let userMsg = 'Import thất bại!';
       if (errmsg.includes('duplicate key error')) {
         let match = errmsg.match(/email: "(.+?)"/);
@@ -132,11 +120,9 @@ router.post('/database/collections/User/bulk', async (req, res) => {
       } else if (errmsg) {
         userMsg = errmsg;
       }
-      console.error('Import user lỗi trả về FE:', userMsg);
-      return res.status(400).json({ message: userMsg });
+      return res.status(400).json({ success: false, message: userMsg });
     }
-    console.error('Import user lỗi:', err);
-    res.status(500).json({ message: 'Import thất bại!', error: err.message });
+    res.status(500).json({ success: false, message: 'Import thất bại!', error: err.message });
   }
 });
 
@@ -144,9 +130,9 @@ router.post('/database/collections/User/bulk', async (req, res) => {
 router.get('/export/faculties', async (req, res) => {
   try {
     const faculties = await Faculty.find({}, { faculty_title: 1, _id: 0 });
-    res.json(faculties.map(f => f.faculty_title));
+    res.json({ success: true, data: faculties.map(f => f.faculty_title) });
   } catch (err) {
-    res.status(500).json({ message: 'Lỗi khi lấy danh sách khoa', error: err.message });
+    res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách khoa', error: err.message });
   }
 });
 
@@ -154,34 +140,33 @@ router.get('/export/faculties', async (req, res) => {
 router.get('/export/majors', async (req, res) => {
   try {
     const majors = await Major.find({}, { major_title: 1, _id: 0 });
-    res.json(majors.map(m => m.major_title));
+    res.json({ success: true, data: majors.map(m => m.major_title) });
   } catch (err) {
-    res.status(500).json({ message: 'Lỗi khi lấy danh sách chuyên ngành', error: err.message });
+    res.status(500).json({ success: false, message: 'Lỗi khi lấy danh sách chuyên ngành', error: err.message });
   }
 });
 
 // Lấy danh sách giảng viên theo chuyên ngành (major)
 router.get('/lecturers', async (req, res) => {
   try {
-    const { majorId } = req.query; // majorId là ObjectId của chuyên ngành
+    const { majorId } = req.query;
     let query = { role: 'giangvien' };
     if (majorId) query.user_major = majorId;
-    // Populate chuyên ngành để FE hiển thị tên chuyên ngành nếu cần
     const lecturers = await User.find(query).populate('user_major', 'major_title');
-    res.json(lecturers);
+    res.json({ success: true, data: lecturers });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // Lấy bảng điểm (transcript) của sinh viên
 router.get('/transcript', async (req, res) => {
   const { studentId } = req.query;
-  if (!studentId) return res.status(400).json({ message: 'Thiếu studentId' });
+  if (!studentId) return res.status(400).json({ success: false, message: 'Thiếu studentId' });
   const user = await User.findById(studentId);
-  if (!user) return res.status(404).json({ message: 'Không tìm thấy sinh viên' });
-  if (!user.user_transcript) return res.status(404).json({ message: 'Chưa có bảng điểm' });
-  res.json({ user_transcript: user.user_transcript });
+  if (!user) return res.status(404).json({ success: false, message: 'Không tìm thấy sinh viên' });
+  if (!user.user_transcript) return res.status(404).json({ success: false, message: 'Chưa có bảng điểm' });
+  res.json({ success: true, data: { user_transcript: user.user_transcript } });
 });
 
 module.exports = router; 

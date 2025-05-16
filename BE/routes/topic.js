@@ -1,3 +1,5 @@
+/* eslint-disable no-undef */
+// Route: Đề tài (Topic)
 const express = require('express');
 const router = express.Router();
 const Topic = require('../models/Topic');
@@ -13,7 +15,7 @@ const libre = require('libreoffice-convert');
 
 const upload = multer({ dest: 'uploads/' });
 
-// Lấy tất cả đề tài (chỉ trả về đề tài đã được duyệt bởi cả giảng viên và leader, và chưa có sinh viên đăng ký)
+// Lấy tất cả đề tài đã duyệt và chưa có sinh viên đăng ký
 router.get('/', async (req, res) => {
   try {
     const topics = await Topic.find({
@@ -25,9 +27,9 @@ router.get('/', async (req, res) => {
       .populate('topic_major', 'major_name')
       .populate('topic_category', 'type_name')
       .populate('topic_group_student', 'user_name user_id');
-    res.json(topics);
+    res.json({ success: true, data: topics });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -35,10 +37,9 @@ router.get('/', async (req, res) => {
 router.get('/topic-types', async (req, res) => {
   try {
     const types = await TopicType.find();
-    res.json(types);
+    res.json({ success: true, data: types });
   } catch (err) {
-    console.error('Error fetching topic types:', err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 });
 
@@ -51,15 +52,9 @@ router.get('/:id', async (req, res) => {
       .populate('topic_category', 'topic_category_title')
       .populate('topic_group_student', 'user_name user_id')
       .populate('topic_creator', 'user_name user_id role');
-    
     if (!topic) {
-      return res.status(404).json({ 
-        success: false,
-        message: 'Không tìm thấy đề tài' 
-      });
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đề tài' });
     }
-
-    // Format response data
     const formattedTopic = {
       ...topic.toObject(),
       topic_instructor: topic.topic_instructor ? {
@@ -82,18 +77,9 @@ router.get('/:id', async (req, res) => {
         role: topic.topic_creator.role
       } : null
     };
-
-    res.json({
-      success: true,
-      data: formattedTopic
-    });
+    res.json({ success: true, data: formattedTopic });
   } catch (err) {
-    console.error('Error fetching topic details:', err);
-    res.status(500).json({ 
-      success: false,
-      message: 'Lỗi khi lấy thông tin đề tài',
-      error: err.message 
-    });
+    res.status(500).json({ success: false, message: 'Lỗi khi lấy thông tin đề tài', error: err.message });
   }
 });
 
