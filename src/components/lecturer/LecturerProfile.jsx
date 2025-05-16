@@ -14,6 +14,7 @@ import {
   faKey,
 } from "@fortawesome/free-solid-svg-icons";
 import { Modal, Input, message } from 'antd';
+import axios from 'axios';
 
 const LecturerProfile = () => {
   console.log("LecturerProfile component được render");
@@ -35,6 +36,7 @@ const LecturerProfile = () => {
   const [isSaveModalVisible, setIsSaveModalVisible] = useState(false);
   const [saveMessage, setSaveMessage] = useState('');
   const [saveType, setSaveType] = useState('success');
+  const [faculties, setFaculties] = useState([]);
 
   useEffect(() => {
     const fetchProfile = async () => {
@@ -69,8 +71,18 @@ const LecturerProfile = () => {
       }
     };
 
+    const fetchFaculties = async () => {
+      try {
+        const res = await axios.get('http://localhost:5000/api/database/collections/faculties');
+        setFaculties(res.data);
+      } catch (err) {
+        console.error('Lỗi khi tải danh sách khoa:', err);
+      }
+    };
+
     if (user?.token) {
       fetchProfile();
+      fetchFaculties();
     } else if (!loading) {
       setError("Bạn chưa đăng nhập hoặc không có quyền truy cập.");
       setLoading(false);
@@ -385,7 +397,15 @@ const LecturerProfile = () => {
               <strong className="text-gray-700 block mb-2 flex items-center">
                 <FontAwesomeIcon icon={faBuilding} className="mr-2 text-purple-500" /> Khoa:
               </strong>
-              <p className="text-gray-900 font-medium">{profileData?.user_department || "N/A"}</p>
+              <p className="text-gray-900 font-medium">
+                {(() => {
+                  const facultyId = profileData?.user_faculty || profileData?.facultyId;
+                  if (!facultyId) return 'Chưa cập nhật';
+                  const idStr = typeof facultyId === 'object' && facultyId.$oid ? facultyId.$oid : facultyId;
+                  const found = faculties.find(f => (f._id.$oid || f._id) === idStr);
+                  return found ? found.faculty_title : 'Chưa cập nhật';
+                })()}
+              </p>
             </div>
 
             <div className="bg-white rounded-xl shadow-sm p-6 border border-gray-100 hover:shadow-md transition-shadow duration-300">
