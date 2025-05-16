@@ -47,7 +47,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/database', databaseRoutes);
 app.use('/api', rubricRoutes);
 app.use('/api/topics', topicRoutes);
-app.use('/api/users', userRoutes);
+app.use('/api', userRoutes);
 app.use('/api', seedRoutes);
 app.use('/api/notifications', userNotificationRoutes);
 app.use('/api', councilRoutes);
