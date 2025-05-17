@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { FaTimesCircle, FaBook, FaUserGraduate, FaUsers, FaTag, FaInfoCircle, FaHome, FaListAlt, FaLightbulb, FaSearch, FaSort, FaPencilAlt, FaCalendarAlt, FaClock, FaPaperPlane, FaUpload, FaDownload, FaEye, FaInfo, FaUserCircle } from 'react-icons/fa';
+import { FaTimesCircle, FaBook, FaUserGraduate, FaUsers, FaTag, FaInfoCircle, FaHome, FaListAlt, FaLightbulb, FaSearch, FaSort, FaPencilAlt, FaCalendarAlt, FaClock, FaPaperPlane, FaUpload, FaDownload, FaEye, FaInfo, FaUserCircle, FaFilePdf } from 'react-icons/fa';
 import StudentHeader from '../../components/student/StudentHeader';
 import axios from 'axios';
 import RegisteredTopicDetails from './RegisteredTopicDetails';
@@ -301,6 +301,8 @@ const Proposals = () => {
     student3Id: '',
     student4Id: ''
   });
+  // Thêm state cho file đơn xin hướng dẫn
+  const [guidanceFile, setGuidanceFile] = useState(null);
 
   // States cho dữ liệu từ MongoDB
   const [instructors, setInstructors] = useState([]);
@@ -388,8 +390,21 @@ const Proposals = () => {
         topic_group_student: members,
         topic_creator: creatorId
       };
-      console.log('Proposal data:', proposalData);
-      await axios.post('/api/topics/propose', proposalData);
+      // Sử dụng FormData để gửi kèm file
+      const formDataToSend = new FormData();
+      Object.entries(proposalData).forEach(([key, value]) => {
+        if (Array.isArray(value)) {
+          value.forEach(v => formDataToSend.append(key, v));
+        } else {
+          formDataToSend.append(key, value);
+        }
+      });
+      if (guidanceFile) {
+        formDataToSend.append('guidanceFile', guidanceFile);
+      }
+      await axios.post('/api/topics/propose', formDataToSend, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
       alert('Đề xuất đã được gửi thành công!');
       // Reset form
       setFormData({
@@ -403,6 +418,7 @@ const Proposals = () => {
         student3Id: '',
         student4Id: ''
       });
+      setGuidanceFile(null);
     } catch (error) {
       console.error('Error submitting proposal:', error);
       if (error.response?.data?.message) {
@@ -616,6 +632,47 @@ const Proposals = () => {
              </div>
             ))}
           </div>
+        </div>
+
+        {/* Nộp file đơn xin hướng dẫn - giao diện đẹp */}
+        <div className="bg-gray-50 rounded border p-4 mb-4">
+          <div className="flex flex-col md:flex-row md:items-center md:space-x-6">
+            <div className="flex items-center space-x-2 mb-2 md:mb-0">
+              <FaFilePdf className="text-2xl text-red-600" />
+              <span className="font-semibold text-blue-900 text-base">Đơn xin hướng dẫn</span>
+              {/* Nếu có file mẫu, thêm link tải mẫu */}
+              {/* <a href="/templates/guidance_request_template.docx" download className="ml-2 text-blue-500 hover:text-blue-700 text-sm flex items-center" title="Tải file mẫu">
+                <FaDownload className="mr-1" /> Tải mẫu
+              </a> */}
+            </div>
+            <div className="flex-1">
+              {guidanceFile ? (
+                <span className="text-green-700 text-sm">{guidanceFile.name}</span>
+              ) : (
+                <span className="text-red-500 text-sm">Chưa có file.</span>
+              )}
+            </div>
+          </div>
+          <div className="flex space-x-2 mt-3">
+            <label className="inline-block">
+              <input
+                type="file"
+                accept=".pdf,.doc,.docx"
+                onChange={e => setGuidanceFile(e.target.files[0])}
+                className="hidden"
+              />
+              <span className="inline-block px-4 py-2 bg-gray-200 rounded cursor-pointer text-sm font-medium hover:bg-gray-300">Chọn file</span>
+            </label>
+            <button
+              type="button"
+              className={`px-4 py-2 rounded text-sm font-medium text-white ${guidanceFile ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-300 cursor-not-allowed'}`}
+              disabled={!guidanceFile}
+              onClick={() => document.querySelector('input[type=file][accept=".pdf,.doc,.docx"]').click()}
+            >
+              Tải lên
+            </button>
+          </div>
+          <p className="mt-1 text-xs text-gray-500">Hỗ trợ các định dạng: PDF, DOC, DOCX</p>
         </div>
 
         {/* Nút Submit */}

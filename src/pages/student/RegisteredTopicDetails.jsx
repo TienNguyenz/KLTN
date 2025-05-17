@@ -104,6 +104,32 @@ const RegisteredTopicDetails = ({ topic, onViewGrades, onViewCommittee }) => {
           </button>
         )}
       </div>
+      {/* Thanh tiến độ các bước */}
+      {topic.topic_teacher_status === 'approved' && (
+        <div className="mt-2 mb-8">
+          <div className="flex items-center justify-center gap-0 md:gap-8">
+            {/* Bước 1: Đơn xin hướng dẫn */}
+            <div className="flex flex-col items-center">
+              <div className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${'approved' === topic.topic_teacher_status ? 'bg-green-500 border-green-500 text-white' : 'bg-gray-200 border-gray-300 text-gray-500'}`}>1</div>
+              <span className={`mt-2 text-sm ${'approved' === topic.topic_teacher_status ? 'text-green-600 font-semibold' : 'text-gray-500'}`}>Đơn xin hướng dẫn</span>
+            </div>
+            {/* Line */}
+            <div className={`flex-1 h-1 ${topic.topic_outline_file ? 'bg-green-500' : 'bg-gray-300'} mx-2 md:mx-4`} style={{ minWidth: 40 }}></div>
+            {/* Bước 2: Đề cương */}
+            <div className="flex flex-col items-center">
+              <div className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${topic.topic_outline_file ? 'bg-green-500 border-green-500 text-white' : 'bg-gray-200 border-gray-300 text-gray-500'}`}>2</div>
+              <span className={`mt-2 text-sm ${topic.topic_outline_file ? 'text-green-600 font-semibold' : 'text-gray-500'}`}>Đề cương</span>
+            </div>
+            {/* Line */}
+            <div className={`flex-1 h-1 ${topic.topic_final_report ? 'bg-green-500' : 'bg-gray-300'} mx-2 md:mx-4`} style={{ minWidth: 40 }}></div>
+            {/* Bước 3: Báo cáo */}
+            <div className="flex flex-col items-center">
+              <div className={`w-8 h-8 flex items-center justify-center rounded-full border-2 ${topic.topic_final_report ? 'bg-green-500 border-green-500 text-white' : 'bg-gray-200 border-gray-300 text-gray-500'}`}>3</div>
+              <span className={`mt-2 text-sm ${topic.topic_final_report ? 'text-green-600 font-semibold' : 'text-gray-500'}`}>Báo cáo</span>
+            </div>
+          </div>
+        </div>
+      )}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4 mb-6">
         <div>
           <label className="block text-sm font-medium text-gray-500 mb-1">Tên đề tài</label>
@@ -173,103 +199,105 @@ const RegisteredTopicDetails = ({ topic, onViewGrades, onViewCommittee }) => {
         </div>
       </div>
       {/* Tài liệu quan trọng */}
-      <div className="mt-8">
-        <h3 className="text-md font-semibold text-gray-700 mb-2">Tài liệu quan trọng</h3>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          {/* Đề cương (Outline) */}
-          <div className="bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col items-center">
-            <span className="font-medium mb-2 text-blue-700 flex items-center gap-2">
-              <FaFilePdf className="text-2xl text-red-600" /> Đề cương (Outline)
-              <a
-                href="/templates/outline_template.docx"
-                download
-                className="ml-2 text-blue-500 hover:text-blue-700 text-base flex items-center"
-                title="Tải file mẫu đề cương"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
-                  <path d="M.5 9.9a.5.5 0 0 1 .5.5V13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2.6a.5.5 0 0 1 1 0V13a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3v-2.6a.5.5 0 0 1 .5-.5z"/>
-                  <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
-                </svg>
-                <span className="ml-1 underline">Tải mẫu</span>
-              </a>
-            </span>
-            {topic.topic_outline_file ? (
-              <a
-                href={topic.topic_outline_file}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-green-700 underline mb-2 hover:text-green-900 flex items-center gap-2"
-              >
-                {(topic.topic_outline_file_original_name || topic.topic_outline_file.split('/').pop()).replace(/\.(docx|pdf)$/i, '')}
-              </a>
-            ) : (
-              <span className="text-red-500 mb-2">Chưa có file.</span>
-            )}
-            <div className="flex gap-2 mt-2">
-              <label className="bg-gray-200 px-3 py-1 rounded text-sm hover:bg-gray-300 transition-colors cursor-pointer">
-                Chọn file
-              <input
-                type="file"
-                className="hidden"
-                  accept=".docx"
-                onChange={handleOutlineFileChange}
-              />
-              </label>
-              <button
-                className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors"
-                type="button"
-                onClick={() => handleUpload('outline')}
-              >
-                Tải lên
-              </button>
-            </div>
-            {outlineFile && <span className="text-sm text-gray-600 mt-1">{outlineFile.name}</span>}
-          </div>
-          {/* Báo cáo cuối cùng */}
-          <div className="bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col items-center">
-            <span className="font-medium mb-2 text-blue-700 flex items-center gap-2">
-              <FaFilePdf className="text-2xl text-red-600" /> Báo cáo cuối cùng
-            </span>
-            {topic.topic_final_report ? (
-              <a
-                href={topic.topic_final_report}
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-green-700 underline mb-2 hover:text-green-900 flex items-center gap-2"
-              >
-                {(topic.topic_final_report_original_name || topic.topic_final_report.split('/').pop()).replace(/\.(docx|pdf)$/i, '')}
-              </a>
-            ) : (
-              <span className="text-red-500 mb-2">Chưa có file.</span>
-            )}
-            <div className="flex gap-2 mt-2">
-              <label className="bg-gray-200 px-3 py-1 rounded text-sm hover:bg-gray-300 transition-colors cursor-pointer">
-                Chọn file
-              <input
-                type="file"
-                className="hidden"
-                  accept=".docx"
-                onChange={handleFinalFileChange}
-                  disabled={topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'}
+      {topic.topic_teacher_status === 'approved' && (
+        <div className="mt-8">
+          <h3 className="text-md font-semibold text-gray-700 mb-2">Tài liệu quan trọng</h3>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* Đề cương (Outline) */}
+            <div className="bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col items-center">
+              <span className="font-medium mb-2 text-blue-700 flex items-center gap-2">
+                <FaFilePdf className="text-2xl text-red-600" /> Đề cương (Outline)
+                <a
+                  href="/templates/outline_template.docx"
+                  download
+                  className="ml-2 text-blue-500 hover:text-blue-700 text-base flex items-center"
+                  title="Tải file mẫu đề cương"
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" width="18" height="18" fill="currentColor" viewBox="0 0 16 16">
+                    <path d="M.5 9.9a.5.5 0 0 1 .5.5V13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2.6a.5.5 0 0 1 1 0V13a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3v-2.6a.5.5 0 0 1 .5-.5z"/>
+                    <path d="M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z"/>
+                  </svg>
+                  <span className="ml-1 underline">Tải mẫu</span>
+                </a>
+              </span>
+              {topic.topic_outline_file ? (
+                <a
+                  href={topic.topic_outline_file}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-green-700 underline mb-2 hover:text-green-900 flex items-center gap-2"
+                >
+                  {(topic.topic_outline_file_original_name || topic.topic_outline_file.split('/').pop()).replace(/\.(docx|pdf)$/i, '')}
+                </a>
+              ) : (
+                <span className="text-red-500 mb-2">Chưa có file.</span>
+              )}
+              <div className="flex gap-2 mt-2">
+                <label className="bg-gray-200 px-3 py-1 rounded text-sm hover:bg-gray-300 transition-colors cursor-pointer">
+                  Chọn file
+                <input
+                  type="file"
+                  className="hidden"
+                    accept=".docx"
+                  onChange={handleOutlineFileChange}
                 />
-              </label>
-              <button
-                className={`px-3 py-1 rounded text-sm transition-colors ${
-                  topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'
-                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                    : 'bg-blue-500 text-white hover:bg-blue-600'
-                }`}
-                type="button"
-                onClick={() => handleUpload('final')}
-                disabled={topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'}
-              >
-                Tải lên
-              </button>
+                </label>
+                <button
+                  className="bg-blue-500 text-white px-3 py-1 rounded text-sm hover:bg-blue-600 transition-colors"
+                  type="button"
+                  onClick={() => handleUpload('outline')}
+                >
+                  Tải lên
+                </button>
+              </div>
+              {outlineFile && <span className="text-sm text-gray-600 mt-1">{outlineFile.name}</span>}
             </div>
-            {finalFile && <span className="text-sm text-gray-600 mt-1">{finalFile.name}</span>}
+            {/* Báo cáo cuối cùng */}
+            <div className="bg-gray-50 p-4 rounded-md border border-gray-200 flex flex-col items-center">
+              <span className="font-medium mb-2 text-blue-700 flex items-center gap-2">
+                <FaFilePdf className="text-2xl text-red-600" /> Báo cáo cuối cùng
+              </span>
+              {topic.topic_final_report ? (
+                <a
+                  href={topic.topic_final_report}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-green-700 underline mb-2 hover:text-green-900 flex items-center gap-2"
+                >
+                  {(topic.topic_final_report_original_name || topic.topic_final_report.split('/').pop()).replace(/\.(docx|pdf)$/i, '')}
+                </a>
+              ) : (
+                <span className="text-red-500 mb-2">Chưa có file.</span>
+              )}
+              <div className="flex gap-2 mt-2">
+                <label className="bg-gray-200 px-3 py-1 rounded text-sm hover:bg-gray-300 transition-colors cursor-pointer">
+                  Chọn file
+                <input
+                  type="file"
+                  className="hidden"
+                    accept=".docx"
+                  onChange={handleFinalFileChange}
+                    disabled={topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'}
+                  />
+                </label>
+                <button
+                  className={`px-3 py-1 rounded text-sm transition-colors ${
+                    topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'
+                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
+                      : 'bg-blue-500 text-white hover:bg-blue-600'
+                  }`}
+                  type="button"
+                  onClick={() => handleUpload('final')}
+                  disabled={topic.topic_teacher_status === 'pending' || topic.topic_leader_status === 'pending'}
+                >
+                  Tải lên
+                </button>
+              </div>
+              {finalFile && <span className="text-sm text-gray-600 mt-1">{finalFile.name}</span>}
+            </div>
           </div>
         </div>
-      </div>
+      )}
       {/* Giảng viên phản biện */}
       <div className="mt-8">
         <div className="flex justify-between items-center mb-2">

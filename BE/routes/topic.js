@@ -234,7 +234,7 @@ router.post('/:id/register', async (req, res) => {
 });
 
 // Đề xuất đề tài mới
-router.post('/propose', async (req, res) => {
+router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
   try {
     const {
       topic_title,
@@ -822,6 +822,19 @@ router.put('/:id/assign-reviewer', async (req, res) => {
       { new: true }
     );
     res.json(topic);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// Lấy danh sách đề tài đã được giảng viên duyệt cho admin
+router.get('/admin/topics', async (req, res) => {
+  try {
+    const topics = await Topic.find({ topic_teacher_status: 'approved' })
+      .populate('topic_instructor', 'user_name')
+      .populate('topic_major', 'major_title')
+      .populate('topic_category', 'topic_category_title');
+    res.json(topics);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

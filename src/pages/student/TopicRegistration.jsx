@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
-import { FaBook, FaUserGraduate, FaUsers, FaTag, FaInfoCircle, FaCheckCircle, FaSearch } from 'react-icons/fa';
+import { FaBook, FaUserGraduate, FaUsers, FaTag, FaInfoCircle, FaCheckCircle, FaSearch, FaFileUpload } from 'react-icons/fa';
 import axios from 'axios';
 import Select from 'react-select';
 
@@ -19,6 +19,11 @@ const TopicRegistration = () => {
     member2: null,
     member3: null,
     member4: null
+  });
+  const [guidanceRequest, setGuidanceRequest] = useState({
+    reason: '',
+    plan: '',
+    attachment: null
   });
 
   useEffect(() => {
@@ -77,7 +82,6 @@ const TopicRegistration = () => {
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     try {
-      // Lấy _id của trưởng nhóm (user hiện tại)
       let leaderId = user._id;
       if (!leaderId) {
         const leader = students.find(s => s.user_id === user.user_id);
@@ -87,20 +91,29 @@ const TopicRegistration = () => {
         alert('Không xác định được ID của trưởng nhóm.');
         return;
       }
-      // Tạo object chứa thông tin đăng ký
-      const registrationData = {
-        studentId: leaderId,
-      };
-      // Thêm các thành viên được chọn vào data
+
+      const formData = new FormData();
+      formData.append('studentId', leaderId);
+      formData.append('reason', guidanceRequest.reason);
+      formData.append('plan', guidanceRequest.plan);
+      if (guidanceRequest.attachment) {
+        formData.append('attachment', guidanceRequest.attachment);
+      }
+
       for (let i = 2; i <= topic.topic_max_members; i++) {
         const memberId = selectedMembers[`member${i}`]?.value;
         if (memberId) {
-          registrationData[`member${i}Id`] = memberId;
+          formData.append(`member${i}Id`, memberId);
         }
       }
-      await axios.post(`/api/topics/${topicId}/register`, registrationData);
-      alert('Đăng ký đề tài thành công!');
-    navigate('/student'); 
+
+      await axios.post(`/api/topics/${topicId}/register`, formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data'
+        }
+      });
+      alert('Đăng ký đề tài và nộp đơn xin hướng dẫn thành công!');
+      navigate('/student'); 
     } catch (error) {
       console.error('Error registering topic:', error);
       if (error.response?.data?.registeredMembers) {
@@ -110,6 +123,16 @@ const TopicRegistration = () => {
       } else {
         alert('Có lỗi xảy ra khi đăng ký đề tài.');
       }
+    }
+  };
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (file) {
+      setGuidanceRequest(prev => ({
+        ...prev,
+        attachment: file
+      }));
     }
   };
 
@@ -252,6 +275,68 @@ const TopicRegistration = () => {
               })}
                </div>
          </div>
+         
+          {/* Form nộp đơn xin hướng dẫn */}
+          <div className="mb-6">
+            <h3 className="text-lg font-medium text-gray-700 mb-3">Đơn xin hướng dẫn</h3>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-2">
+                  Lý do xin hướng dẫn
+                </label>
+                <textarea
+                  value={guidanceRequest.reason}
+                  onChange={(e) => setGuidanceRequest(prev => ({ ...prev, reason: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  rows="4"
+                  placeholder="Nhập lý do xin hướng dẫn..."
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-2">
+                  Kế hoạch thực hiện đề tài
+                </label>
+                <textarea
+                  value={guidanceRequest.plan}
+                  onChange={(e) => setGuidanceRequest(prev => ({ ...prev, plan: e.target.value }))}
+                  className="w-full p-2 border border-gray-300 rounded-md"
+                  rows="4"
+                  placeholder="Nhập kế hoạch thực hiện đề tài..."
+                  required
+                />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-600 mb-2">
+                  File đính kèm (nếu có)
+                </label>
+                <div className="flex items-center space-x-2">
+                  <input
+                    type="file"
+                    onChange={handleFileChange}
+                    className="hidden"
+                    id="file-upload"
+                    accept=".pdf,.doc,.docx"
+                  />
+                  <label
+                    htmlFor="file-upload"
+                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
+                  >
+                    <FaFileUpload className="mr-2 h-5 w-5 text-gray-400" />
+                    Chọn file
+                  </label>
+                  {guidanceRequest.attachment && (
+                    <span className="text-sm text-gray-500">
+                      {guidanceRequest.attachment.name}
+                    </span>
+                  )}
+                </div>
+                <p className="mt-1 text-sm text-gray-500">
+                  Hỗ trợ các định dạng: PDF, DOC, DOCX
+                </p>
+              </div>
+            </div>
+          </div>
          
           <div className="flex justify-end pt-6 border-t">
               <button
