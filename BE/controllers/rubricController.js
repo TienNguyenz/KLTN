@@ -1,43 +1,109 @@
+/* eslint-disable no-undef */
 const Rubric = require('../models/Rubric');
 const RubricEvaluation = require('../models/RubricEvaluation');
 
-// Get all rubrics
+// Constants
+const ERROR_MESSAGES = {
+  RUBRIC_NOT_FOUND: 'Không tìm thấy rubric',
+  SERVER_ERROR: 'Lỗi máy chủ',
+  INVALID_DATA: 'Dữ liệu không hợp lệ',
+  DELETE_SUCCESS: 'Đã xóa rubric',
+  REQUIRED_FIELDS: 'Vui lòng điền đầy đủ thông tin'
+};
+
+// Helper functions
+const handleError = (error, customMessage) => {
+  console.error(customMessage, error);
+  return {
+    message: ERROR_MESSAGES.SERVER_ERROR,
+    error: error.message
+  };
+};
+
+const validateRubricData = (data) => {
+  const { rubric_name, rubric_description } = data;
+  
+  if (!rubric_name || !rubric_name.trim()) {
+    return { isValid: false, message: 'Vui lòng nhập tên rubric' };
+  }
+  
+  if (!rubric_description || !rubric_description.trim()) {
+    return { isValid: false, message: 'Vui lòng nhập mô tả rubric' };
+  }
+  
+  return { isValid: true };
+};
+
+/**
+ * Lấy tất cả rubric
+ * @route GET /api/rubrics
+ */
 exports.getAllRubrics = async (req, res) => {
   try {
-    const rubrics = await Rubric.find().populate('rubric_evaluations');
-    res.json(rubrics);
+    const rubrics = await Rubric.find()
+      .populate('rubric_evaluations')
+      .sort({ createdAt: -1 });
+    return res.status(200).json(rubrics);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const errorResponse = handleError(error, 'Lỗi khi lấy danh sách rubric:');
+    return res.status(500).json(errorResponse);
   }
 };
 
-// Get single rubric
+/**
+ * Lấy thông tin một rubric
+ * @route GET /api/rubrics/:id
+ */
 exports.getRubricById = async (req, res) => {
   try {
-    const rubric = await Rubric.findById(req.params.id).populate('rubric_evaluations');
+    const rubric = await Rubric.findById(req.params.id)
+      .populate('rubric_evaluations');
+    
     if (!rubric) {
-      return res.status(404).json({ message: 'Không tìm thấy rubric' });
+      return res.status(404).json({ message: ERROR_MESSAGES.RUBRIC_NOT_FOUND });
     }
-    res.json(rubric);
+    
+    return res.status(200).json(rubric);
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const errorResponse = handleError(error, 'Lỗi khi lấy thông tin rubric:');
+    return res.status(500).json(errorResponse);
   }
 };
 
-// Create new rubric
+/**
+ * Tạo rubric mới
+ * @route POST /api/rubrics
+ */
 exports.createRubric = async (req, res) => {
   try {
+    // Validate input data
+    const validation = validateRubricData(req.body);
+    if (!validation.isValid) {
+      return res.status(400).json({ message: validation.message });
+    }
+
     const rubric = new Rubric(req.body);
     const savedRubric = await rubric.save();
-    res.status(201).json(savedRubric);
+    
+    return res.status(201).json(savedRubric);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    const errorResponse = handleError(error, 'Lỗi khi tạo rubric mới:');
+    return res.status(500).json(errorResponse);
   }
 };
 
-// Update rubric
+/**
+ * Cập nhật rubric
+ * @route PUT /api/rubrics/:id
+ */
 exports.updateRubric = async (req, res) => {
   try {
+    // Validate input data
+    const validation = validateRubricData(req.body);
+    if (!validation.isValid) {
+      return res.status(400).json({ message: validation.message });
+    }
+
     const rubric = await Rubric.findByIdAndUpdate(
       req.params.id,
       req.body,
@@ -45,28 +111,34 @@ exports.updateRubric = async (req, res) => {
     ).populate('rubric_evaluations');
     
     if (!rubric) {
-      return res.status(404).json({ message: 'Không tìm thấy rubric' });
+      return res.status(404).json({ message: ERROR_MESSAGES.RUBRIC_NOT_FOUND });
     }
-    res.json(rubric);
+
+    return res.status(200).json(rubric);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    const errorResponse = handleError(error, 'Lỗi khi cập nhật rubric:');
+    return res.status(500).json(errorResponse);
   }
 };
 
-// Delete rubric
+/**
+ * Xóa rubric
+ * @route DELETE /api/rubrics/:id
+ */
 exports.deleteRubric = async (req, res) => {
   try {
     const rubric = await Rubric.findById(req.params.id);
     if (!rubric) {
-      return res.status(404).json({ message: 'Không tìm thấy rubric' });
+      return res.status(404).json({ message: ERROR_MESSAGES.RUBRIC_NOT_FOUND });
     }
 
     // Delete associated evaluations
     await RubricEvaluation.deleteMany({ rubric_id: rubric._id });
     
-    await rubric.remove();
-    res.json({ message: 'Đã xóa rubric' });
+    await rubric.deleteOne();
+    return res.status(200).json({ message: ERROR_MESSAGES.DELETE_SUCCESS });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    const errorResponse = handleError(error, 'Lỗi khi xóa rubric:');
+    return res.status(500).json(errorResponse);
   }
 }; 

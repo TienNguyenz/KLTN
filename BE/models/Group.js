@@ -1,21 +1,22 @@
 const mongoose = require('mongoose');
 
+// Group Schema: Quản lý nhóm sinh viên thực hiện đề tài
 const groupSchema = new mongoose.Schema({
     name: {
         type: String,
-        required: true,
+        required: [true, 'Tên nhóm là bắt buộc'],
         trim: true
     },
     topic: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'Topic',
-        required: true
+        required: [true, 'Đề tài là bắt buộc']
     },
     members: [{
         student: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
-            required: true
+            required: [true, 'Thành viên là bắt buộc']
         },
         role: {
             type: String,
@@ -29,9 +30,18 @@ const groupSchema = new mongoose.Schema({
         default: 'pending'
     },
     documents: [{
-        name: String,
-        url: String,
-        type: String,
+        name: {
+            type: String,
+            trim: true
+        },
+        url: {
+            type: String,
+            trim: true
+        },
+        type: {
+            type: String,
+            trim: true
+        },
         status: {
             type: String,
             enum: ['pending', 'approved', 'rejected'],
@@ -43,16 +53,25 @@ const groupSchema = new mongoose.Schema({
         evaluator: {
             type: mongoose.Schema.Types.ObjectId,
             ref: 'User',
-            required: true
+            required: [true, 'Người đánh giá là bắt buộc']
         },
         scores: [{
-            criteria: String,
+            criteria: {
+                type: String,
+                trim: true
+            },
             score: Number,
             weight: Number,
-            comment: String
+            comment: {
+                type: String,
+                trim: true
+            }
         }],
         totalScore: Number,
-        comment: String,
+        comment: {
+            type: String,
+            trim: true
+        },
         submittedAt: {
             type: Date,
             default: Date.now

@@ -1,17 +1,19 @@
+/* eslint-disable no-undef */
+// Route: Học kỳ (Semester)
 const express = require('express');
 const router = express.Router();
 const semesterController = require('../controllers/semesterController');
 
-// Get all semesters
+// Lấy tất cả học kỳ
 router.get('/', semesterController.getAllSemesters);
 
-// Create new semester
+// Tạo học kỳ mới
 router.post('/', semesterController.createSemester);
 
-// Update semester
+// Cập nhật học kỳ
 router.put('/:id', semesterController.updateSemester);
 
-// Delete semester
+// Xóa học kỳ
 router.delete('/:id', semesterController.deleteSemester);
 
 module.exports = router; 

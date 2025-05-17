@@ -1,3 +1,5 @@
+/* eslint-disable no-undef */
+// Route: Rubric & Rubric Evaluation
 const express = require('express');
 const router = express.Router();
 const rubricController = require('../controllers/rubricController');

@@ -1,5 +1,60 @@
+/* eslint-disable no-undef */
 const RegistrationPeriod = require('../models/RegistrationPeriod');
 const Semester = require('../models/Semester');
+
+// Constants for error messages
+const ERROR_MESSAGES = {
+  REQUIRED_FIELDS: 'Vui lòng điền đầy đủ thông tin',
+  SEMESTER_NOT_FOUND: 'Không tìm thấy học kỳ',
+  PERIOD_NOT_FOUND: 'Không tìm thấy đợt đăng ký',
+  INVALID_DATES: 'Thời gian bắt đầu phải trước thời gian kết thúc',
+  OUTSIDE_SEMESTER: 'Thời gian đăng ký phải nằm trong khoảng thời gian của học kỳ',
+  OVERLAPPING_PERIOD: 'Đã tồn tại đợt đăng ký trong khoảng thời gian này',
+  SERVER_ERROR: 'Lỗi server',
+  DELETE_SUCCESS: 'Xóa đợt đăng ký thành công'
+};
+
+// Helper functions
+const validateDates = (start, end, semester) => {
+  if (start >= end) {
+    return { isValid: false, message: ERROR_MESSAGES.INVALID_DATES };
+  }
+
+  const semesterStart = new Date(semester.school_year_start).getTime() / 1000;
+  const semesterEnd = new Date(semester.school_year_end).getTime() / 1000;
+
+  if (start < semesterStart || end > semesterEnd) {
+    return { isValid: false, message: ERROR_MESSAGES.OUTSIDE_SEMESTER };
+  }
+
+  return { isValid: true };
+};
+
+const checkOverlappingPeriods = async (period, excludeId = null) => {
+  const query = {
+    registration_period_semester: period.registration_period_semester,
+    $or: [
+      {
+        registration_period_start: { 
+          $lte: period.registration_period_end,
+          $gte: period.registration_period_start 
+        }
+      },
+      {
+        registration_period_end: { 
+          $gte: period.registration_period_start,
+          $lte: period.registration_period_end 
+        }
+      }
+    ]
+  };
+
+  if (excludeId) {
+    query._id = { $ne: excludeId };
+  }
+
+  return await RegistrationPeriod.findOne(query);
+};
 
 // Get all registration periods
 exports.getAllRegistrationPeriods = async (req, res) => {
@@ -9,53 +64,50 @@ exports.getAllRegistrationPeriods = async (req, res) => {
       .sort({ createdAt: -1 });
     res.status(200).json(registrationPeriods);
   } catch (error) {
-    res.status(500).json({ message: 'Lỗi khi lấy danh sách đợt đăng ký', error: error.message });
+    res.status(500).json({ 
+      message: ERROR_MESSAGES.SERVER_ERROR, 
+      error: error.message 
+    });
   }
 };
 
 // Create new registration period
 exports.createRegistrationPeriod = async (req, res) => {
   try {
+    const { registration_period_semester, registration_period_start, registration_period_end } = req.body;
+
+    // Validate required fields
+    if (!registration_period_semester || !registration_period_start || !registration_period_end) {
+      return res.status(400).json({ message: ERROR_MESSAGES.REQUIRED_FIELDS });
+    }
+
     // Check if semester exists
-    const semester = await Semester.findById(req.body.registration_period_semester);
+    const semester = await Semester.findById(registration_period_semester);
     if (!semester) {
-      return res.status(404).json({ message: 'Không tìm thấy học kỳ' });
+      return res.status(404).json({ message: ERROR_MESSAGES.SEMESTER_NOT_FOUND });
+    }
+
+    // Validate dates
+    const dateValidation = validateDates(registration_period_start, registration_period_end, semester);
+    if (!dateValidation.isValid) {
+      return res.status(400).json({ message: dateValidation.message });
     }
 
     // Check for overlapping periods
-    const overlapping = await RegistrationPeriod.findOne({
-      registration_period_semester: req.body.registration_period_semester,
-      $or: [
-        {
-          registration_period_start: { 
-            $lte: req.body.registration_period_end,
-            $gte: req.body.registration_period_start 
-          }
-        },
-        {
-          registration_period_end: { 
-            $gte: req.body.registration_period_start,
-            $lte: req.body.registration_period_end 
-          }
-        }
-      ]
-    });
-
-    if (overlapping) {
-      return res.status(400).json({ 
-        message: 'Đã tồn tại đợt đăng ký trong khoảng thời gian này' 
-      });
+    const hasOverlap = await checkOverlappingPeriods(req.body);
+    if (hasOverlap) {
+      return res.status(400).json({ message: ERROR_MESSAGES.OVERLAPPING_PERIOD });
     }
 
     const registrationPeriod = new RegistrationPeriod(req.body);
     await registrationPeriod.save();
     
-    const savedPeriod = await RegistrationPeriod.findById(registrationPeriod._id)
-      .populate('registration_period_semester');
-    
-    res.status(201).json(savedPeriod);
+    res.status(201).json(registrationPeriod);
   } catch (error) {
-    res.status(400).json({ message: 'Lỗi khi tạo đợt đăng ký mới', error: error.message });
+    res.status(500).json({ 
+      message: ERROR_MESSAGES.SERVER_ERROR, 
+      error: error.message 
+    });
   }
 };
 
@@ -66,67 +118,66 @@ exports.getRegistrationPeriodById = async (req, res) => {
       .populate('registration_period_semester');
     
     if (!registrationPeriod) {
-      return res.status(404).json({ message: 'Không tìm thấy đợt đăng ký' });
+      return res.status(404).json({ message: ERROR_MESSAGES.PERIOD_NOT_FOUND });
     }
     
     res.status(200).json(registrationPeriod);
   } catch (error) {
-    res.status(500).json({ message: 'Lỗi khi lấy thông tin đợt đăng ký', error: error.message });
+    res.status(500).json({ 
+      message: ERROR_MESSAGES.SERVER_ERROR, 
+      error: error.message 
+    });
   }
 };
 
 // Update registration period
 exports.updateRegistrationPeriod = async (req, res) => {
   try {
-    // Check if semester exists if it's being updated
-    if (req.body.registration_period_semester) {
-      const semester = await Semester.findById(req.body.registration_period_semester);
+    const { registration_period_semester, registration_period_start, registration_period_end } = req.body;
+
+    // Check if registration period exists
+    const existingPeriod = await RegistrationPeriod.findById(req.params.id);
+    if (!existingPeriod) {
+      return res.status(404).json({ message: ERROR_MESSAGES.PERIOD_NOT_FOUND });
+    }
+
+    // If semester is being updated, validate it
+    if (registration_period_semester) {
+      const semester = await Semester.findById(registration_period_semester);
       if (!semester) {
-        return res.status(404).json({ message: 'Không tìm thấy học kỳ' });
+        return res.status(404).json({ message: ERROR_MESSAGES.SEMESTER_NOT_FOUND });
+      }
+
+      // Validate dates if they're being updated
+      if (registration_period_start && registration_period_end) {
+        const dateValidation = validateDates(registration_period_start, registration_period_end, semester);
+        if (!dateValidation.isValid) {
+          return res.status(400).json({ message: dateValidation.message });
+        }
+
+        // Check for overlapping periods
+        const hasOverlap = await checkOverlappingPeriods(
+          { ...req.body, registration_period_semester }, 
+          req.params.id
+        );
+        if (hasOverlap) {
+          return res.status(400).json({ message: ERROR_MESSAGES.OVERLAPPING_PERIOD });
+        }
       }
     }
 
-    // Check for overlapping periods excluding current period
-    if (req.body.registration_period_start && req.body.registration_period_end) {
-      const overlapping = await RegistrationPeriod.findOne({
-        _id: { $ne: req.params.id },
-        registration_period_semester: req.body.registration_period_semester,
-        $or: [
-          {
-            registration_period_start: { 
-              $lte: req.body.registration_period_end,
-              $gte: req.body.registration_period_start 
-            }
-          },
-          {
-            registration_period_end: { 
-              $gte: req.body.registration_period_start,
-              $lte: req.body.registration_period_end 
-            }
-          }
-        ]
-      });
-
-      if (overlapping) {
-        return res.status(400).json({ 
-          message: 'Đã tồn tại đợt đăng ký trong khoảng thời gian này' 
-        });
-      }
-    }
-
-    const registrationPeriod = await RegistrationPeriod.findByIdAndUpdate(
+    const updatedPeriod = await RegistrationPeriod.findByIdAndUpdate(
       req.params.id,
       req.body,
-      { new: true, runValidators: true }
+      { new: true }
     ).populate('registration_period_semester');
 
-    if (!registrationPeriod) {
-      return res.status(404).json({ message: 'Không tìm thấy đợt đăng ký' });
-    }
-
-    res.status(200).json(registrationPeriod);
+    res.status(200).json(updatedPeriod);
   } catch (error) {
-    res.status(400).json({ message: 'Lỗi khi cập nhật đợt đăng ký', error: error.message });
+    res.status(500).json({ 
+      message: ERROR_MESSAGES.SERVER_ERROR, 
+      error: error.message 
+    });
   }
 };
 
@@ -136,11 +187,14 @@ exports.deleteRegistrationPeriod = async (req, res) => {
     const registrationPeriod = await RegistrationPeriod.findByIdAndDelete(req.params.id);
     
     if (!registrationPeriod) {
-      return res.status(404).json({ message: 'Không tìm thấy đợt đăng ký' });
+      return res.status(404).json({ message: ERROR_MESSAGES.PERIOD_NOT_FOUND });
     }
 
-    res.status(200).json({ message: 'Xóa đợt đăng ký thành công' });
+    res.status(200).json({ message: ERROR_MESSAGES.DELETE_SUCCESS });
   } catch (error) {
-    res.status(500).json({ message: 'Lỗi khi xóa đợt đăng ký', error: error.message });
+    res.status(500).json({ 
+      message: ERROR_MESSAGES.SERVER_ERROR, 
+      error: error.message 
+    });
   }
 }; 
