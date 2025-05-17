@@ -73,8 +73,10 @@ const LecturerList = () => {
         axios.get("http://localhost:5000/api/database/collections/faculties"),
         axios.get("http://localhost:5000/api/database/collections/majors")
       ]);
-      setFaculties(facultiesRes.data);
-      setMajors(majorsRes.data);
+      console.log('API faculties response:', facultiesRes.data);
+      console.log('API majors response:', majorsRes.data);
+      setFaculties(facultiesRes.data.data);
+      setMajors(majorsRes.data.data);
     } catch (err) {
       console.error("Lỗi khi tải dữ liệu khoa và chuyên ngành:", err);
     }
@@ -88,7 +90,11 @@ const LecturerList = () => {
           search: searchText
         }
       });
-      const filteredLecturers = res.data
+      console.log('API response for lecturers:', res.data);
+      console.log('faculties:', faculties);
+      console.log('majors:', majors);
+      const lecturersArray = res.data.data;
+      const filteredLecturers = lecturersArray
         .filter(user => user.role === 'giangvien')
         .filter(lecturer => {
           // Lọc theo text tìm kiếm
@@ -102,7 +108,7 @@ const LecturerList = () => {
 
           // Lọc theo khoa
           if (filterFaculty) {
-            const faculty = faculties.find(f => f._id === lecturer.user_faculty);
+            const faculty = faculties.find(f => String(f._id) === String(lecturer.user_faculty));
             if (faculty?.faculty_title !== filterFaculty) {
               return false;
             }
@@ -110,7 +116,7 @@ const LecturerList = () => {
 
           // Lọc theo chuyên ngành
           if (filterMajor) {
-            const major = majors.find(m => m._id === lecturer.user_major);
+            const major = majors.find(m => String(m._id) === String(lecturer.user_major));
             if (major?.major_title !== filterMajor) {
               return false;
             }
@@ -120,9 +126,9 @@ const LecturerList = () => {
         })
         .map(lecturer => {
           // Tìm tên khoa
-          const faculty = faculties.find(f => f._id === lecturer.user_faculty);
+          const faculty = faculties.find(f => String(f._id) === String(lecturer.user_faculty));
           // Tìm tên chuyên ngành
-          const major = majors.find(m => m._id === lecturer.user_major);
+          const major = majors.find(m => String(m._id) === String(lecturer.user_major));
           
           return {
             ...lecturer,
@@ -577,109 +583,6 @@ const LecturerList = () => {
         [field]: undefined
       }));
     }
-  };
-
-  const validateForm = async () => {
-    const newErrors = {};
-    const changedFields = Object.keys(formData);
-
-    // Validate họ tên nếu đã thay đổi
-    if (changedFields.includes('user_name')) {
-      if (!formData.user_name?.trim()) {
-        newErrors.user_name = 'Họ tên không được để trống';
-      } else if (/\d|[!@#$%^&*(),.?":{}|<>]/.test(formData.user_name)) {
-        newErrors.user_name = 'Họ tên không được chứa số hoặc ký tự đặc biệt';
-      }
-    }
-
-    // Validate email nếu đã thay đổi
-    if (changedFields.includes('email')) {
-      if (!formData.email?.trim()) {
-        newErrors.email = 'Email không được để trống';
-      } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)) {
-        newErrors.email = 'Email không hợp lệ';
-      } else {
-        // Kiểm tra email trùng
-        try {
-          const response = await axios.get(`http://localhost:5000/api/database/collections/User`, {
-            params: {
-              email: formData.email,
-              excludeId: selectedLecturer?._id // Loại trừ ID hiện tại khi kiểm tra
-            }
-          });
-          const existingUser = response.data.find(user => user.email === formData.email && user._id !== selectedLecturer?._id);
-          if (existingUser) {
-            newErrors.email = 'Email này đã được sử dụng';
-          }
-        } catch (error) {
-          console.error('Error checking email:', error);
-        }
-      }
-    }
-
-    // Validate mã số nếu đã thay đổi
-    if (changedFields.includes('user_id')) {
-      if (!formData.user_id?.trim()) {
-        newErrors.user_id = 'Mã số không được để trống';
-      } else {
-        // Kiểm tra mã số trùng
-        try {
-          const response = await axios.get(`http://localhost:5000/api/database/collections/User`, {
-            params: {
-              user_id: formData.user_id,
-              excludeId: selectedLecturer?._id // Loại trừ ID hiện tại khi kiểm tra
-            }
-          });
-          const existingUser = response.data.find(user => user.user_id === formData.user_id && user._id !== selectedLecturer?._id);
-          if (existingUser) {
-            newErrors.user_id = 'Mã số đã tồn tại';
-          }
-        } catch (error) {
-          console.error('Error checking user ID:', error);
-        }
-      }
-    }
-
-    // Validate CCCD nếu đã thay đổi
-    if (changedFields.includes('user_CCCD')) {
-      if (!formData.user_CCCD?.trim()) {
-        newErrors.user_CCCD = 'CCCD không được để trống';
-      } else if (!/^\d{12}$/.test(formData.user_CCCD)) {
-        newErrors.user_CCCD = 'CCCD phải có 12 chữ số';
-      }
-    }
-
-    // Validate số điện thoại nếu đã thay đổi
-    if (changedFields.includes('user_phone')) {
-      if (!formData.user_phone?.trim()) {
-        newErrors.user_phone = 'Số điện thoại không được để trống';
-      } else if (!/^\d{10}$/.test(formData.user_phone)) {
-        newErrors.user_phone = 'Số điện thoại phải có 10 chữ số';
-      }
-    }
-
-    // Validate địa chỉ nếu đã thay đổi
-    if (changedFields.includes('user_permanent_address') && !formData.user_permanent_address?.trim()) {
-      newErrors.user_permanent_address = 'Địa chỉ không được để trống';
-    }
-
-    // Validate ngày sinh nếu đã thay đổi
-    if (changedFields.includes('user_date_of_birth') && !formData.user_date_of_birth) {
-      newErrors.user_date_of_birth = 'Ngày sinh không được để trống';
-    }
-
-    // Validate khoa nếu đã thay đổi
-    if (changedFields.includes('user_faculty') && !formData.user_faculty) {
-      newErrors.user_faculty = 'Vui lòng chọn khoa';
-    }
-
-    // Validate chuyên ngành nếu đã thay đổi
-    if (changedFields.includes('user_major') && !formData.user_major) {
-      newErrors.user_major = 'Vui lòng chọn chuyên ngành';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
   };
 
   return (

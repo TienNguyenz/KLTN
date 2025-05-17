@@ -47,6 +47,7 @@ const Registration = () => {
       setLoading(true);
       const response = await api.get('/registrationperiods');
       if (!response.data) throw new Error('Invalid response data');
+      console.log('API response for registrations:', response.data);
       const registrationsWithDetails = response.data.map(registration => ({
         ...registration,
         key: registration._id,
@@ -69,6 +70,7 @@ const Registration = () => {
     try {
       const response = await api.get('/semesters');
       if (!response.data) throw new Error('Invalid response data');
+      console.log('API response for semesters:', response.data);
       setSemesters(response.data);
     } catch (error) {
       handleError(error, 'Lỗi khi tải danh sách học kỳ');
@@ -246,6 +248,25 @@ const Registration = () => {
     { title: 'Trạng thái', dataIndex: 'registration_period_status', key: 'registration_period_status', width: '15%', filteredValue: [filterStatus], onFilter: (value, record) => value === 'all' ? true : record.registration_period_status === (value === 'open'), render: (status) => (<span className={`px-2 py-1 rounded-full text-xs ${status ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'}`}>{status ? 'Mở' : 'Đóng'}</span>) },
     { title: 'Thao tác', key: 'action', render: (_, record) => (<Space.Compact className="flex"><Button type="text" className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-blue-100" onClick={() => handleEdit(record)} icon={<FaEdit style={{ color: '#4096ff' }} className="text-lg" />} /><Button type="text" className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100" onClick={() => showDeleteConfirm(record)} icon={<FaTrash style={{ color: '#ff4d4f' }} className="text-lg" />} /></Space.Compact>) }
   ];
+
+  // Mở modal thêm mới
+  const handleAddRegistration = () => {
+    setIsModalVisible(true);
+    form.resetFields();
+  };
+
+  // Đóng modal thêm mới
+  const handleModalCancel = () => {
+    setIsModalVisible(false);
+    form.resetFields();
+  };
+
+  // Đóng modal chỉnh sửa
+  const handleEditModalCancel = () => {
+    setIsEditModalVisible(false);
+    editForm.resetFields();
+    setEditingRecord(null);
+  };
 
   return (
     <div className="p-6">

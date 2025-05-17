@@ -73,8 +73,10 @@ const Students = () => {
         axios.get("http://localhost:5000/api/database/collections/faculties"),
         axios.get("http://localhost:5000/api/database/collections/majors")
       ]);
-      setFaculties(facultiesRes.data);
-      setMajors(majorsRes.data);
+      console.log('API faculties response:', facultiesRes.data);
+      console.log('API majors response:', majorsRes.data);
+      setFaculties(facultiesRes.data.data);
+      setMajors(majorsRes.data.data);
     } catch (err) {
       console.error("Lỗi khi tải dữ liệu khoa và chuyên ngành:", err);
     }
@@ -88,7 +90,11 @@ const Students = () => {
           search: searchText
         }
       });
-      const filteredStudents = res.data
+      console.log('API response for students:', res.data);
+      console.log('faculties:', faculties);
+      console.log('majors:', majors);
+      const studentsArray = res.data.data;
+      const filteredStudents = studentsArray
         .filter(user => user.role === 'sinhvien')
         .filter(student => {
           // Lọc theo text tìm kiếm
@@ -102,7 +108,7 @@ const Students = () => {
 
           // Lọc theo khoa
           if (filterFaculty) {
-            const faculty = faculties.find(f => f._id === student.user_faculty);
+            const faculty = faculties.find(f => String(f._id) === String(student.user_faculty));
             if (faculty?.faculty_title !== filterFaculty) {
               return false;
             }
@@ -110,7 +116,7 @@ const Students = () => {
 
           // Lọc theo chuyên ngành
           if (filterMajor) {
-            const major = majors.find(m => m._id === student.user_major);
+            const major = majors.find(m => String(m._id) === String(student.user_major));
             if (major?.major_title !== filterMajor) {
               return false;
             }
