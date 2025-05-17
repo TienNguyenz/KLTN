@@ -327,10 +327,10 @@ const Proposals = () => {
           axios.get(`/api/students?facultyId=${facultyId}`)
         ]);
 
-        setInstructors(instructorsRes.data);
-        setMajors(majorsRes.data);
-        setTopicTypes(topicTypesRes.data);
-        setStudents(studentsRes.data.filter(s => s._id !== user?.user_id));
+        setInstructors(instructorsRes.data.data);
+        setMajors(majorsRes.data.data);
+        setTopicTypes(topicTypesRes.data.data);
+        setStudents(studentsRes.data.data.filter(s => s._id !== user?.user_id));
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {

@@ -51,6 +51,7 @@ const CouncilManagement = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [filteredLecturers, setFilteredLecturers] = useState([]);
   const [faculties, setFaculties] = useState([]);
+  const [students, setStudents] = useState([]);
 
   useEffect(() => {
     fetchInitialData();
@@ -74,7 +75,8 @@ const CouncilManagement = () => {
   const fetchFaculties = async () => {
     try {
       const response = await axios.get('http://localhost:5000/api/database/collections/faculties');
-      setFaculties(response.data);
+      const faculties = Array.isArray(response.data.data) ? response.data.data : [];
+      setFaculties(faculties);
     } catch (error) {
       console.error('Error fetching faculties:', error);
     }
@@ -84,27 +86,25 @@ const CouncilManagement = () => {
     try {
       const response = await axios.get('http://localhost:5000/api/database/collections/majors');
       console.log('Majors data:', response.data);
-      setMajors(response.data);
+      const majors = Array.isArray(response.data.data) ? response.data.data : [];
+      setMajors(majors);
     } catch (error) {
       console.error('Error fetching majors:', error);
     }
   };
 
   const fetchLecturers = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/database/collections/User');
-      const lecturersList = response.data.filter(user => user.role === 'giangvien');
-      setLecturers(lecturersList);
-    } catch (error) {
-      console.error('Error fetching lecturers:', error);
-    }
+    const res = await axios.get('http://localhost:5000/api/database/collections/User');
+    const lecturers = Array.isArray(res.data.data) ? res.data.data : [];
+    setLecturers(lecturers.filter(user => user.role === 'giangvien'));
   };
 
   const fetchCouncils = async () => {
     try {
       const response = await axios.get('http://localhost:5000/api/database/collections/assemblies');
       console.log('Fetch councils response:', response.data);
-      setCouncils(response.data);
+      const councils = Array.isArray(response.data.data) ? response.data.data : [];
+      setCouncils(councils);
     } catch (error) {
       console.error('Error fetching councils:', {
         message: error.message,
@@ -289,6 +289,20 @@ const CouncilManagement = () => {
     const lecturer = lecturers.find(l => l._id === lecturerId);
     return lecturer ? `${lecturer.user_id} - ${lecturer.user_name}` : 'Không tìm thấy';
   };
+
+  useEffect(() => {
+    const fetchStudents = async () => {
+      const res = await axios.get('http://localhost:5000/api/database/collections/Student');
+      const students = Array.isArray(res.data.data) ? res.data.data : [];
+      setStudents(students);
+      console.log('Students:', students);
+    };
+    fetchStudents();
+  }, []);
+
+  console.log('Students:', students);
+  console.log('Lecturers:', lecturers);
+  console.log('Councils:', councils);
 
   return (
     <Box sx={{ p: 3 }}>

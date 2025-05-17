@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, DatePicker, Select, Switch, message, Input, Space } from 'antd';
-import { PlusOutlined, SearchOutlined, FaEdit, FaTrash } from '@ant-design/icons';
+import { PlusOutlined, SearchOutlined } from '@ant-design/icons';
+import { FaEdit, FaTrash } from 'react-icons/fa';
 import dayjs from 'dayjs';
 import axios from 'axios';
 import { useNavigate } from 'react-router-dom';

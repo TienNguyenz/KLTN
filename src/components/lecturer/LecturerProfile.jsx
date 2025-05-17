@@ -74,9 +74,11 @@ const LecturerProfile = () => {
     const fetchFaculties = async () => {
       try {
         const res = await axios.get('http://localhost:5000/api/database/collections/faculties');
-        setFaculties(res.data);
+        const facultiesData = Array.isArray(res.data.data) ? res.data.data : [];
+        setFaculties(facultiesData);
       } catch (err) {
         console.error('Lỗi khi tải danh sách khoa:', err);
+        setFaculties([]); // Set mảng rỗng nếu có lỗi
       }
     };
 
@@ -400,9 +402,16 @@ const LecturerProfile = () => {
               <p className="text-gray-900 font-medium">
                 {(() => {
                   const facultyId = profileData?.user_faculty || profileData?.facultyId;
-                  if (!facultyId) return 'Chưa cập nhật';
+                  if (!facultyId || !Array.isArray(faculties)) return 'Chưa cập nhật';
                   const idStr = typeof facultyId === 'object' && facultyId.$oid ? facultyId.$oid : facultyId;
-                  const found = faculties.find(f => (f._id.$oid || f._id) === idStr);
+                  console.log('facultyId (từ profile):', facultyId);
+                  console.log('idStr (so sánh):', idStr);
+                  console.log('faculties:', faculties.map(f => f._id));
+                  console.log('faculties (oid):', faculties.map(f => f._id?.$oid));
+                  const found = faculties.find(f => {
+                    const facultyObjId = f._id?.$oid || f._id;
+                    return facultyObjId === idStr;
+                  });
                   return found ? found.faculty_title : 'Chưa cập nhật';
                 })()}
               </p>

@@ -3,6 +3,7 @@ import { useAuth } from "../../context/AuthContext";
 import { FontAwesomeIcon } from '@fortawesome/react-fontawesome';
 import { faUserCircle, faIdCardAlt, faEnvelope, faBirthdayCake, faUniversity, faBook, faPhoneAlt, faMapMarkedAlt, faUserAlt, faGraduationCap, faEdit, faSave, faKey } from '@fortawesome/free-solid-svg-icons';
 import { Modal, Input, message } from 'antd';
+import axios from 'axios';
 
 const StudentProfile = () => {
   const { user } = useAuth();
@@ -45,6 +46,7 @@ const StudentProfile = () => {
           throw new Error(`HTTP error! status: ${response.status}`);
         }
         const data = await response.json();
+        const arr = Array.isArray(data.data) ? data.data : [];
         setProfileData(data);
         setTempProfileData(data); // Khởi tạo temp data với dữ liệu hiện có
       } catch (error) {

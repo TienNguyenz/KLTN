@@ -62,6 +62,9 @@ const AppLayout = () => {
   const { user, loading } = useAuth();
   const location = useLocation();
 
+  // Thêm log debug
+  console.log('AppLayout render:', { user, loading, pathname: location.pathname });
+
   if (loading) {
     return <div>Loading application...</div>;
   }

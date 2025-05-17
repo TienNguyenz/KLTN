@@ -13,8 +13,15 @@ const NotificationBell = ({ userId }) => {
     if (userId) {
       axios.get(`/api/notifications/${userId}`)
         .then(res => {
-          setNotifications(res.data);
-          setUnreadCount(res.data.filter(n => !n.user_notification_isRead).length);
+          // Đảm bảo res.data là một mảng
+          const notificationData = Array.isArray(res.data) ? res.data : [];
+          setNotifications(notificationData);
+          setUnreadCount(notificationData.filter(n => !n.user_notification_isRead).length);
+        })
+        .catch(error => {
+          console.error('Error fetching notifications:', error);
+          setNotifications([]);
+          setUnreadCount(0);
         });
     }
   }, [userId]);
