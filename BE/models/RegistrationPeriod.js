@@ -5,7 +5,7 @@ const registrationPeriodSchema = new mongoose.Schema({
   registration_period_semester: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Semester',
-    required: [true, 'Học kỳ là bắt buộc']
+    // required: [true, 'Học kỳ là bắt buộc']
   },
   registration_period_start: {
     type: Number,

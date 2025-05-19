@@ -21,7 +21,7 @@ const handleError = (error, customMessage) => {
 };
 
 const validateEvaluationData = (data) => {
-  const { rubric_id, evaluation_criteria, evaluation_score } = data;
+  const { rubric_id, evaluation_criteria, grading_scale } = data;
   
   if (!rubric_id) {
     return { isValid: false, message: 'Vui lòng chọn rubric' };
@@ -31,8 +31,14 @@ const validateEvaluationData = (data) => {
     return { isValid: false, message: 'Vui lòng nhập tiêu chí đánh giá' };
   }
   
-  if (!evaluation_score || evaluation_score < 0 || evaluation_score > 10) {
-    return { isValid: false, message: 'Điểm đánh giá phải từ 0 đến 10' };
+  if (
+    grading_scale === undefined ||
+    grading_scale === null ||
+    isNaN(grading_scale) ||
+    grading_scale < 1 ||
+    grading_scale > 10
+  ) {
+    return { isValid: false, message: 'Thang điểm phải từ 1 đến 10' };
   }
   
   return { isValid: true };
@@ -110,6 +116,29 @@ exports.createEvaluation = async (req, res) => {
     const rubric = await Rubric.findById(req.body.rubric_id);
     if (!rubric) {
       return res.status(404).json({ message: ERROR_MESSAGES.RUBRIC_NOT_FOUND });
+    }
+
+    // Kiểm tra tên tiêu chí không trùng trong cùng rubric
+    const existingNames = await RubricEvaluation.find({
+      rubric_id: req.body.rubric_id,
+      evaluation_criteria: req.body.evaluation_criteria
+    });
+    if (existingNames.length > 0) {
+      return res.status(400).json({ message: 'Tên tiêu chí đã tồn tại trong phiếu đánh giá này.' });
+    }
+
+    // Kiểm tra tổng trọng số các tiêu chí (bao gồm tiêu chí mới) phải đúng 1
+    const allEvaluations = await RubricEvaluation.find({ rubric_id: req.body.rubric_id });
+    let totalWeight = req.body.weight;
+    allEvaluations.forEach(e => { totalWeight += e.weight; });
+    // Làm tròn 2 chữ số thập phân để tránh lỗi số thực
+    const roundedTotal = Math.round(totalWeight * 100) / 100;
+    if (roundedTotal > 1) {
+      return res.status(400).json({ message: 'Tổng trọng số các tiêu chí vượt quá 100%.' });
+    }
+    // Nếu là tiêu chí cuối cùng, tổng phải đúng 1 (có thể truyền flag từ FE nếu muốn kiểm tra chặt hơn)
+    if (Math.abs(roundedTotal - 1) > 0.01 && req.body.isLast) {
+      return res.status(400).json({ message: 'Tổng trọng số các tiêu chí phải đúng 100%.' });
     }
 
     const evaluation = new RubricEvaluation(req.body);

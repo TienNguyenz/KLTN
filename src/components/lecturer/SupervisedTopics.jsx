@@ -1,29 +1,79 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Tag, Space, Typography, Input, Button } from 'antd';
-import { SearchOutlined, FileExcelOutlined, EditOutlined } from '@ant-design/icons';
+import { SearchOutlined, FileExcelOutlined } from '@ant-design/icons';
 import Highlighter from 'react-highlight-words';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
-import { getSupervisedTopics } from '../../data/mockThesisData';
+import axios from 'axios';
+import { useAuth } from '../../context/AuthContext';
 
 const { Title } = Typography;
 
 const SupervisedTopics = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
+  const [lecturers, setLecturers] = useState([]);
+  const [categories, setCategories] = useState([]);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [searchText, setSearchText] = useState('');
   const [searchedColumn, setSearchedColumn] = useState('');
 
+  // Fetch lecturers and categories once
   useEffect(() => {
-    setLoading(true);
-    // Lấy dữ liệu từ mockData
-    const topics = getSupervisedTopics();
-    setData(topics);
-    setLoading(false);
+    axios.get('/api/lecturers').then(res => {
+      setLecturers(res.data.data || []);
+      console.log('Lecturers:', res.data.data);
+    }).catch(err => {
+      setLecturers([]);
+      console.error('Lecturers API error:', err);
+    });
+    axios.get('/api/topic-categories').then(res => {
+      setCategories(res.data.data || []);
+      console.log('Categories:', res.data.data);
+    }).catch(err => {
+      setCategories([]);
+      console.error('Categories API error:', err);
+    });
   }, []);
+
+  useEffect(() => {
+    const fetchTopics = async () => {
+      setLoading(true);
+      try {
+        const response = await axios.get(`/api/topics/instructor/${user?.id}/all`);
+        setData(response.data);
+        console.log('Topics:', response.data);
+      } catch (error) {
+        setData([]);
+        console.error('Error fetching topics:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    if (user?.id) {
+      fetchTopics();
+    }
+  }, [user?.id]);
+
+  // Map topic data to display info
+  const mappedData = data.map(topic => {
+    const reviewerObj = lecturers.find(l => l._id === topic.topic_reviewer);
+    const instructorObj = lecturers.find(l => l._id === topic.topic_instructor);
+    const categoryObj = categories.find(c => c._id === topic.topic_category);
+    return {
+      id: topic._id,
+      title: topic.topic_title,
+      supervisor: instructorObj ? instructorObj.user_name : 'N/A',
+      reviewer: reviewerObj ? reviewerObj.user_name : 'Chưa có',
+      type: categoryObj ? categoryObj.topic_category_title : 'N/A',
+      studentCount: topic.topic_group_student?.length || 0,
+      lecturer: instructorObj ? instructorObj.user_name : 'N/A',
+      status: topic.topic_teacher_status === 'approved' ? 'ACTIVE' : 'REGISTERED'
+    };
+  });
 
   const getColumnSearchProps = (dataIndex) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
@@ -91,16 +141,15 @@ const SupervisedTopics = () => {
   };
 
   const exportToExcel = () => {
-    const exportData = data.map(item => ({
+    const exportData = mappedData.map(item => ({
       'Tên đề tài': item.title,
       'GVHD': item.supervisor,
       'GVPB': item.reviewer,
       'Loại đề tài': item.type,
-      'SVTH': item.studentId,
+      'SVTH': item.studentCount,
       'Giảng viên': item.lecturer,
       'Trạng thái': item.status,
     }));
-
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, ws, "Đề tài hướng dẫn");
@@ -109,10 +158,6 @@ const SupervisedTopics = () => {
 
   const handleTopicClick = (topicId) => {
     navigate(`/lecturer/supervised-topics/${topicId}`);
-  };
-
-  const handleEditTopic = (topicId) => {
-    navigate(`/lecturer/topics/${topicId}/edit`);
   };
 
   const columns = [
@@ -150,16 +195,13 @@ const SupervisedTopics = () => {
       dataIndex: 'type',
       key: 'type',
       width: '10%',
-      filters: [
-        { text: 'Ứng dụng', value: 'Ứng dụng' },
-        { text: 'Nghiên cứu', value: 'Nghiên cứu' },
-      ],
+      filters: categories.map(c => ({ text: c.topic_category_title, value: c.topic_category_title })),
       onFilter: (value, record) => record.type === value,
     },
     {
       title: 'SVTH',
-      dataIndex: 'studentId',
-      key: 'studentId',
+      dataIndex: 'studentCount',
+      key: 'studentCount',
       width: '8%',
       align: 'center',
     },
@@ -187,17 +229,11 @@ const SupervisedTopics = () => {
         </Tag>
       ),
     },
-    {
-      title: 'Hành động',
-      key: 'action',
-      render: (_, record) => (
-        <Button
-          icon={<EditOutlined />}
-          onClick={() => handleEditTopic(record.id)}
-        />
-      ),
-    },
   ];
+
+  if (loading) return <div className="p-6">Đang tải...</div>;
+  if (!lecturers.length || !categories.length) return <div className="p-6 text-red-500">Không có dữ liệu phụ trợ (giảng viên/loại đề tài). Kiểm tra lại API hoặc dữ liệu!</div>;
+  if (!mappedData.length) return <div className="p-6 text-yellow-600">Không có đề tài nào.</div>;
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
@@ -212,16 +248,15 @@ const SupervisedTopics = () => {
           Xuất Excel
         </Button>
       </div>
-
       <div className="bg-white rounded-lg shadow">
         <Table
           columns={columns}
-          dataSource={data}
+          dataSource={mappedData}
           loading={loading}
           pagination={{
             current: currentPage,
             pageSize: pageSize,
-            total: data.length,
+            total: mappedData.length,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total) => `Tổng cộng ${total} đề tài.`,

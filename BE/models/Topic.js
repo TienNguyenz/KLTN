@@ -4,7 +4,7 @@ const topicSchema = new mongoose.Schema({
     topic_registration_period: {
         type: mongoose.Schema.Types.ObjectId,
         ref: 'RegistrationPeriod',
-        required: [true, 'Đợt đăng ký là bắt buộc']
+        // required: [true, 'Đợt đăng ký là bắt buộc']
     },
     topic_title: {
         type: String,

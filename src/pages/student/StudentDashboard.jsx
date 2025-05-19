@@ -14,56 +14,32 @@ const TopicDetails = () => {
   const navigate = useNavigate();
 
   useEffect(() => {
+    if (!user?.user_id) {
+      setIsLoading(false);
+      return;
+    }
     const fetchRegisteredTopic = async () => {
       try {
-        console.log('Fetching registered topic for user_id:', user?.user_id);
-        // Tìm đề tài mà sinh viên đang tham gia
-        const response = await axios.get(`/api/topics/student/${user?.user_id}`);
-        console.log('API Response:', response.data);
-        if (response.data) {
-          console.log('Setting registered topic:', response.data);
-          setRegisteredTopic(response.data);
-        } else {
-          console.log('No registered topic found');
-        }
-      } catch (error) {
-        console.error('Error fetching registered topic:', error);
-        console.error('Error details:', error.response?.data || error.message);
+        const response = await axios.get(`/api/topics/student/${user.user_id}`);
+        setRegisteredTopic(response.data);
+      } catch {
+        setRegisteredTopic(null);
       } finally {
         setIsLoading(false);
       }
     };
-
-    if (user?.user_id) {
-      console.log('User ID exists, fetching registered topic');
-      fetchRegisteredTopic();
-    } else {
-      console.log('No user ID found');
-      setIsLoading(false);
-    }
+    fetchRegisteredTopic();
   }, [user?.user_id]);
 
-  // Các hàm xử lý
-  const handleCancelRegistration = () => {
-    alert('Chức năng hủy đăng ký đang được phát triển!');
-  };
-  const handleViewGrades = () => {
-      alert('Xem điểm. Chức năng đang phát triển!');
-  };
-    const handleViewCommittee = () => {
-      alert('Xem thông tin hội đồng. Chức năng đang phát triển!');
-  };
+  const handleCancelRegistration = () => alert('Chức năng hủy đăng ký đang được phát triển!');
+  const handleViewGrades = () => alert('Xem điểm. Chức năng đang phát triển!');
+  const handleViewCommittee = () => alert('Xem thông tin hội đồng. Chức năng đang phát triển!');
 
-  const isRegistered = registeredTopic && registeredTopic.topic_title;
-
-  if (isLoading) {
-    return <div className="p-8 text-center">Đang tải thông tin đề tài...</div>;
-  }
-
+  if (isLoading) return <div className="p-8 text-center">Đang tải thông tin đề tài...</div>;
   return (
     <div className="p-6 md:p-8 bg-gray-50 min-h-full">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Trang chủ Sinh viên</h1>
-      {isRegistered ? (
+      {registeredTopic && registeredTopic.topic_title ? (
         <RegisteredTopicDetails
           topic={registeredTopic}
           onCancel={handleCancelRegistration}
@@ -72,7 +48,7 @@ const TopicDetails = () => {
         />
       ) : (
         <div className="bg-white p-6 rounded-lg shadow-md text-center">
-           <FaInfoCircle className="text-4xl text-blue-500 mx-auto mb-4" />
+          <FaInfoCircle className="text-4xl text-blue-500 mx-auto mb-4" />
           <p className="text-lg text-gray-600 mb-4">Bạn hiện chưa đăng ký đề tài nào.</p>
           <button
             className="mt-2 bg-[#008bc3] hover:bg-[#0073a8] text-white font-semibold py-2 px-6 rounded-full transition-colors duration-300"

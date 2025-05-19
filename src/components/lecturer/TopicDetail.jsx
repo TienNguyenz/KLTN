@@ -1,22 +1,30 @@
-import React, { useState } from 'react';
-import { Typography, Card, Row, Col, Button, Space, Modal, Table, Input } from 'antd';
+import React, { useState, useEffect } from 'react';
+import { Typography, Card, Row, Col, Button, Space, Modal, Table, Input, message } from 'antd';image.png
 import { FileTextOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons';
-import { useNavigate, useParams } from 'react-router-dom';
-import { getSupervisedTopicById } from '../../data/mockThesisData';
+import { useParams } from 'react-router-dom';
+import axios from 'axios';
 
 const { Title, Text, Paragraph } = Typography;
 
 const TopicDetail = () => {
-  const navigate = useNavigate();
   const { id } = useParams();
   const [topic, setTopic] = useState(null);
+  const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
 
-  React.useEffect(() => {
+  useEffect(() => {
     const loadTopic = async () => {
-      const data = await getSupervisedTopicById(id);
-      setTopic(data);
+      try {
+        setLoading(true);
+        const response = await axios.get(`/api/topics/${id}`);
+        setTopic(response.data);
+      } catch (error) {
+        console.error('Error loading topic:', error);
+        message.error('Không thể tải thông tin đề tài');
+      } finally {
+        setLoading(false);
+      }
     };
     loadTopic();
   }, [id]);
@@ -28,10 +36,6 @@ const TopicDetail = () => {
 
   const handleCancel = () => {
     setIsModalVisible(false);
-  };
-
-  const handleClose = () => {
-    navigate('/lecturer/topics');
   };
 
   const evaluationColumns = [
@@ -163,8 +167,12 @@ const TopicDetail = () => {
     },
   ];
 
+  if (loading) {
+    return <div className="p-6">Đang tải...</div>;
+  }
+
   if (!topic) {
-    return null;
+    return <div className="p-6">Không tìm thấy thông tin đề tài</div>;
   }
 
   return (
@@ -173,28 +181,28 @@ const TopicDetail = () => {
         <div className="space-y-6">
           <div>
             <div className="text-sm text-gray-500 mb-1">Tên đề tài</div>
-            <div className="text-base">{topic.name}</div>
+            <div className="text-base">{topic.topic_title}</div>
           </div>
 
           <div className="grid grid-cols-3 gap-6">
             <div>
               <div className="text-sm text-gray-500 mb-1">Số lượng thực hiện</div>
-              <div className="text-base">{topic.maxStudents || 1}</div>
+              <div className="text-base">{topic.topic_max_members || 1}</div>
             </div>
             <div>
               <div className="text-sm text-gray-500 mb-1">Chuyên ngành</div>
-              <div className="text-base">{topic.major}</div>
+              <div className="text-base">{topic.topic_major?.major_title}</div>
             </div>
             <div>
               <div className="text-sm text-gray-500 mb-1">Loại đề tài</div>
-              <div className="text-base">{topic.type}</div>
+              <div className="text-base">{topic.topic_category}</div>
             </div>
           </div>
 
           <div>
             <div className="text-sm text-gray-500 mb-1">Mô tả đề tài</div>
             <div className="text-base whitespace-pre-line border rounded-md p-4 bg-gray-50 min-h-[100px]">
-              {topic.description}
+              {topic.topic_description}
             </div>
           </div>
         </div>
@@ -244,39 +252,27 @@ const TopicDetail = () => {
           <Title level={5} className="m-0">Giảng viên phản biện</Title>
           <EditOutlined className="text-lg cursor-pointer" />
         </div>
-        <Text>{topic.reviewer}</Text>
+        <Text>{topic.topic_reviewer?.user_name || 'Chưa có'}</Text>
 
         <div className="mt-6">
           <Title level={5}>Nhóm đăng ký</Title>
-          <table className="min-w-full mt-4">
-            <thead className="bg-gray-50">
-              <tr>
-                <th className="px-4 py-2 text-left">STT</th>
-                <th className="px-4 py-2 text-left">Số lượng</th>
-                <th className="px-4 py-2 text-left">Thành viên</th>
-                <th className="px-4 py-2 text-left">Chi tiết</th>
-              </tr>
-            </thead>
-            <tbody>
-              {topic.groups?.map((member, index) => (
-                <tr key={member.id} className="border-b">
-                  <td className="px-4 py-2">{index + 1}</td>
-                  <td className="px-4 py-2">1</td>
-                  <td className="px-4 py-2">
-                    {member.studentName}
-                    <span className="ml-2 text-gray-500">({member.studentId})</span>
-                  </td>
-                  <td className="px-4 py-2">
-                    <Button 
-                      type="text" 
-                      icon={<EditOutlined />} 
-                      onClick={() => showModal(member)}
-                    />
-                  </td>
-                </tr>
+          {topic.topic_group_student && topic.topic_group_student.length > 0 ? (
+            <div className="mt-4">
+              {topic.topic_group_student.map((student) => (
+                <div key={student._id} className="flex items-center justify-between py-2 border-b">
+                  <div>
+                    <div className="font-medium">{student.user_name}</div>
+                    <div className="text-sm text-gray-500">{student.user_id}</div>
+                  </div>
+                  <Button type="link" onClick={() => showModal(student)}>
+                    Đánh giá
+                  </Button>
+                </div>
               ))}
-            </tbody>
-          </table>
+            </div>
+          ) : (
+            <div className="text-gray-500 mt-4">Chưa có sinh viên đăng ký</div>
+          )}
         </div>
       </Card>
 
@@ -303,7 +299,7 @@ const TopicDetail = () => {
           </div>
           <Title level={4} className="mb-8">PHIẾU ĐÁNH GIÁ KHÓA LUẬN TỐT NGHIỆP</Title>
           <div className="text-left mb-4">
-            <Text>Tên đề tài: {topic.title}</Text>
+            <Text>Tên đề tài: {topic.topic_title}</Text>
           </div>
           <div className="text-left mb-8">
             <Text>Sinh viên thực hiện:</Text>
@@ -316,42 +312,18 @@ const TopicDetail = () => {
               </thead>
               <tbody>
                 <tr>
-                  <td className="border px-4 py-2">{selectedStudent?.studentName}</td>
-                  <td className="border px-4 py-2">{selectedStudent?.studentId}</td>
+                  <td className="border px-4 py-2">{selectedStudent?.user_name}</td>
+                  <td className="border px-4 py-2">{selectedStudent?.user_id}</td>
                 </tr>
               </tbody>
             </table>
           </div>
-          <div className="text-left">
-            <Title level={5}>ĐIỂM CHI TIẾT</Title>
-            <Table
-              columns={evaluationColumns}
-              dataSource={evaluationData}
-              pagination={false}
-              bordered
-              className="mt-4"
-              summary={pageData => {
-                let totalScore = 0;
-                let totalWeight = 0;
-                
-                pageData.forEach(({ score, weight }) => {
-                  totalScore += score * (parseInt(weight) / 100);
-                  totalWeight += parseInt(weight);
-                });
-
-                return (
-                  <Table.Summary.Row>
-                    <Table.Summary.Cell index={0} colSpan={2} align="right">
-                      <strong>Tổng điểm:</strong>
-                    </Table.Summary.Cell>
-                    <Table.Summary.Cell index={2} colSpan={3} align="left">
-                      <strong>{totalScore.toFixed(2)}</strong>
-                    </Table.Summary.Cell>
-                  </Table.Summary.Row>
-                );
-              }}
-            />
-          </div>
+          <Table
+            columns={evaluationColumns}
+            dataSource={evaluationData}
+            pagination={false}
+            bordered
+          />
         </div>
       </Modal>
     </div>

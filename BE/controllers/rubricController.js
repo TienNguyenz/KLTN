@@ -15,8 +15,8 @@ const ERROR_MESSAGES = {
 const handleError = (error, customMessage) => {
   console.error(customMessage, error);
   return {
-    message: ERROR_MESSAGES.SERVER_ERROR,
-    error: error.message
+    message: error.message || ERROR_MESSAGES.SERVER_ERROR,
+    error: error
   };
 };
 
@@ -84,9 +84,12 @@ exports.createRubric = async (req, res) => {
 
     const rubric = new Rubric(req.body);
     const savedRubric = await rubric.save();
-    
     return res.status(201).json(savedRubric);
   } catch (error) {
+    // Xử lý lỗi duplicate key (trùng tên rubric)
+    if (error.code === 11000 && error.keyPattern && error.keyPattern.rubric_name) {
+      return res.status(400).json({ message: 'Tên phiếu đánh giá đã tồn tại, vui lòng chọn tên khác.' });
+    }
     const errorResponse = handleError(error, 'Lỗi khi tạo rubric mới:');
     return res.status(500).json(errorResponse);
   }

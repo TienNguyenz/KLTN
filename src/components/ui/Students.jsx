@@ -571,6 +571,22 @@ const Students = () => {
         if (!selectedMajorExists) {
           throw new Error('Chuyên ngành đã chọn không tồn tại hoặc không thuộc khoa đã chọn');
         }
+
+        // Chuẩn bị dữ liệu gửi lên server
+        const newStudent = {
+          ...formData,
+          role: 'sinhvien',
+          user_status: 'active',
+          password: formattedPassword,
+          createdAt: new Date().toISOString(),
+          updatedAt: new Date().toISOString()
+        };
+        // Gửi request tạo mới
+        const response = await axios.post('http://localhost:5000/api/database/collections/User', newStudent);
+        if (response.data) {
+          setIsSuccessModalVisible(true);
+          fetchStudents();
+        }
       } else {
         // For updating existing student
         const oldAvatar = selectedStudent.user_avatar;

@@ -176,4 +176,39 @@ router.put('/collections/User/:id/change-password', async (req, res) => {
   }
 });
 
+// Thêm mới user (sinh viên/giảng viên)
+router.post('/collections/User', async (req, res) => {
+  try {
+    const userData = req.body;
+    // Kiểm tra trùng email hoặc user_id
+    const existingUser = await User.findOne({ $or: [{ email: userData.email }, { user_id: userData.user_id }] });
+    if (existingUser) {
+      return res.status(400).json({ success: false, message: 'Email hoặc mã số đã tồn tại!' });
+    }
+    const newUser = new User(userData);
+    await newUser.save();
+    res.json({ success: true, data: newUser });
+  } catch (error) {
+    res.status(500).json({ success: false, message: error.message });
+  }
+});
+
+// Cập nhật document theo id cho collection Topic
+router.put('/collections/Topic/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const update = req.body;
+    // Tìm theo cả string và ObjectId
+    let query = { _id: id };
+    if (mongoose.Types.ObjectId.isValid(id)) {
+      query = { $or: [ { _id: id }, { _id: new mongoose.Types.ObjectId(id) } ] };
+    }
+    const updated = await Topic.findOneAndUpdate(query, { $set: update }, { new: true });
+    if (!updated) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi khi cập nhật đề tài', error: err.message });
+  }
+});
+
 module.exports = router; 

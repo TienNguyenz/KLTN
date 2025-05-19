@@ -51,7 +51,8 @@ router.get('/:id', async (req, res) => {
       .populate('topic_major', 'major_title')
       .populate('topic_category', 'topic_category_title')
       .populate('topic_group_student', 'user_name user_id')
-      .populate('topic_creator', 'user_name user_id role');
+      .populate('topic_creator', 'user_name user_id role')
+      .populate({ path: 'topic_assembly', model: 'Council', select: 'assembly_name' });
     if (!topic) {
       return res.status(404).json({ success: false, message: 'Không tìm thấy đề tài' });
     }
@@ -469,19 +470,23 @@ router.put('/:id/approve-by-leader', async (req, res) => {
 
     // Gửi thông báo cho giảng viên nếu có comment
     const { comment } = req.body;
-    if (comment && comment.trim()) {
-      const notifications = [
-        {
-          user_notification_title: 'Đề tài đã được duyệt',
-          user_notification_sender: req.user?._id || null,
-          user_notification_recipient: topic.topic_instructor,
-          user_notification_content: `Đề tài "${topic.topic_title}" đã được leader duyệt.\nNhận xét: ${comment}`,
-          user_notification_type: 2,
-          user_notification_isRead: false,
-          user_notification_topic: 'topic',
-        }
-      ];
-      await UserNotification.insertMany(notifications);
+    if (comment && comment.trim() && topic.topic_instructor) {
+      // Ưu tiên lấy sender từ req.user, nếu không có thì lấy leader đầu tiên trong nhóm
+      const sender = req.user?._id || (topic.topic_group_student?.[0] ?? null);
+      if (sender && topic.topic_instructor) {
+        const notifications = [
+          {
+            user_notification_title: 'Đề tài đã được duyệt',
+            user_notification_sender: sender,
+            user_notification_recipient: topic.topic_instructor,
+            user_notification_content: `Đề tài "${topic.topic_title}" đã được leader duyệt.\nNhận xét: ${comment}`,
+            user_notification_type: 2,
+            user_notification_isRead: false,
+            user_notification_topic: 'topic',
+          }
+        ];
+        await UserNotification.insertMany(notifications);
+      }
     }
 
     res.json({ message: 'Đề tài đã được leader duyệt', topic });
@@ -553,7 +558,9 @@ router.get('/student/:user_id', async (req, res) => {
       .populate('topic_instructor', 'user_name')
       .populate('topic_major', 'major_title')
       .populate('topic_category', 'topic_category_title')
-      .populate('topic_group_student', 'user_name user_id');
+      .populate('topic_group_student', 'user_name user_id')
+      .populate('topic_reviewer', 'user_name user_id')
+      .populate({ path: 'topic_assembly', model: 'Council', select: 'assembly_name' });
 
     if (!topic) {
       return res.json(null);
@@ -802,14 +809,68 @@ router.put('/:id/submit', async (req, res) => {
 router.put('/:id/assign-reviewer', async (req, res) => {
   try {
     const { reviewerId } = req.body;
-    const topic = await Topic.findByIdAndUpdate(
-      req.params.id,
-      { topic_reviewer: reviewerId },
-      { new: true }
-    );
-    res.json(topic);
+    console.log('[assign-reviewer] Nhận request:', { topicId: req.params.id, reviewerId });
+    if (!reviewerId) {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Vui lòng chọn giảng viên phản biện' 
+      });
+    }
+
+    const topic = await Topic.findById(req.params.id);
+    if (!topic) {
+      console.log('[assign-reviewer] Không tìm thấy đề tài');
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Không tìm thấy đề tài' 
+      });
+    }
+
+    // Kiểm tra xem có GVPB cũ không
+    const oldReviewer = topic.topic_reviewer;
+    const newReviewer = await User.findById(reviewerId);
+    if (!newReviewer) {
+      console.log('[assign-reviewer] Không tìm thấy giảng viên phản biện');
+      return res.status(404).json({
+        success: false,
+        message: 'Không tìm thấy giảng viên phản biện'
+      });
+    }
+
+    // Cập nhật GVPB mới
+    topic.topic_reviewer = reviewerId;
+    const saved = await topic.save();
+    if (!saved) {
+      console.log('[assign-reviewer] Lưu đề tài thất bại');
+      return res.status(500).json({
+        success: false,
+        message: 'Lỗi khi lưu đề tài, vui lòng thử lại.'
+      });
+    }
+    await topic.populate('topic_reviewer', 'user_name user_id');
+
+    // Tạo message phù hợp
+    let message = '';
+    if (oldReviewer) {
+      const oldReviewerName = await User.findById(oldReviewer).select('user_name');
+      message = `Đã cập nhật giảng viên phản biện từ ${oldReviewerName?.user_name || 'Chưa có'} thành ${newReviewer.user_name}`;
+    } else {
+      message = `Đã gán giảng viên phản biện: ${newReviewer.user_name}`;
+    }
+
+    console.log('[assign-reviewer] Thành công:', { topicId: topic._id, reviewer: topic.topic_reviewer });
+    res.json({
+      success: true,
+      message,
+      topic
+    });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error('[assign-reviewer] Lỗi:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Lỗi khi gán giảng viên phản biện', 
+      error: err.message 
+    });
   }
 });
 

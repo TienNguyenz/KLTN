@@ -23,6 +23,7 @@ import {
   MenuItem,
   Autocomplete,
   FormHelperText,
+  Checkbox,
 } from '@mui/material';
 import { Add as AddIcon, Edit as EditIcon, Delete as DeleteIcon } from '@mui/icons-material';
 import { FaEdit, FaTrash } from 'react-icons/fa';
@@ -50,8 +51,11 @@ const CouncilManagement = () => {
   const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
   const [successMessage, setSuccessMessage] = useState('');
   const [filteredLecturers, setFilteredLecturers] = useState([]);
-  const [faculties, setFaculties] = useState([]);
   const [students, setStudents] = useState([]);
+  const [isAssignDialogOpen, setIsAssignDialogOpen] = useState(false);
+  const [assignTopics, setAssignTopics] = useState([]);
+  const [selectedTopics, setSelectedTopics] = useState([]);
+  const [assignCouncil, setAssignCouncil] = useState(null);
 
   useEffect(() => {
     fetchInitialData();
@@ -61,7 +65,7 @@ const CouncilManagement = () => {
     setIsLoading(true);
     try {
       await Promise.all([
-        fetchFaculties(),
+        fetchMajors(),
         fetchLecturers(),
         fetchCouncils()
       ]);
@@ -69,16 +73,6 @@ const CouncilManagement = () => {
       console.error('Error fetching initial data:', error);
     } finally {
       setIsLoading(false);
-    }
-  };
-
-  const fetchFaculties = async () => {
-    try {
-      const response = await axios.get('http://localhost:5000/api/database/collections/faculties');
-      const faculties = Array.isArray(response.data.data) ? response.data.data : [];
-      setFaculties(faculties);
-    } catch (error) {
-      console.error('Error fetching faculties:', error);
     }
   };
 
@@ -129,19 +123,22 @@ const CouncilManagement = () => {
     if (council) {
       setIsEdit(true);
       setSelectedCouncil(council);
+      const validMajorIds = majors.map(m => String(m._id?.$oid || m._id));
+      const selectedMajorId = validMajorIds.includes(String(council.assembly_major))
+        ? council.assembly_major
+        : '';
       setFormData({
         assembly_name: council.assembly_name,
-        assembly_major: council.assembly_major,
+        assembly_major: selectedMajorId,
         chairman: council.chairman,
         secretary: council.secretary,
         members: council.members || '',
       });
-      // Lọc giảng viên theo khoa của hội đồng đang sửa
-      const selectedMajor = majors.find(m => m._id === council.assembly_major);
+      const selectedMajor = majors.find(m => String(m._id?.$oid || m._id) === String(selectedMajorId));
       const facultyId = selectedMajor?.major_faculty;
       setFilteredLecturers(
         lecturers.filter(
-          gv => gv.user_faculty === facultyId
+          gv => String(gv.user_faculty) === String(facultyId)
         )
       );
     } else {
@@ -172,21 +169,31 @@ const CouncilManagement = () => {
     setErrors({});
   };
 
-  const handleChange = (e) => {
-    const { name, value } = e.target;
+  const handleChange = (e, value) => {
+    // Nếu là Autocomplete chuyên ngành
+    if (e && e.target && e.target.name === 'assembly_major') {
+      const selectedMajorId = value || e.target.value;
+      // Lọc giảng viên theo chuyên ngành
+      setFilteredLecturers(
+        lecturers.filter(gv => String(gv.user_major) === String(selectedMajorId))
+      );
+      setFormData(prev => ({
+        ...prev,
+        assembly_major: selectedMajorId,
+        chairman: '',
+        secretary: '',
+        members: '',
+      }));
+      setErrors(prev => ({ ...prev, assembly_major: '' }));
+      return;
+    }
+    // Các trường khác giữ nguyên
+    const { name, value: val } = e.target;
     setFormData(prev => ({
       ...prev,
-      [name]: value,
-      ...(name === 'assembly_major' ? { chairman: '', secretary: '', members: '' } : {})
+      [name]: val,
     }));
     setErrors(prev => ({ ...prev, [name]: '' }));
-    if (name === 'assembly_major') {
-      setFilteredLecturers(
-        lecturers.filter(
-          gv => gv.user_faculty === value || gv.user_faculty === (typeof value === 'object' ? value.$oid : value)
-        )
-      );
-    }
   };
 
   const validateForm = () => {
@@ -219,7 +226,11 @@ const CouncilManagement = () => {
         assembly_major: formData.assembly_major,
         chairman: formData.chairman,
         secretary: formData.secretary,
-        members: formData.members,
+        members: Array.isArray(formData.members)
+          ? formData.members
+          : formData.members
+            ? [formData.members]
+            : [],
         createdAt: now,
         updatedAt: now
       };
@@ -304,6 +315,85 @@ const CouncilManagement = () => {
   console.log('Lecturers:', lecturers);
   console.log('Councils:', councils);
 
+  // Lấy danh sách đề tài theo chuyên ngành khi mở dialog gán đề tài
+  useEffect(() => {
+    const fetchTopicsByMajor = async () => {
+      if (!assignCouncil) return;
+      try {
+        // Lấy tất cả đề tài, filter theo major và chưa gán hội đồng
+        const res = await axios.get('http://localhost:5000/api/database/collections/Topic');
+        let topics = Array.isArray(res.data.data) ? res.data.data : [];
+        
+        console.log('All topics:', topics);
+        console.log('Council major:', assignCouncil.assembly_major);
+        console.log('Majors:', majors);
+        
+        topics = topics.filter(t => {
+          console.log('Topic:', t.topic_title);
+          console.log('Topic major:', t.topic_major);
+          console.log('Council major:', assignCouncil.assembly_major);
+          // Xử lý cả 2 trường hợp: topic_major là string ID hoặc object
+          let topicMajorId;
+          if (typeof t.topic_major === 'object' && t.topic_major !== null) {
+            topicMajorId = t.topic_major._id;
+          } else {
+            topicMajorId = t.topic_major;
+          }
+          console.log('Is match:', String(topicMajorId) === String(assignCouncil.assembly_major));
+          console.log('Topic assembly:', t.topic_assembly);
+          return String(topicMajorId) === String(assignCouncil.assembly_major) && (!t.topic_assembly || t.topic_assembly === '' || t.topic_assembly === null);
+        });
+        
+        console.log('Filtered topics:', topics);
+        setAssignTopics(topics);
+      } catch (error) {
+        console.error('Error fetching topics:', error.response?.data || error.message);
+        setAssignTopics([]);
+      }
+    };
+    fetchTopicsByMajor();
+  }, [assignCouncil]);
+
+  const handleOpenAssignDialog = (council) => {
+    setAssignCouncil(council);
+    setIsAssignDialogOpen(true);
+  };
+  const handleCloseAssignDialog = () => {
+    setIsAssignDialogOpen(false);
+    setSelectedTopics([]);
+    setAssignCouncil(null);
+  };
+  const handleToggleTopic = (topicId) => {
+    setSelectedTopics(prev => prev.includes(topicId)
+      ? prev.filter(id => id !== topicId)
+      : [...prev, topicId]
+    );
+  };
+  const handleConfirmAssign = async () => {
+    if (!assignCouncil || selectedTopics.length === 0) return;
+    try {
+      // Gọi API cập nhật từng đề tài, set topic_assembly = assignCouncil._id
+      await Promise.all(selectedTopics.map(topicId => {
+        const topic = assignTopics.find(t => t._id === topicId || t._id?.$oid === topicId);
+        let realId = topic?._id;
+        if (typeof realId === 'object' && realId !== null && realId.$oid) {
+          realId = realId.$oid;
+        }
+        console.log('PUT Topic realId:', realId, 'topic:', topic);
+        return axios.put(`http://localhost:5000/api/database/collections/Topic/${realId}`, {
+          topic_assembly: assignCouncil._id
+        });
+      }));
+      setIsAssignDialogOpen(false);
+      setSelectedTopics([]);
+      setAssignCouncil(null);
+      alert('Gán đề tài cho hội đồng thành công!');
+      fetchCouncils();
+    } catch {
+      alert('Có lỗi khi gán đề tài cho hội đồng!');
+    }
+  };
+
   return (
     <Box sx={{ p: 3 }}>
       {isLoading ? (
@@ -330,7 +420,7 @@ const CouncilManagement = () => {
           <TableHead>
             <TableRow>
               <TableCell>Tên Hội đồng</TableCell>
-                  <TableCell>Khoa</TableCell>
+              <TableCell>Chuyên ngành</TableCell>
               <TableCell>Chủ tịch</TableCell>
               <TableCell>Thư ký</TableCell>
               <TableCell>Thành viên</TableCell>
@@ -342,7 +432,17 @@ const CouncilManagement = () => {
               <TableRow key={council._id}>
                     <TableCell>{council.assembly_name}</TableCell>
                     <TableCell>
-                      {faculties.find(f => (f._id.$oid || f._id) === council.assembly_major)?.faculty_title || 'Không xác định'}
+                      {(() => {
+                        // Xử lý cả 2 trường hợp: assembly_major là string ID hoặc object
+                        let assemblyMajorId;
+                        if (typeof council.assembly_major === 'object' && council.assembly_major !== null) {
+                          assemblyMajorId = council.assembly_major._id;
+                        } else {
+                          assemblyMajorId = council.assembly_major;
+                        }
+                        const foundMajor = majors.find(m => String(m._id?.$oid || m._id) === String(assemblyMajorId));
+                        return foundMajor?.major_title || 'Không xác định';
+                      })()}
                     </TableCell>
                     <TableCell>{getLecturerInfo(council.chairman)}</TableCell>
                     <TableCell>{getLecturerInfo(council.secretary)}</TableCell>
@@ -357,21 +457,29 @@ const CouncilManagement = () => {
                   ))}
                 </TableCell>
                 <TableCell>
-                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center' }}>
+                  <div style={{ display: 'flex', gap: '10px', justifyContent: 'center', alignItems: 'center' }}>
                     <Button
                       type="text"
                       className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-blue-100"
-                    onClick={() => handleOpen(council)}
+                      onClick={() => handleOpen(council)}
                       sx={{ minWidth: 'auto', p: 1 }}
-                  >
+                    >
                       <FaEdit style={{ color: '#4096ff' }} className="text-lg" />
                     </Button>
                     <Button
                       type="text"
+                      className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-purple-100"
+                      onClick={() => handleOpenAssignDialog(council)}
+                      sx={{ minWidth: 'auto', p: 1 }}
+                    >
+                      <svg width="20" height="20" fill="none" viewBox="0 0 24 24"><rect x="3" y="5" width="18" height="14" rx="2" fill="#8e24aa"/><path d="M7 8h10M7 12h10M7 16h6" stroke="#fff" strokeWidth="2" strokeLinecap="round"/></svg>
+                    </Button>
+                    <Button
+                      type="text"
                       className="flex items-center justify-center w-8 h-8 rounded-lg hover:bg-red-100"
-                    onClick={() => handleDelete(council._id)}
-                      sx={{ minWidth: 'auto', p: 1, ml: 1 }}
-                  >
+                      onClick={() => handleDelete(council._id)}
+                      sx={{ minWidth: 'auto', p: 1 }}
+                    >
                       <FaTrash style={{ color: '#ff4d4f' }} className="text-lg" />
                     </Button>
                   </div>
@@ -400,21 +508,23 @@ const CouncilManagement = () => {
                 />
 
                 <FormControl fullWidth error={!!errors.assembly_major}>
-                  <InputLabel>Khoa</InputLabel>
-                  <Select
-                    name="assembly_major"
-                    value={formData.assembly_major}
-                    onChange={handleChange}
-                    label="Khoa"
-                    required
-                  >
-                    {faculties.map((faculty) => (
-                      <MenuItem key={faculty._id.$oid || faculty._id} value={faculty._id.$oid || faculty._id}>
-                        {faculty.faculty_title}
-                      </MenuItem>
-                    ))}
-                  </Select>
-                  {errors.assembly_major && <FormHelperText>{errors.assembly_major}</FormHelperText>}
+                  <Autocomplete
+                    options={majors}
+                    getOptionLabel={(option) => option.major_title || ''}
+                    value={majors.find(m => String(m._id?.$oid || m._id) === String(formData.assembly_major)) || null}
+                    onChange={(event, newValue) => {
+                      handleChange({ target: { name: 'assembly_major', value: newValue ? (newValue._id?.$oid || newValue._id) : '' } }, newValue ? (newValue._id?.$oid || newValue._id) : '');
+                    }}
+                    renderInput={(params) => (
+                      <TextField
+                        {...params}
+                        label="Chuyên ngành"
+                        required
+                        error={!!errors.assembly_major}
+                        helperText={errors.assembly_major}
+                      />
+                    )}
+                  />
                 </FormControl>
 
                 <Autocomplete
@@ -492,6 +602,11 @@ const CouncilManagement = () => {
               <Button onClick={handleSubmit} variant="contained" color="primary">
                 {isEdit ? 'Cập nhật' : 'Tạo hội đồng'}
           </Button>
+          {isEdit && (
+            <Button onClick={handleOpenAssignDialog} variant="outlined" color="secondary">
+              Gán đề tài
+            </Button>
+          )}
         </DialogActions>
       </Dialog>
 
@@ -508,6 +623,126 @@ const CouncilManagement = () => {
           <p className="mt-4 text-lg">{successMessage}</p>
         </div>
       </Modal>
+
+      {/* Dialog gán đề tài cho hội đồng */}
+      <Dialog open={isAssignDialogOpen} onClose={handleCloseAssignDialog} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: 22, textAlign: 'left', pb: 0 }}>Gán đề tài cho hội đồng</DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, minHeight: 420, background: '#fafbfc', borderRadius: 3, boxShadow: 3, overflow: 'hidden', m: 2 }}>
+            {/* Sơ đồ hội đồng bên trái */}
+            <Box sx={{ flex: 1, minWidth: 240, maxWidth: 300, display: 'flex', flexDirection: 'column', alignItems: 'center', borderRight: { md: '1px solid #eee' }, py: 4, px: 2, background: '#fff', gap: 2 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, fontSize: 18 }}>Phân công hội đồng</Typography>
+              {assignCouncil && (
+                <>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: '100%' }}>
+                    <Box sx={{ background: 'linear-gradient(90deg,#1976d2,#2196f3)', color: '#fff', px: 2, py: 1.5, borderRadius: 2, fontWeight: 700, minWidth: 180, textAlign: 'center', fontSize: 17, boxShadow: 2 }}>
+                      {getLecturerInfo(assignCouncil.chairman)}<br/>
+                      <span style={{ fontSize: 14, fontWeight: 400 }}>Chủ tịch</span>
+                    </Box>
+                    <Box sx={{ background: 'linear-gradient(90deg,#0288d1,#26c6da)', color: '#fff', px: 2, py: 1.5, borderRadius: 2, fontWeight: 700, minWidth: 180, textAlign: 'center', fontSize: 17, boxShadow: 2 }}>
+                      {getLecturerInfo(assignCouncil.secretary)}<br/>
+                      <span style={{ fontSize: 14, fontWeight: 400 }}>Thư ký</span>
+                    </Box>
+                    {assignCouncil.members && assignCouncil.members.length > 0 && (
+                      <Box sx={{ background: 'linear-gradient(90deg,#512da8,#7c43bd)', color: '#fff', px: 2, py: 1.5, borderRadius: 2, fontWeight: 700, minWidth: 180, textAlign: 'center', fontSize: 17, boxShadow: 2 }}>
+                        {assignCouncil.members.map((m, idx) => (
+                          <span key={m}>{getLecturerInfo(m)}{idx < assignCouncil.members.length - 1 ? <br/> : null}</span>
+                        ))}<br/>
+                        <span style={{ fontSize: 14, fontWeight: 400 }}>Ủy viên</span>
+                      </Box>
+                    )}
+                  </Box>
+                </>
+              )}
+            </Box>
+            {/* Bảng đề tài bên phải */}
+            <Box sx={{ flex: 2, pl: { md: 4 }, width: '100%', py: 4, pr: 4 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, fontSize: 18 }}>Đề tài</Typography>
+              <TableContainer sx={{ background: '#fff', borderRadius: 2, boxShadow: 1, maxWidth: '100%', overflowX: 'auto' }}>
+                <Table size="medium" sx={{ tableLayout: 'fixed', width: '100%' }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell padding="checkbox" sx={{ width: 40 }}></TableCell>
+                      <TableCell sx={{ fontWeight: 700, maxWidth: 160, fontSize: 16, whiteSpace: 'normal', wordBreak: 'break-word' }}>Tên đề tài</TableCell>
+                      <TableCell sx={{ fontWeight: 700, maxWidth: 120, fontSize: 16, whiteSpace: 'normal', wordBreak: 'break-word' }}>Chuyên ngành</TableCell>
+                      <TableCell sx={{ fontWeight: 700, maxWidth: 140, fontSize: 16, whiteSpace: 'normal', wordBreak: 'break-word' }}>GVHD</TableCell>
+                      <TableCell sx={{ fontWeight: 700, maxWidth: 140, fontSize: 16, whiteSpace: 'normal', wordBreak: 'break-word' }}>GVPB</TableCell>
+                      <TableCell sx={{ fontWeight: 700, maxWidth: 100, fontSize: 16, whiteSpace: 'normal', wordBreak: 'break-word' }}>Loại đề tài</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {assignTopics.length === 0 ? (
+                      <TableRow>
+                        <TableCell colSpan={6} align="center">Không tìm thấy đề tài</TableCell>
+                      </TableRow>
+                    ) : assignTopics.map(topic => (
+                      <TableRow key={topic._id}>
+                        <TableCell padding="checkbox">
+                          <Checkbox
+                            checked={selectedTopics.includes(topic._id)}
+                            onChange={() => handleToggleTopic(topic._id)}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600, fontSize: 15, py: 1.5, px: 2, maxWidth: 160, whiteSpace: 'normal', wordBreak: 'break-word' }}>{topic.topic_title}</TableCell>
+                        <TableCell sx={{ fontSize: 15, py: 1.5, px: 2, maxWidth: 120, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                          {(() => {
+                            let topicMajorId;
+                            if (typeof topic.topic_major === 'object' && topic.topic_major !== null) {
+                              topicMajorId = topic.topic_major._id;
+                            } else {
+                              topicMajorId = topic.topic_major;
+                            }
+                            const foundMajor = majors.find(m => String(m._id?.$oid || m._id) === String(topicMajorId));
+                            return foundMajor?.major_title || '';
+                          })()}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: 15, py: 1.5, px: 2, maxWidth: 140, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                          {(() => {
+                            if (!topic.topic_instructor) return '';
+                            if (typeof topic.topic_instructor === 'object' && topic.topic_instructor !== null) {
+                              return `${topic.topic_instructor.user_id || ''} - ${topic.topic_instructor.user_name || ''}`;
+                            }
+                            const instructor = lecturers.find(l => l._id === topic.topic_instructor);
+                            return instructor ? `${instructor.user_id} - ${instructor.user_name}` : '';
+                          })()}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: 15, py: 1.5, px: 2, maxWidth: 140, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                          {(() => {
+                            if (!topic.topic_reviewer) return '';
+                            if (typeof topic.topic_reviewer === 'object' && topic.topic_reviewer !== null) {
+                              return `${topic.topic_reviewer.user_id || ''} - ${topic.topic_reviewer.user_name || ''}`;
+                            }
+                            const reviewer = lecturers.find(l => l._id === topic.topic_reviewer);
+                            return reviewer ? `${reviewer.user_id} - ${reviewer.user_name}` : '';
+                          })()}
+                        </TableCell>
+                        <TableCell sx={{ fontSize: 15, py: 1.5, px: 2, maxWidth: 100, whiteSpace: 'normal', wordBreak: 'break-word' }}>
+                          {(() => {
+                            return typeof topic.topic_category === 'object' 
+                              ? topic.topic_category.topic_category_title 
+                              : topic.topic_category || '';
+                          })()}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleConfirmAssign}
+                  disabled={selectedTopics.length === 0}
+                  sx={{ minWidth: 200, fontWeight: 700, fontSize: 18, borderRadius: 2, boxShadow: 2, py: 1.5 }}
+                >
+                  XÁC NHẬN
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        </DialogContent>
+      </Dialog>
         </>
       )}
     </Box>

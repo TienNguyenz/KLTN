@@ -31,7 +31,7 @@ const rubricEvaluationSchema = new mongoose.Schema({
   },
   level_core: {
     type: String,
-    required: [true, 'Mức độ lõi là bắt buộc'],
+    // required: [true, 'Mức độ lõi là bắt buộc'],
     trim: true
   },
   note: {

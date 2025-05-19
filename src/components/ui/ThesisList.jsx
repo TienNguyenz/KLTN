@@ -21,6 +21,7 @@ const ThesisList = () => {
   const [isReviewerModalOpen, setIsReviewerModalOpen] = useState(false);
   const [reviewerList, setReviewerList] = useState([]);
   const [selectedReviewer, setSelectedReviewer] = useState(null);
+  const [notifyModal, setNotifyModal] = useState({ open: false, message: '', type: 'success' });
 
   useEffect(() => {
     fetchFacultiesAndMajors();
@@ -33,8 +34,8 @@ const ThesisList = () => {
         axios.get("http://localhost:5000/api/database/collections/faculties"),
         axios.get("http://localhost:5000/api/database/collections/majors")
       ]);
-      setFaculties(facultiesRes.data);
-      setMajors(majorsRes.data);
+      setFaculties(facultiesRes.data.data);
+      setMajors(majorsRes.data.data);
     } catch (err) {
       console.error("Lỗi khi tải dữ liệu khoa và chuyên ngành:", err);
       message.error("Không thể tải dữ liệu khoa và chuyên ngành");
@@ -54,7 +55,7 @@ const ThesisList = () => {
       
       console.log("API Response:", response.data);
 
-      const filteredTheses = response.data.filter(thesis => {
+      const filteredTheses = response.data.data.filter(thesis => {
         if (thesis.topic_teacher_status !== 'approved' || thesis.topic_leader_status !== 'approved') {
           return false;
         }
@@ -98,23 +99,42 @@ const ThesisList = () => {
       const res = await axios.get('/api/lecturers', {
         params: { major: selectedThesis.topic_major.major_title }
       });
-      setReviewerList(res.data);
+      if (Array.isArray(res.data.data)) {
+        setReviewerList(res.data.data);
+      } else {
+        setReviewerList([]);
+      }
       setIsReviewerModalOpen(true);
     } catch {
+      setReviewerList([]);
       message.error('Không thể tải danh sách giảng viên phản biện');
     }
   };
 
   const handleSelectReviewer = async () => {
     try {
-      await axios.put(`/api/topics/${selectedThesis._id}/assign-reviewer`, {
+      const response = await axios.put(`/api/topics/${selectedThesis._id}/assign-reviewer`, {
         reviewerId: selectedReviewer._id
       });
-      message.success('Gán giảng viên phản biện thành công!');
+      
+      if (response.data.success) {
+        setNotifyModal({ open: true, message: response.data.message, type: 'success' });
+        setSelectedThesis(prev => ({
+          ...prev,
+          topic_reviewer: response.data.topic.topic_reviewer
+        }));
+        setTheses(prev => prev.map(thesis => 
+          thesis._id === selectedThesis._id 
+            ? { ...thesis, topic_reviewer: response.data.topic.topic_reviewer }
+            : thesis
+        ));
+      } else {
+        setNotifyModal({ open: true, message: response.data.message || 'Gán giảng viên phản biện thất bại', type: 'error' });
+      }
       setIsReviewerModalOpen(false);
       setSelectedReviewer(null);
     } catch (error) {
-      message.error('Gán giảng viên phản biện thất bại: ' + (error.response?.data?.message || error.message));
+      setNotifyModal({ open: true, message: error.response?.data?.message || 'Gán giảng viên phản biện thất bại: ' + error.message, type: 'error' });
     }
   };
 
@@ -235,19 +255,19 @@ const ThesisList = () => {
       title: 'GVHD',
       dataIndex: 'topic_instructor',
       key: 'topic_instructor',
-      render: (instructor) => instructor?.user_name || 'Chưa có GVHD',
+      render: (instructor) => (instructor && instructor.user_name) ? instructor.user_name : (typeof instructor === 'string' ? instructor : 'Chưa có GVHD'),
     },
     {
       title: 'Loại đề tài',
       dataIndex: 'topic_category',
       key: 'topic_category',
-      render: (cat) => cat?.topic_category_title || cat?.type_name || '-',
+      render: (cat) => (cat && (cat.topic_category_title || cat.type_name)) ? (cat.topic_category_title || cat.type_name) : (typeof cat === 'string' ? cat : '-'),
     },
     {
       title: 'Học kì',
       dataIndex: 'topic_registration_period',
       key: 'topic_registration_period',
-      render: (period) => period?.semester_name || period?.name || period || '-',
+      render: (period) => (period && (period.semester_name || period.name)) ? (period.semester_name || period.name) : (typeof period === 'string' ? period : '-'),
     },
     {
       title: 'Thời gian tạo',
@@ -273,7 +293,7 @@ const ThesisList = () => {
           in_progress: 'Đang thực hiện',
           completed: 'Đã hoàn thành',
         };
-        return statusMap[status?.toLowerCase()] || status;
+        return status ? (statusMap[status.toLowerCase()] || status) : '-';
       }
     },
     {
@@ -301,11 +321,19 @@ const ThesisList = () => {
     setSelectedReviewer,
   }) => {
     const [search, setSearch] = useState('');
-    const filtered = reviewers.filter(
-      r =>
-        (r.user_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
-        (r.email?.toLowerCase() || '').includes(search.toLowerCase())
-    );
+    const filtered = reviewers
+      .filter(r => {
+        // Ẩn GVHD khỏi danh sách GVPB
+        const instructorId = typeof selectedThesis?.topic_instructor === 'object'
+          ? selectedThesis?.topic_instructor?._id
+          : selectedThesis?.topic_instructor;
+        return r._id !== instructorId;
+      })
+      .filter(
+        r =>
+          (r.user_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
+          (r.email?.toLowerCase() || '').includes(search.toLowerCase())
+      );
     const columns = [
       {
         title: 'Email',
@@ -378,13 +406,19 @@ const ThesisList = () => {
   return (
     <div className="p-4">
       <div className="mb-4">
-        <div className="text-2xl font-bold mb-4">Danh sách đề tài</div>
-        <div className="flex gap-4 mb-2">
-          <Button type="primary" onClick={handleExportExcel} style={{ minWidth: 180 }}>
-            Tải xuống Excel
+        <div className="flex flex-col md:flex-row md:items-center md:justify-between mb-4 gap-2">
+          <div className="text-2xl font-bold text-gray-800">Danh sách đề tài</div>
+          <Button
+            type="primary"
+            onClick={handleExportExcel}
+            style={{ minWidth: 200, fontWeight: 600, fontSize: 16, display: 'flex', alignItems: 'center', gap: 8 }}
+            icon={<svg xmlns='http://www.w3.org/2000/svg' width='20' height='20' fill='currentColor' viewBox='0 0 16 16'><path d='M.5 9.9a.5.5 0 0 1 .5.5V13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2v-2.6a.5.5 0 0 1 1 0V13a3 3 0 0 1-3 3H3a3 3 0 0 1-3-3v-2.6a.5.5 0 0 1 .5-.5z'/><path d='M7.646 11.854a.5.5 0 0 0 .708 0l3-3a.5.5 0 0 0-.708-.708L8.5 10.293V1.5a.5.5 0 0 0-1 0v8.793L5.354 8.146a.5.5 0 1 0-.708.708l3 3z'/></svg>}
+            className="bg-blue-600 hover:bg-blue-700 border-none shadow-md"
+          >
+            Tải xuống danh sách
           </Button>
         </div>
-        <div className="flex gap-4">
+        <div className="flex flex-col md:flex-row gap-4">
           <Search
             placeholder="Tìm kiếm theo tên đề tài"
             allowClear
@@ -569,6 +603,23 @@ const ThesisList = () => {
         selectedReviewer={selectedReviewer}
         setSelectedReviewer={setSelectedReviewer}
       />
+      <Modal
+        open={notifyModal.open}
+        onOk={() => setNotifyModal({ ...notifyModal, open: false })}
+        onCancel={() => setNotifyModal({ ...notifyModal, open: false })}
+        okText="Đóng"
+        cancelButtonProps={{ style: { display: 'none' } }}
+        centered
+      >
+        <div className="text-center py-4">
+          {notifyModal.type === 'success' ? (
+            <span style={{ fontSize: 48, color: '#52c41a' }}>✔️</span>
+          ) : (
+            <span style={{ fontSize: 48, color: '#ff4d4f' }}>❌</span>
+          )}
+          <p className="mt-4 text-lg">{notifyModal.message}</p>
+        </div>
+      </Modal>
     </div>
   );
 };
