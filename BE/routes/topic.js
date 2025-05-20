@@ -1,5 +1,6 @@
 /* eslint-disable no-undef */
 // Route: Đề tài (Topic)
+// const express = require('express'); // Giữ lại comment này nếu có
 const express = require('express');
 const router = express.Router();
 const Topic = require('../models/Topic');
@@ -12,11 +13,46 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const libre = require('libreoffice-convert');
+const topicController = require('../controllers/topicController');
 
 const upload = multer({ dest: 'uploads/' });
 
+// console.log('Route file loaded'); // Xóa dòng log này
+
+// Lấy danh sách loại đề tài
+router.get('/topic-types', async (req, res) => {
+  console.log('topic.js: Hit GET /topic-types');
+  try {
+    const types = await TopicType.find();
+    res.json({ success: true, data: types });
+  } catch (err) {
+    console.error('topic.js: Error in GET /topic-types', err);
+    res.status(500).json({ success: false, message: err.message });
+  }
+});
+
+// Review topics routes
+router.get('/review', topicController.getReviewTopics);
+
+router.get('/review/:id', (req, res, next) => {
+  console.log(`topic.js: Hit GET /review/${req.params.id}`);
+  next(); // Chuyển tiếp request đến controller
+}, topicController.getReviewTopicById);
+
+// Committee topics routes
+router.get('/committee', (req, res, next) => {
+  console.log('topic.js: Hit GET /committee');
+  next(); // Chuyển tiếp request đến controller
+}, topicController.getCommitteeTopics);
+
+router.get('/committee/:id', (req, res, next) => {
+  console.log(`topic.js: Hit GET /committee/${req.params.id}`);
+  next(); // Chuyển tiếp request đến controller
+}, topicController.getCommitteeTopicById);
+
 // Lấy tất cả đề tài đã duyệt và chưa có sinh viên đăng ký
 router.get('/', async (req, res) => {
+  console.log('topic.js: Hit GET /');
   try {
     const topics = await Topic.find({
       topic_teacher_status: 'approved',
@@ -29,23 +65,21 @@ router.get('/', async (req, res) => {
       .populate('topic_group_student', 'user_name user_id');
     res.json({ success: true, data: topics });
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
-  }
-});
-
-// Lấy danh sách loại đề tài
-router.get('/topic-types', async (req, res) => {
-  try {
-    const types = await TopicType.find();
-    res.json({ success: true, data: types });
-  } catch (err) {
+    console.error('topic.js: Error in GET /', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
 
 // Lấy chi tiết đề tài theo ID
 router.get('/:id', async (req, res) => {
+  console.log(`topic.js: Hit GET /${req.params.id}`);
   try {
+    // Kiểm tra xem id có phải là ObjectId hợp lệ không
+    if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
+      console.log(`topic.js: Invalid ID format: ${req.params.id}`);
+      return res.status(400).json({ success: false, message: 'ID đề tài không hợp lệ' });
+    }
+
     const topic = await Topic.findById(req.params.id)
       .populate('topic_instructor', 'user_name user_id')
       .populate('topic_major', 'major_title')
@@ -54,6 +88,7 @@ router.get('/:id', async (req, res) => {
       .populate('topic_creator', 'user_name user_id role')
       .populate({ path: 'topic_assembly', model: 'Council', select: 'assembly_name' });
     if (!topic) {
+      console.log(`topic.js: Topic with ID ${req.params.id} not found`);
       return res.status(404).json({ success: false, message: 'Không tìm thấy đề tài' });
     }
     const formattedTopic = {
@@ -68,9 +103,10 @@ router.get('/:id', async (req, res) => {
       topic_category: topic.topic_category ? {
         title: topic.topic_category.topic_category_title
       } : null,
-      topic_group_student: topic.topic_group_student.map(student => ({
-        name: student.user_name,
-        id: student.user_id
+      topic_group_student: (topic.topic_group_student || []).map(student => ({
+        _id: student._id,
+        user_id: student.user_id,
+        user_name: student.user_name
       })),
       topic_creator: topic.topic_creator ? {
         name: topic.topic_creator.user_name,
@@ -80,12 +116,18 @@ router.get('/:id', async (req, res) => {
     };
     res.json({ success: true, data: formattedTopic });
   } catch (err) {
+    console.error('topic.js: Error in GET /:id', err);
+    // Kiểm tra nếu lỗi là do cast ID không hợp lệ (ví dụ khi ID không phải ObjectId)
+    if (err.name === 'CastError') {
+       return res.status(400).json({ success: false, message: 'Định dạng ID đề tài không hợp lệ', error: err.message });
+    }
     res.status(500).json({ success: false, message: 'Lỗi khi lấy thông tin đề tài', error: err.message });
   }
 });
 
 // Đăng ký đề tài
 router.post('/:id/register', async (req, res) => {
+  console.log(`topic.js: Hit POST /${req.params.id}/register`);
   try {
     console.log('Registration request:', {
       topicId: req.params.id,
@@ -130,7 +172,6 @@ router.post('/:id/register', async (req, res) => {
 
     // Thu thập tất cả thành viên
     const memberIds = [studentId];
-    const memberPromises = [];
 
     // Xử lý các thành viên khác
     for (let i = 2; i <= topic.topic_max_members; i++) {
@@ -222,6 +263,7 @@ router.post('/:id/register', async (req, res) => {
 
 // Đề xuất đề tài mới
 router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
+  console.log('topic.js: Hit POST /propose');
   try {
     const {
       topic_title,
@@ -369,6 +411,7 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
 
 // Thêm loại đề tài mới
 router.post('/topic-types', async (req, res) => {
+  console.log('topic.js: Hit POST /topic-types');
   try {
     const { topic_category_title, topic_category_description } = req.body;
     
@@ -391,8 +434,8 @@ router.post('/topic-types', async (req, res) => {
 
 // Lấy danh sách đề xuất của giảng viên
 router.get('/instructor/:instructorId/proposals', async (req, res) => {
+  console.log(`topic.js: Hit GET /instructor/${req.params.instructorId}/proposals`);
   try {
-    console.log('API gọi với instructorId:', req.params.instructorId);
     const topics = await Topic.find({
       topic_instructor: req.params.instructorId,
       topic_teacher_status: 'pending',
@@ -412,6 +455,7 @@ router.get('/instructor/:instructorId/proposals', async (req, res) => {
 
 // Duyệt đề tài
 router.put('/:id/approve', async (req, res) => {
+  console.log(`topic.js: Hit PUT /${req.params.id}/approve`);
   try {
     const topic = await Topic.findById(req.params.id);
     if (!topic) {
@@ -430,6 +474,7 @@ router.put('/:id/approve', async (req, res) => {
 
 // Từ chối đề tài
 router.put('/:id/reject', async (req, res) => {
+  console.log(`topic.js: Hit PUT /${req.params.id}/reject`);
   try {
     const topic = await Topic.findById(req.params.id);
     if (!topic) {
@@ -448,6 +493,7 @@ router.put('/:id/reject', async (req, res) => {
 
 // Giảng viên duyệt đề tài
 router.put('/:id/approve-by-lecturer', async (req, res) => {
+  console.log(`topic.js: Hit PUT /${req.params.id}/approve-by-lecturer`);
   try {
     const topic = await Topic.findById(req.params.id);
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
@@ -462,6 +508,7 @@ router.put('/:id/approve-by-lecturer', async (req, res) => {
 
 // Leader duyệt đề tài
 router.put('/:id/approve-by-leader', async (req, res) => {
+  console.log(`topic.js: Hit PUT /${req.params.id}/approve-by-leader`);
   try {
     const topic = await Topic.findById(req.params.id);
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
@@ -497,6 +544,7 @@ router.put('/:id/approve-by-leader', async (req, res) => {
 
 // Lấy danh sách đề tài chờ leader duyệt
 router.get('/leader/pending-topics', async (req, res) => {
+  console.log('topic.js: Hit GET /leader/pending-topics');
   try {
     const topics = await Topic.find({
       topic_teacher_status: 'approved',
@@ -515,6 +563,7 @@ router.get('/leader/pending-topics', async (req, res) => {
 
 // Leader từ chối đề tài
 router.put('/:id/reject-by-leader', async (req, res) => {
+  console.log(`topic.js: Hit PUT /${req.params.id}/reject-by-leader`);
   try {
     const topic = await Topic.findById(req.params.id);
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
@@ -544,6 +593,7 @@ router.put('/:id/reject-by-leader', async (req, res) => {
 
 // Lấy đề tài mà sinh viên đã đăng ký
 router.get('/student/:user_id', async (req, res) => {
+  console.log(`topic.js: Hit GET /student/${req.params.user_id}`);
   try {
     // Đầu tiên tìm user theo user_id
     const user = await User.findOne({ user_id: req.params.user_id });
@@ -574,6 +624,7 @@ router.get('/student/:user_id', async (req, res) => {
 
 // Sinh viên hủy đăng ký đề tài
 router.post('/:id/cancel-registration', async (req, res) => {
+  console.log(`topic.js: Hit POST /${req.params.id}/cancel-registration`);
   try {
     let { studentId } = req.body;
     let topic = await Topic.findById(req.params.id).populate('topic_creator');
@@ -643,9 +694,10 @@ router.post('/:id/cancel-registration', async (req, res) => {
 
 // Lấy tất cả đề tài của 1 giảng viên (không filter trạng thái)
 router.get('/instructor/:instructorId/all', async (req, res) => {
+  // console.log(`topic.js: Hit GET /instructor/${req.params.instructorId}/all`); // Xóa dòng log này
   try {
     const instructorId = req.params.instructorId;
-    let objectId = null;
+    // let objectId = null; // Xóa dòng này (đã xóa ở trên, nhưng đảm bảo)
     
     // Validate instructorId
     if (!instructorId) {
@@ -653,15 +705,15 @@ router.get('/instructor/:instructorId/all', async (req, res) => {
     }
 
     // Convert to ObjectId if valid
-    if (mongoose.Types.ObjectId.isValid(instructorId)) {
-      objectId = new mongoose.Types.ObjectId(instructorId);
-    }
+    // if (mongoose.Types.ObjectId.isValid(instructorId)) { // Xóa khối này (đã xóa ở trên, nhưng đảm bảo)
+    //   objectId = new mongoose.Types.ObjectId(instructorId);
+    // }
 
-    console.log('Querying topics for instructor:', {
-      instructorId,
-      objectId,
-      isValid: mongoose.Types.ObjectId.isValid(instructorId)
-    });
+    // console.log('Querying topics for instructor:', { // Dòng này đã xóa
+    //   instructorId,
+    //   objectId,
+    //   isValid: mongoose.Types.ObjectId.isValid(instructorId)
+    // });
 
     // Find all topics
     const allTopics = await Topic.find({})
@@ -670,16 +722,16 @@ router.get('/instructor/:instructorId/all', async (req, res) => {
       .lean();
 
     // Log topic details for debugging
-    allTopics.forEach(topic => {
-      console.log('Topic details:', {
-        id: topic._id,
-        title: topic.topic_title,
-        instructor: topic.topic_instructor,
-        instructorId: topic.topic_instructor?._id,
-        instructorType: typeof topic.topic_instructor,
-        isObjectId: topic.topic_instructor instanceof mongoose.Types.ObjectId
-      });
-    });
+    // allTopics.forEach(topic => { // Khối này đã xóa
+    //   console.log('Topic details:', { // Khối này đã xóa
+    //     id: topic._id,
+    //     title: topic.topic_title,
+    //     instructor: topic.topic_instructor,
+    //     instructorId: topic.topic_instructor?._id,
+    //     instructorType: typeof topic.topic_instructor,
+    //     isObjectId: topic.topic_instructor instanceof mongoose.Types.ObjectId
+    //   });
+    // });
 
     // Filter topics by instructor
     const matchedTopics = allTopics.filter(topic => {
@@ -693,21 +745,22 @@ router.get('/instructor/:instructorId/all', async (req, res) => {
       return topicInstructor.toString() === instructorId;
     });
 
-    console.log('Query results:', {
-      totalTopics: allTopics.length,
-      matchedTopics: matchedTopics.length,
-      instructorId
-    });
+    // console.log('Query results:', { // Dòng này đã xóa
+    //   totalTopics: allTopics.length,
+    //   matchedTopics: matchedTopics.length,
+    //   instructorId
+    // });
 
     res.json(matchedTopics);
-  } catch (error) {
-    console.error('Error in /instructor/:instructorId/all:', error);
+  } catch { // Đổi thành catch không có biến
+    // console.error('Error in /instructor/:instructorId/all:', error); // Dòng này đã được xử lý catch không biến
     res.status(500).json({ error: 'Internal server error' });
   }
 });
 
 // Upload outline (convert docx to pdf)
 router.post('/:id/upload-outline', upload.single('file'), async (req, res) => {
+  console.log(`topic.js: Hit POST /${req.params.id}/upload-outline`);
   try {
     const topicId = req.params.id;
     const file = req.file;
@@ -720,7 +773,7 @@ router.post('/:id/upload-outline', upload.single('file'), async (req, res) => {
         if (oldPath.startsWith('uploads/')) {
           fs.unlinkSync(oldPath);
         }
-      } catch (e) { /* ignore */ }
+      } catch { /* ignore */ } // Đổi thành catch không có biến
     }
     const docxBuf = fs.readFileSync(file.path);
     libre.convert(docxBuf, '.pdf', undefined, async (err, done) => {
@@ -749,6 +802,7 @@ router.post('/:id/upload-outline', upload.single('file'), async (req, res) => {
 
 // Upload final report (convert docx to pdf)
 router.post('/:id/upload-final', upload.single('file'), async (req, res) => {
+  console.log(`topic.js: Hit POST /${req.params.id}/upload-final`);
   try {
     const topicId = req.params.id;
     const file = req.file;
@@ -761,7 +815,7 @@ router.post('/:id/upload-final', upload.single('file'), async (req, res) => {
         if (oldPath.startsWith('uploads/')) {
           fs.unlinkSync(oldPath);
         }
-      } catch (e) { /* ignore */ }
+      } catch { /* ignore */ } // Đổi thành catch không có biến
     }
     const docxBuf = fs.readFileSync(file.path);
     libre.convert(docxBuf, '.pdf', undefined, async (err, done) => {
@@ -790,6 +844,7 @@ router.post('/:id/upload-final', upload.single('file'), async (req, res) => {
 
 // Giảng viên gửi duyệt đề tài (chuyển từ pending sang approved, leader là pending)
 router.put('/:id/submit', async (req, res) => {
+  console.log(`topic.js: Hit PUT /${req.params.id}/submit`);
   try {
     const topic = await Topic.findById(req.params.id);
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
@@ -807,6 +862,7 @@ router.put('/:id/submit', async (req, res) => {
 
 // Gán giảng viên phản biện cho đề tài
 router.put('/:id/assign-reviewer', async (req, res) => {
+  console.log(`topic.js: Hit PUT /${req.params.id}/assign-reviewer`);
   try {
     const { reviewerId } = req.body;
     console.log('[assign-reviewer] Nhận request:', { topicId: req.params.id, reviewerId });
@@ -876,6 +932,7 @@ router.put('/:id/assign-reviewer', async (req, res) => {
 
 // Lấy danh sách đề tài đã được giảng viên duyệt cho admin
 router.get('/admin/topics', async (req, res) => {
+  console.log('topic.js: Hit GET /admin/topics');
   try {
     const topics = await Topic.find({ topic_teacher_status: 'approved' })
       .populate('topic_instructor', 'user_name')

@@ -1,14 +1,17 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tag, Space, Typography, Input, Button } from 'antd';
+import { Table, Tag, Space, Typography, Input, Button, message } from 'antd';
 import { SearchOutlined, FileExcelOutlined } from '@ant-design/icons';
 import Highlighter from 'react-highlight-words';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
-import { getReviewTopics } from '../../data/mockThesisData';
+import { getReviewTopics } from '../../services/topicService';
+import { useAuth } from '../../context/AuthContext';
 
 const { Title } = Typography;
 
 const ReviewTopics = () => {
+  const { user } = useAuth();
+
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [data, setData] = useState([]);
@@ -18,12 +21,37 @@ const ReviewTopics = () => {
   const [searchedColumn, setSearchedColumn] = useState('');
 
   useEffect(() => {
-    setLoading(true);
-    // Lấy dữ liệu từ mockData
-    const topics = getReviewTopics();
-    setData(topics);
-    setLoading(false);
-  }, []);
+    const loggedInUserId =
+      user?.user?._id ||
+      user?._id ||
+      user?.id ||
+      user?.userId;
+
+    if (loggedInUserId) {
+      fetchTopics(loggedInUserId);
+    } else {
+      setData([]);
+      setLoading(false);
+    }
+  }, [user]);
+
+  const fetchTopics = async (reviewerId) => {
+    try {
+      setLoading(true);
+      const response = await getReviewTopics(reviewerId);
+      if (response.success) {
+        setData(response.data);
+      } else {
+        message.error(response.message || 'Không thể tải danh sách đề tài phản biện');
+        setData([]);
+      }
+    } catch {
+      message.error('Có lỗi xảy ra khi tải danh sách đề tài phản biện');
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const getColumnSearchProps = (dataIndex) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
@@ -154,10 +182,11 @@ const ReviewTopics = () => {
     },
     {
       title: 'SVTH',
-      dataIndex: 'studentId',
-      key: 'studentId',
+      dataIndex: 'groups',
+      key: 'groups',
       width: '8%',
       align: 'center',
+      render: (groups) => groups ? groups.length : 0,
     },
     {
       title: 'Giảng viên',
@@ -204,6 +233,7 @@ const ReviewTopics = () => {
           columns={columns}
           dataSource={data}
           loading={loading}
+          rowKey="id"
           pagination={{
             current: currentPage,
             pageSize: pageSize,

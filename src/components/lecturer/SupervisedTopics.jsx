@@ -25,17 +25,18 @@ const SupervisedTopics = () => {
   useEffect(() => {
     axios.get('/api/lecturers').then(res => {
       setLecturers(res.data.data || []);
-      console.log('Lecturers:', res.data.data);
-    }).catch(err => {
+    }).catch(() => {
       setLecturers([]);
-      console.error('Lecturers API error:', err);
     });
-    axios.get('/api/topic-categories').then(res => {
-      setCategories(res.data.data || []);
-      console.log('Categories:', res.data.data);
-    }).catch(err => {
-      setCategories([]);
-      console.error('Categories API error:', err);
+    axios.get('/api/topics/topic-types').then(res => {
+      setCategories(res.data.data || res.data || []);
+    }).catch(() => {
+      // Fallback mock data nếu API lỗi
+      setCategories([
+        { _id: 'NC', topic_category_title: 'Nghiên cứu' },
+        { _id: 'UD', topic_category_title: 'Ứng dụng' },
+        { _id: 'PTTK', topic_category_title: 'Phân tích thiết kế' }
+      ]);
     });
   }, []);
 
@@ -45,10 +46,8 @@ const SupervisedTopics = () => {
       try {
         const response = await axios.get(`/api/topics/instructor/${user?.id}/all`);
         setData(response.data);
-        console.log('Topics:', response.data);
-      } catch (error) {
+      } catch {
         setData([]);
-        console.error('Error fetching topics:', error);
       } finally {
         setLoading(false);
       }
@@ -60,17 +59,23 @@ const SupervisedTopics = () => {
 
   // Map topic data to display info
   const mappedData = data.map(topic => {
-    const reviewerObj = lecturers.find(l => l._id === topic.topic_reviewer);
-    const instructorObj = lecturers.find(l => l._id === topic.topic_instructor);
-    const categoryObj = categories.find(c => c._id === topic.topic_category);
+    const reviewerObj = typeof topic.topic_reviewer === 'object' && topic.topic_reviewer !== null
+      ? topic.topic_reviewer
+      : lecturers.find(l => l._id === topic.topic_reviewer);
+    const instructorObj = typeof topic.topic_instructor === 'object' && topic.topic_instructor !== null
+      ? topic.topic_instructor
+      : lecturers.find(l => l._id === topic.topic_instructor);
+    const categoryObj = typeof topic.topic_category === 'object' && topic.topic_category !== null
+      ? topic.topic_category
+      : categories.find(c => c._id === topic.topic_category);
     return {
       id: topic._id,
       title: topic.topic_title,
-      supervisor: instructorObj ? instructorObj.user_name : 'N/A',
-      reviewer: reviewerObj ? reviewerObj.user_name : 'Chưa có',
-      type: categoryObj ? categoryObj.topic_category_title : 'N/A',
+      supervisor: instructorObj?.user_name || 'N/A',
+      reviewer: reviewerObj?.user_name || 'Chưa có',
+      type: categoryObj?.topic_category_title || 'N/A',
       studentCount: topic.topic_group_student?.length || 0,
-      lecturer: instructorObj ? instructorObj.user_name : 'N/A',
+      lecturer: instructorObj?.user_name || 'N/A',
       status: topic.topic_teacher_status === 'approved' ? 'ACTIVE' : 'REGISTERED'
     };
   });

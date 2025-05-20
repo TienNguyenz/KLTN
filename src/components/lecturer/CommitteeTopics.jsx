@@ -1,35 +1,48 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Tag, Space, Typography, Input, Button } from 'antd';
+import { Table, Tag, Space, Typography, Input, Button, message } from 'antd';
 import { SearchOutlined, FileExcelOutlined } from '@ant-design/icons';
 import Highlighter from 'react-highlight-words';
 import * as XLSX from 'xlsx';
 import { useNavigate } from 'react-router-dom';
-import { getCommitteeTopics } from '../../data/mockThesisData';
+import { getCommitteeTopics } from '../../services/topicService';
+import { useAuth } from '../../context/AuthContext';
 
 const { Title } = Typography;
 
 const CommitteeTopics = () => {
+  const [topics, setTopics] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
-  const [loading, setLoading] = useState(false);
-  const [data, setData] = useState([]);
+  const { user } = useAuth();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
   const [searchText, setSearchText] = useState('');
   const [searchedColumn, setSearchedColumn] = useState('');
 
   useEffect(() => {
-    setLoading(true);
-    // Lấy dữ liệu từ mockData
-    console.log("Đang tải dữ liệu đề tài hội đồng...");
-    getCommitteeTopics().then(topics => {
-      console.log("Dữ liệu đề tài hội đồng:", topics);
-      setData(topics);
-      setLoading(false);
-    }).catch(error => {
-      console.error("Lỗi khi tải dữ liệu đề tài hội đồng:", error);
-      setLoading(false);
-    });
-  }, []);
+    const fetchTopics = async () => {
+      try {
+        const userId = user?._id || user?.id;
+
+        if (!userId) {
+          message.error('Không tìm thấy thông tin người dùng');
+          setLoading(false);
+          return;
+        }
+
+        const data = await getCommitteeTopics(userId);
+        setTopics(data);
+
+      } catch (error) {
+        console.error('An unexpected error occurred in fetchTopics:', error);
+        message.error('Đã xảy ra lỗi không mong muốn khi tải đề tài.');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTopics();
+  }, [user]);
 
   const handleSearch = (selectedKeys, confirm, dataIndex) => {
     confirm();
@@ -97,7 +110,7 @@ const CommitteeTopics = () => {
   });
 
   const exportToExcel = () => {
-    const exportData = data.map(item => ({
+    const exportData = topics.map(item => ({
       'Tên đề tài': item.title,
       'GVHD': item.supervisor,
       'GVPB': item.reviewer,
@@ -113,10 +126,6 @@ const CommitteeTopics = () => {
     XLSX.writeFile(wb, "de_tai_hoi_dong.xlsx");
   };
 
-  const handleTopicClick = (topicId) => {
-    navigate(`/lecturer/committee-topics/${topicId}`);
-  };
-
   const columns = [
     {
       title: 'Tên đề tài',
@@ -126,7 +135,7 @@ const CommitteeTopics = () => {
       ...getColumnSearchProps('title'),
       render: (text, record) => (
         <a 
-          onClick={() => handleTopicClick(record.id)} 
+          onClick={() => navigate(`/lecturer/committee-topics/${record.id}`)} 
           className="text-blue-600 hover:text-blue-800 cursor-pointer"
         >
           {text}
@@ -208,12 +217,13 @@ const CommitteeTopics = () => {
       <div className="bg-white rounded-lg shadow">
         <Table
           columns={columns}
-          dataSource={data}
+          dataSource={topics}
           loading={loading}
+          rowKey="id"
           pagination={{
             current: currentPage,
             pageSize: pageSize,
-            total: data.length,
+            total: topics.length,
             showSizeChanger: true,
             showQuickJumper: true,
             showTotal: (total) => `Tổng cộng ${total} đề tài.`,

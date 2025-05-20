@@ -1,24 +1,31 @@
 import React, { useState, useEffect } from 'react';
-import { Typography, Card, Row, Col, Button, Space, Modal, Table, Input, message } from 'antd';image.png
-import { FileTextOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons';
-import { useParams } from 'react-router-dom';
+import { Typography, Card, Row, Col, Button, Space, Modal, Table, Input, message } from 'antd';
+import { FileTextOutlined, EditOutlined, CloseOutlined, ArrowLeftOutlined, EyeOutlined } from '@ant-design/icons';
+import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
 const { Title, Text, Paragraph } = Typography;
 
 const TopicDetail = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [topic, setTopic] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [majors, setMajors] = useState([]);
+  const [categories, setCategories] = useState([]);
+  const [lecturers, setLecturers] = useState([]);
+  const [selectedStudentDetail, setSelectedStudentDetail] = useState(null);
+  const [isStudentDetailModalOpen, setIsStudentDetailModalOpen] = useState(false);
+  const [studentDetailLoading, setStudentDetailLoading] = useState(false);
 
   useEffect(() => {
     const loadTopic = async () => {
       try {
         setLoading(true);
         const response = await axios.get(`/api/topics/${id}`);
-        setTopic(response.data);
+        setTopic(response.data.data);
       } catch (error) {
         console.error('Error loading topic:', error);
         message.error('Không thể tải thông tin đề tài');
@@ -29,6 +36,55 @@ const TopicDetail = () => {
     loadTopic();
   }, [id]);
 
+  useEffect(() => {
+    // Fetch majors, categories, lecturers
+    axios.get('/api/majors').then(res => {
+      setMajors(res.data.data || res.data || []);
+      console.log('Majors:', res.data.data || res.data || []);
+    }).catch(() => setMajors([]));
+    axios.get('/api/topics/topic-types').then(res => {
+      setCategories(res.data.data || res.data || []);
+      console.log('Categories:', res.data.data || res.data || []);
+    }).catch(() => setCategories([]));
+    axios.get('/api/lecturers').then(res => {
+      setLecturers(res.data.data || res.data || []);
+      console.log('Lecturers:', res.data.data || res.data || []);
+    }).catch(() => setLecturers([]));
+  }, []);
+
+  const isDataReady = majors.length > 0 && categories.length > 0 && lecturers.length > 0 && !!topic;
+
+  if (loading || !isDataReady) {
+    return <div className="p-6">Đang tải dữ liệu phụ trợ...</div>;
+  }
+
+  // Log nhóm đăng ký
+  console.log('topic_group_student:', topic.topic_group_student);
+
+  const getMajorName = (id) => {
+    if (!id) return '-';
+    if (typeof id === 'object') {
+      return id.major_title || id.title || '-';
+    }
+    const found = majors.find(m => String(m._id) === String(id));
+    return found ? found.major_title : '-';
+  };
+  const getCategoryName = (id) => {
+    if (!id) return '-';
+    if (typeof id === 'object') {
+      return id.topic_category_title || id.title || '-';
+    }
+    const found = categories.find(c => String(c._id) === String(id));
+    return found ? found.topic_category_title : '-';
+  };
+  const getLecturerName = (id) => {
+    if (!id) return '-';
+    if (typeof id === 'object' && id.user_name) return id.user_name;
+    const found = lecturers.find(l => String(l._id) === String(id));
+    console.log('getLecturerName:', { id, found, lecturers });
+    return found ? found.user_name : id;
+  };
+
   const showModal = (student) => {
     setSelectedStudent(student);
     setIsModalVisible(true);
@@ -36,6 +92,36 @@ const TopicDetail = () => {
 
   const handleCancel = () => {
     setIsModalVisible(false);
+  };
+
+  const handleViewStudentDetail = async (student) => {
+    setIsStudentDetailModalOpen(true);
+    setStudentDetailLoading(true);
+    try {
+      // Sử dụng dữ liệu có sẵn từ topic_group_student
+      const studentDetail = {
+        user_name: student.user_name || student.name,
+        user_id: student.user_id,
+        user_avatar: student.user_avatar,
+        user_date_of_birth: student.user_date_of_birth,
+        user_CCCD: student.user_CCCD,
+        email: student.email,
+        user_phone: student.user_phone,
+        user_permanent_address: student.user_permanent_address,
+        user_temporary_address: student.user_temporary_address,
+        user_faculty: student.user_faculty?.faculty_title || student.user_faculty,
+        user_major: student.user_major?.major_title || student.user_major,
+        user_status: student.user_status,
+        user_average_grade: student.user_average_grade,
+        user_transcript: student.user_transcript
+      };
+      setSelectedStudentDetail(studentDetail);
+    } catch (error) {
+      console.error('Error processing student details:', error);
+      setSelectedStudentDetail({});
+    } finally {
+      setStudentDetailLoading(false);
+    }
   };
 
   const evaluationColumns = [
@@ -167,42 +253,43 @@ const TopicDetail = () => {
     },
   ];
 
-  if (loading) {
-    return <div className="p-6">Đang tải...</div>;
-  }
-
   if (!topic) {
     return <div className="p-6">Không tìm thấy thông tin đề tài</div>;
   }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
+      <div className="mb-4">
+        <Button icon={<ArrowLeftOutlined />} onClick={() => navigate(-1)} className="mb-2">
+          Quay lại
+        </Button>
+      </div>
       <Card className="mb-6">
         <div className="space-y-6">
           <div>
             <div className="text-sm text-gray-500 mb-1">Tên đề tài</div>
-            <div className="text-base">{topic.topic_title}</div>
+            <div className="text-base">{topic.topic_title || '-'}</div>
           </div>
 
           <div className="grid grid-cols-3 gap-6">
             <div>
               <div className="text-sm text-gray-500 mb-1">Số lượng thực hiện</div>
-              <div className="text-base">{topic.topic_max_members || 1}</div>
+              <div className="text-base">{topic.topic_max_members ?? '-'}</div>
             </div>
             <div>
               <div className="text-sm text-gray-500 mb-1">Chuyên ngành</div>
-              <div className="text-base">{topic.topic_major?.major_title}</div>
+              <div className="text-base">{getMajorName(topic.topic_major)}</div>
             </div>
             <div>
               <div className="text-sm text-gray-500 mb-1">Loại đề tài</div>
-              <div className="text-base">{topic.topic_category}</div>
+              <div className="text-base">{getCategoryName(topic.topic_category)}</div>
             </div>
           </div>
 
           <div>
             <div className="text-sm text-gray-500 mb-1">Mô tả đề tài</div>
             <div className="text-base whitespace-pre-line border rounded-md p-4 bg-gray-50 min-h-[100px]">
-              {topic.topic_description}
+              {topic.topic_description || '-'}
             </div>
           </div>
         </div>
@@ -252,23 +339,52 @@ const TopicDetail = () => {
           <Title level={5} className="m-0">Giảng viên phản biện</Title>
           <EditOutlined className="text-lg cursor-pointer" />
         </div>
-        <Text>{topic.topic_reviewer?.user_name || 'Chưa có'}</Text>
+        <Text>{getLecturerName(topic.topic_reviewer)}</Text>
 
         <div className="mt-6">
           <Title level={5}>Nhóm đăng ký</Title>
           {topic.topic_group_student && topic.topic_group_student.length > 0 ? (
-            <div className="mt-4">
-              {topic.topic_group_student.map((student) => (
-                <div key={student._id} className="flex items-center justify-between py-2 border-b">
-                  <div>
-                    <div className="font-medium">{student.user_name}</div>
-                    <div className="text-sm text-gray-500">{student.user_id}</div>
-                  </div>
-                  <Button type="link" onClick={() => showModal(student)}>
-                    Đánh giá
-                  </Button>
-                </div>
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full border rounded-lg shadow-sm bg-white">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-700">
+                    <th className="px-4 py-2 border text-center">STT</th>
+                    <th className="px-4 py-2 border text-center">Số lượng</th>
+                    <th className="px-4 py-2 border text-center">Thành viên</th>
+                    <th className="px-4 py-2 border text-center">Mã số SV</th>
+                    <th className="px-4 py-2 border text-center">Đánh giá</th>
+                    <th className="px-4 py-2 border text-center">Chi tiết</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topic.topic_group_student.map((student, idx) => (
+                    <tr key={student._id || student.user_id || student.id || idx} className="hover:bg-blue-50 transition">
+                      <td className="px-4 py-2 border text-center font-semibold">{idx + 1}</td>
+                      <td className="px-4 py-2 border text-center">1</td>
+                      <td className="px-4 py-2 border text-center">{student.user_name || student.name || '-'}</td>
+                      <td className="px-4 py-2 border text-center">{student.user_id || '-'}</td>
+                      <td className="px-4 py-2 border text-center">
+                        <Button
+                          type="link"
+                          icon={<EditOutlined />}
+                          onClick={() => showModal(student)}
+                          className="text-blue-600 hover:text-blue-800"
+                          style={{ fontSize: 18 }}
+                        />
+                      </td>
+                      <td className="px-4 py-2 border text-center">
+                        <Button
+                          type="link"
+                          icon={<EyeOutlined />}
+                          onClick={() => handleViewStudentDetail(student)}
+                          className="text-green-600 hover:text-green-800"
+                          style={{ fontSize: 18 }}
+                        />
+                      </td>
+                    </tr>
               ))}
+                </tbody>
+              </table>
             </div>
           ) : (
             <div className="text-gray-500 mt-4">Chưa có sinh viên đăng ký</div>
@@ -299,7 +415,7 @@ const TopicDetail = () => {
           </div>
           <Title level={4} className="mb-8">PHIẾU ĐÁNH GIÁ KHÓA LUẬN TỐT NGHIỆP</Title>
           <div className="text-left mb-4">
-            <Text>Tên đề tài: {topic.topic_title}</Text>
+            <Text>Tên đề tài: {topic.topic_title || '-'}</Text>
           </div>
           <div className="text-left mb-8">
             <Text>Sinh viên thực hiện:</Text>
@@ -312,8 +428,8 @@ const TopicDetail = () => {
               </thead>
               <tbody>
                 <tr>
-                  <td className="border px-4 py-2">{selectedStudent?.user_name}</td>
-                  <td className="border px-4 py-2">{selectedStudent?.user_id}</td>
+                  <td className="border px-4 py-2">{selectedStudent?.user_name || '-'}</td>
+                  <td className="border px-4 py-2">{selectedStudent?.user_id || '-'}</td>
                 </tr>
               </tbody>
             </table>
@@ -325,6 +441,55 @@ const TopicDetail = () => {
             bordered
           />
         </div>
+      </Modal>
+
+      <Modal
+        title="Chi tiết sinh viên"
+        open={isStudentDetailModalOpen}
+        onCancel={() => setIsStudentDetailModalOpen(false)}
+        footer={null}
+        width={600}
+      >
+        {console.log('selectedStudentDetail:', selectedStudentDetail)}
+        {studentDetailLoading ? (
+          <div>Đang tải thông tin sinh viên...</div>
+        ) : selectedStudentDetail ? (
+          <div className="space-y-3">
+            <div className="flex items-center gap-4">
+              <img
+                src={selectedStudentDetail.user_avatar || '/default-avatar.png'}
+                alt="avatar"
+                className="w-20 h-20 rounded-full border object-cover"
+              />
+              <div>
+                <div className="font-bold text-lg">{selectedStudentDetail.user_name || '-'}</div>
+                <div className="text-gray-500">{selectedStudentDetail.user_id || '-'}</div>
+              </div>
+            </div>
+            <div><b>Ngày sinh:</b> {selectedStudentDetail.user_date_of_birth || '-'}</div>
+            <div><b>CCCD:</b> {selectedStudentDetail.user_CCCD || '-'}</div>
+            <div><b>Email:</b> {selectedStudentDetail.email || '-'}</div>
+            <div><b>Số điện thoại:</b> {selectedStudentDetail.user_phone || '-'}</div>
+            <div><b>Địa chỉ thường trú:</b> {selectedStudentDetail.user_permanent_address || '-'}</div>
+            <div><b>Địa chỉ tạm trú:</b> {selectedStudentDetail.user_temporary_address || '-'}</div>
+            <div><b>Khoa:</b> {selectedStudentDetail.user_faculty || '-'}</div>
+            <div><b>Chuyên ngành:</b> {selectedStudentDetail.user_major || '-'}</div>
+            <div><b>Trạng thái:</b> {selectedStudentDetail.user_status || '-'}</div>
+            <div><b>Điểm TB:</b> {selectedStudentDetail.user_average_grade || '-'}</div>
+            <div>
+              <b>Bảng điểm:</b>{' '}
+              {selectedStudentDetail.user_transcript ? (
+                <a href={selectedStudentDetail.user_transcript} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
+                  Xem bảng điểm
+                </a>
+              ) : (
+                '-'
+              )}
+            </div>
+          </div>
+        ) : (
+          <div>Không tìm thấy thông tin sinh viên.</div>
+        )}
       </Modal>
     </div>
   );

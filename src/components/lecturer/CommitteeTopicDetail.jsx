@@ -1,22 +1,35 @@
 import React, { useState } from 'react';
 import { Typography, Card, Row, Col, Button, Space, Modal, Table, Input } from 'antd';
 import { FileTextOutlined, EditOutlined, CloseOutlined } from '@ant-design/icons';
-import { useNavigate, useParams } from 'react-router-dom';
-import { getCommitteeTopicById } from '../../data/mockThesisData';
+import { useParams } from 'react-router-dom';
+import { getCommitteeTopicById } from '../../services/topicService';
 
 const { Title, Text, Paragraph } = Typography;
 
 const CommitteeTopicDetail = () => {
-  const navigate = useNavigate();
   const { id } = useParams();
   const [topic, setTopic] = useState(null);
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [selectedStudent, setSelectedStudent] = useState(null);
+  const [loading, setLoading] = useState(true);
 
   React.useEffect(() => {
     const loadTopic = async () => {
-      const data = await getCommitteeTopicById(id);
-      setTopic(data);
+      setLoading(true);
+      try {
+        const response = await getCommitteeTopicById(id);
+        if (response.success) {
+          setTopic(response.data);
+        } else {
+          console.error('Lỗi khi tải chi tiết đề tài hội đồng:', response.message);
+          setTopic(null);
+        }
+      } catch (error) {
+        console.error("Lỗi khi tải chi tiết đề tài hội đồng:", error);
+        setTopic(null);
+      } finally {
+        setLoading(false);
+      }
     };
     loadTopic();
   }, [id]);
@@ -31,12 +44,23 @@ const CommitteeTopicDetail = () => {
   };
 
   if (!topic) {
-    return null;
+    return (
+      <div className="p-6 bg-gray-50 min-h-screen">
+        <Card loading={loading}>
+          <div className="space-y-6">
+            <div>
+              <div className="text-sm text-gray-500 mb-1">Tên đề tài</div>
+              <div className="text-base">Loading...</div>
+            </div>
+          </div>
+        </Card>
+      </div>
+    );
   }
 
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
-      <Card className="mb-6">
+      <Card className="mb-6" loading={loading}>
         <div className="space-y-6">
           <div>
             <div className="text-sm text-gray-500 mb-1">Tên đề tài</div>

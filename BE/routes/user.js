@@ -169,4 +169,67 @@ router.get('/transcript', async (req, res) => {
   res.json({ success: true, data: { user_transcript: user.user_transcript } });
 });
 
+// Lấy chi tiết sinh viên theo _id (route riêng biệt)
+router.get('/student/:id', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+      .populate('user_faculty', 'faculty_title')
+      .populate('user_major', 'major_title')
+      .select('-password -__v'); // Exclude sensitive fields
+      
+    if (!user) {
+      return res.status(404).json({ 
+        success: false, 
+        message: 'Không tìm thấy sinh viên' 
+      });
+    }
+
+    if (user.role !== 'sinhvien') {
+      return res.status(400).json({ 
+        success: false, 
+        message: 'Người dùng không phải là sinh viên' 
+      });
+    }
+
+    res.json({ 
+      success: true, 
+      data: user 
+    });
+  } catch (err) {
+    console.error('Error fetching student details:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Lỗi server', 
+      error: err.message 
+    });
+  }
+});
+
+// Lấy chi tiết user theo _id (đặt sau các route cụ thể)
+router.get('/:id', async (req, res) => {
+  try {
+    const user = await User.findById(req.params.id)
+      .select('-password -__v'); // Exclude sensitive fields
+      
+    if (!user) {
+      return res.status(404).json({ 
+        success: false,
+        message: 'Không tìm thấy user' 
+      });
+    }
+    
+    res.json({ 
+      success: true,
+      data: user 
+    });
+  } catch (err) {
+    console.error('Error fetching user details:', err);
+    res.status(500).json({ 
+      success: false,
+      message: 'Lỗi server', 
+      error: err.message 
+    });
+  }
+});
+
 module.exports = router; 
