@@ -11,10 +11,12 @@ const NotificationBell = ({ userId }) => {
   // Lấy thông báo khi userId thay đổi
   useEffect(() => {
     if (userId) {
+      console.log('Fetching notifications for user:', userId);
       axios.get(`/api/notifications/${userId}`)
         .then(res => {
-          // Đảm bảo res.data là một mảng
-          const notificationData = Array.isArray(res.data) ? res.data : [];
+          console.log('Notifications response:', res.data);
+          // Lấy data từ response
+          const notificationData = res.data.success ? res.data.data : [];
           setNotifications(notificationData);
           setUnreadCount(notificationData.filter(n => !n.user_notification_isRead).length);
         })

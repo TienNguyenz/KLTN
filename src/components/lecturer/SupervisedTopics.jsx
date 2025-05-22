@@ -20,6 +20,7 @@ const SupervisedTopics = () => {
   const [pageSize, setPageSize] = useState(5);
   const [searchText, setSearchText] = useState('');
   const [searchedColumn, setSearchedColumn] = useState('');
+  const [notifications, setNotifications] = useState([]);
 
   // Fetch lecturers and categories once
   useEffect(() => {
@@ -44,7 +45,9 @@ const SupervisedTopics = () => {
     const fetchTopics = async () => {
       setLoading(true);
       try {
-        const response = await axios.get(`/api/topics/instructor/${user?.id}/all`);
+        if (!user || !user._id) return; // Đảm bảo đã có user
+        // Truyền lecturerId nếu backend yêu cầu
+        const response = await axios.get(`/api/topics/supervised-topics?lecturerId=${user._id}`);
         setData(response.data);
       } catch {
         setData([]);
@@ -52,10 +55,15 @@ const SupervisedTopics = () => {
         setLoading(false);
       }
     };
-    if (user?.id) {
-      fetchTopics();
-    }
-  }, [user?.id]);
+    fetchTopics();
+  }, [user && user._id]);
+
+  useEffect(() => {
+    if (!user || !user._id) return;
+    axios.get(`/api/notifications/${user._id}`)
+      .then(res => setNotifications(res.data))
+      .catch(err => console.error(err));
+  }, [user && user._id]);
 
   // Map topic data to display info
   const mappedData = data.map(topic => {
@@ -68,6 +76,11 @@ const SupervisedTopics = () => {
     const categoryObj = typeof topic.topic_category === 'object' && topic.topic_category !== null
       ? topic.topic_category
       : categories.find(c => c._id === topic.topic_category);
+    let statusLabel = '';
+    if (topic.status === 'pending') statusLabel = 'PENDING';
+    else if (topic.status === 'waiting_admin') statusLabel = 'WAITING ADMIN';
+    else if (topic.status === 'active') statusLabel = 'ACTIVE';
+    else if (topic.status === 'rejected') statusLabel = 'REJECTED';
     return {
       id: topic._id,
       title: topic.topic_title,
@@ -76,9 +89,12 @@ const SupervisedTopics = () => {
       type: categoryObj?.topic_category_title || 'N/A',
       studentCount: topic.topic_group_student?.length || 0,
       lecturer: instructorObj?.user_name || 'N/A',
-      status: topic.topic_teacher_status === 'approved' ? 'ACTIVE' : 'REGISTERED'
+      status: statusLabel
     };
   });
+
+  const validStatuses = ['WAITING ADMIN', 'ACTIVE'];
+  const filteredData = mappedData.filter(item => validStatuses.includes(item.status));
 
   const getColumnSearchProps = (dataIndex) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
@@ -225,11 +241,14 @@ const SupervisedTopics = () => {
       align: 'center',
       filters: [
         { text: 'ACTIVE', value: 'ACTIVE' },
-        { text: 'REGISTERED', value: 'REGISTERED' },
+        { text: 'WAITING ADMIN', value: 'WAITING ADMIN' },
       ],
       onFilter: (value, record) => record.status === value,
       render: (status) => (
-        <Tag color={status === 'ACTIVE' ? 'success' : 'processing'} className="px-3 py-1">
+        <Tag color={
+          status === 'ACTIVE' ? 'success' :
+          status === 'WAITING ADMIN' ? 'warning' : 'default'
+        } className="px-3 py-1">
           {status}
         </Tag>
       ),
@@ -243,7 +262,7 @@ const SupervisedTopics = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="mb-6 flex justify-between items-center">
-        <Title level={5} className="text-gray-800 m-0">Đề tài của tôi</Title>
+        <Title level={5} className="text-gray-800 m-0">image.png</Title>
         <Button 
           type="primary" 
           icon={<FileExcelOutlined />} 
@@ -256,7 +275,7 @@ const SupervisedTopics = () => {
       <div className="bg-white rounded-lg shadow">
         <Table
           columns={columns}
-          dataSource={mappedData}
+          dataSource={filteredData}
           loading={loading}
           pagination={{
             current: currentPage,
@@ -274,6 +293,13 @@ const SupervisedTopics = () => {
           size="middle"
           className="custom-table"
         />
+      </div>
+      <div className="mt-6">
+        {notifications.map(noti => (
+          <div key={noti._id} className="text-blue-600 font-semibold">
+            {noti.user_notification_content}
+          </div>
+        ))}
       </div>
     </div>
   );

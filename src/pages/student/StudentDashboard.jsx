@@ -356,45 +356,66 @@ const Proposals = () => {
         const leader = students.find(s => s.user_id === user.user_id);
         creatorId = leader?._id;
       }
+      const proposalType = ['Ứng dụng', 'Nghiên cứu'].includes(
+        topicTypes.find(t => t._id === formData.topicTypeId)?.topic_category_title
+      )
+        ? topicTypes.find(t => t._id === formData.topicTypeId)?.topic_category_title
+        : 'Ứng dụng';
+
       const proposalData = {
         topic_title: formData.topicName,
         topic_instructor: formData.supervisorId,
         topic_major: formData.majorId,
         topic_category: formData.topicTypeId,
         topic_description: formData.description,
-        topic_max_members: formData.maxMembers,
+        topic_max_members: parseInt(formData.maxMembers),
         topic_group_student: members,
-        topic_creator: creatorId
+        topic_creator: creatorId,
+        // Các trường bắt buộc cho model
+        name: formData.topicName,
+        supervisor: instructors.find(i => i._id === formData.supervisorId)?.user_name || '',
+        reviewer: 'Chưa có', // Đảm bảo không để rỗng
+        type: proposalType,   // Chỉ 'Ứng dụng' hoặc 'Nghiên cứu'
+        studentId: user.user_id || '',
+        lecturer: instructors.find(i => i._id === formData.supervisorId)?.user_name || '',
+        major: majors.find(m => m._id === formData.majorId)?.major_title || '',
+        description: formData.description
       };
-      // Sử dụng FormData để gửi kèm file
-      const formDataToSend = new FormData();
-      Object.entries(proposalData).forEach(([key, value]) => {
-        if (Array.isArray(value)) {
-          value.forEach(v => formDataToSend.append(key, v));
-        } else {
-          formDataToSend.append(key, value);
+
+      try {
+        // Gửi request
+        const response = await axios.post('http://localhost:5000/api/topics/propose', proposalData, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+
+        if (response.data) {
+          alert('Đề xuất đã được gửi thành công!');
+          // Reset form
+          setFormData({
+            ...formData,
+            topicName: '',
+            supervisorId: '',
+            majorId: '',
+            topicTypeId: '',
+            description: '',
+            student2Id: '',
+            student3Id: '',
+            student4Id: ''
+          });
+          setGuidanceFile(null);
         }
-      });
-      if (guidanceFile) {
-        formDataToSend.append('guidanceFile', guidanceFile);
+      } catch (error) {
+        console.error('Error submitting proposal:', error);
+        if (error.response?.data?.message) {
+          if (error.response.data.registeredMembers) {
+            alert(`${error.response.data.message}\n\n${error.response.data.registeredMembers.join('\n')}`);
+          } else {
+            alert(error.response.data.message);
+          }
+        } else {
+          alert('Có lỗi xảy ra khi gửi đề xuất!');
+        }
       }
-      await axios.post('/api/topics/propose', formDataToSend, {
-        headers: { 'Content-Type': 'multipart/form-data' }
-      });
-      alert('Đề xuất đã được gửi thành công!');
-      // Reset form
-      setFormData({
-        ...formData,
-        topicName: '',
-        supervisorId: '',
-        majorId: '',
-        topicTypeId: '',
-        description: '',
-        student2Id: '',
-        student3Id: '',
-        student4Id: ''
-      });
-      setGuidanceFile(null);
     } catch (error) {
       console.error('Error submitting proposal:', error);
       if (error.response?.data?.message) {
