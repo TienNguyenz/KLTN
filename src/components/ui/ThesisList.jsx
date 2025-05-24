@@ -18,9 +18,6 @@ const ThesisList = () => {
   const [majors, setMajors] = useState([]);
   const [selectedThesis, setSelectedThesis] = useState(null);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
-  const [isReviewerModalOpen, setIsReviewerModalOpen] = useState(false);
-  const [reviewerList, setReviewerList] = useState([]);
-  const [selectedReviewer, setSelectedReviewer] = useState(null);
   const [notifyModal, setNotifyModal] = useState({ open: false, message: '', type: 'success' });
 
   useEffect(() => {
@@ -90,52 +87,6 @@ const ThesisList = () => {
   const handleView = (thesis) => {
     setSelectedThesis(thesis);
     setIsViewModalVisible(true);
-  };
-
-  const handleOpenReviewerModal = async () => {
-    if (!selectedThesis?.topic_major?.major_title) return;
-    try {
-      // Gọi API lấy danh sách giảng viên phản biện theo chuyên ngành
-      const res = await axios.get('/api/lecturers', {
-        params: { major: selectedThesis.topic_major.major_title }
-      });
-      if (Array.isArray(res.data.data)) {
-        setReviewerList(res.data.data);
-      } else {
-        setReviewerList([]);
-      }
-      setIsReviewerModalOpen(true);
-    } catch {
-      setReviewerList([]);
-      message.error('Không thể tải danh sách giảng viên phản biện');
-    }
-  };
-
-  const handleSelectReviewer = async () => {
-    try {
-      const response = await axios.put(`/api/topics/${selectedThesis._id}/assign-reviewer`, {
-        reviewerId: selectedReviewer._id
-      });
-      
-      if (response.data.success) {
-        setNotifyModal({ open: true, message: response.data.message, type: 'success' });
-        setSelectedThesis(prev => ({
-          ...prev,
-          topic_reviewer: response.data.topic.topic_reviewer
-        }));
-        setTheses(prev => prev.map(thesis => 
-          thesis._id === selectedThesis._id 
-            ? { ...thesis, topic_reviewer: response.data.topic.topic_reviewer }
-            : thesis
-        ));
-      } else {
-        setNotifyModal({ open: true, message: response.data.message || 'Gán giảng viên phản biện thất bại', type: 'error' });
-      }
-      setIsReviewerModalOpen(false);
-      setSelectedReviewer(null);
-    } catch (error) {
-      setNotifyModal({ open: true, message: error.response?.data?.message || 'Gán giảng viên phản biện thất bại: ' + error.message, type: 'error' });
-    }
   };
 
   const handleExportExcel = () => {
@@ -258,6 +209,13 @@ const ThesisList = () => {
       render: (instructor) => (instructor && instructor.user_name) ? instructor.user_name : (typeof instructor === 'string' ? instructor : 'Chưa có GVHD'),
     },
     {
+      title: 'Chuyên ngành',
+      dataIndex: 'topic_major',
+      key: 'topic_major',
+      render: (major) => (major && major.major_title) ? major.major_title : '',
+      width: 180,
+    },
+    {
       title: 'Loại đề tài',
       dataIndex: 'topic_category',
       key: 'topic_category',
@@ -280,6 +238,16 @@ const ThesisList = () => {
       dataIndex: 'topic_max_members',
       key: 'topic_max_members',
       width: 100,
+    },
+    {
+      title: 'Hội đồng',
+      dataIndex: 'topic_assembly',
+      key: 'topic_assembly',
+      render: (assembly) =>
+        assembly && assembly.assembly_name
+          ? assembly.assembly_name
+          : 'Chưa có',
+      width: 180,
     },
     {
       title: 'Trạng thái',
@@ -488,10 +456,10 @@ const ThesisList = () => {
               />
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Mã đề tài</label>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Hội đồng</label>
               <input
                 className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
-                value={selectedThesis?._id || ''}
+                value={selectedThesis?.topic_assembly?.assembly_name || 'Chưa có'}
                 disabled
               />
             </div>
@@ -511,17 +479,6 @@ const ThesisList = () => {
                 value={selectedThesis?.topic_instructor?.user_name || 'Chưa có GVHD'}
                 disabled
               />
-            </div>
-            <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Giảng viên phản biện</label>
-              <div className="flex gap-2">
-                <input
-                  className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
-                  value={selectedThesis?.topic_reviewer?.user_name || selectedThesis?.topic_reviewer || ''}
-                  disabled
-                />
-                <Button type="primary" onClick={handleOpenReviewerModal}>Chọn</Button>
-              </div>
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-1">Chuyên ngành</label>
@@ -550,11 +507,11 @@ const ThesisList = () => {
           </div>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Đề cương hướng dẫn:</label>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Đề cương xin hướng dẫn:</label>
               <div className="text-red-500">✗ Chưa có file</div>
             </div>
             <div>
-              <label className="block text-sm font-medium text-gray-500 mb-1">Đơn xin báo vệ:</label>
+              <label className="block text-sm font-medium text-gray-500 mb-1">Đề cương:</label>
               <div className="text-red-500">✗ Chưa có file</div>
             </div>
             <div>
@@ -594,15 +551,6 @@ const ThesisList = () => {
         </div>
       </Modal>
 
-      <ReviewerSelectModal
-        open={isReviewerModalOpen}
-        onCancel={() => setIsReviewerModalOpen(false)}
-        onOk={handleSelectReviewer}
-        reviewers={reviewerList}
-        loading={false}
-        selectedReviewer={selectedReviewer}
-        setSelectedReviewer={setSelectedReviewer}
-      />
       <Modal
         open={notifyModal.open}
         onOk={() => setNotifyModal({ ...notifyModal, open: false })}

@@ -86,8 +86,8 @@ const topicSchema = new mongoose.Schema({
         trim: true
     },
     topic_assembly: {
-        type: String,
-        trim: true
+        type: mongoose.Schema.Types.ObjectId,
+        ref: 'Council'
     },
     topic_room: {
         type: String,

@@ -87,6 +87,7 @@ const ThesisApproval = ({ setSelected }) => {
               <TableCell>STT</TableCell>
               <TableCell>Tên đề tài</TableCell>
               <TableCell>GVHD</TableCell>
+              <TableCell>Chuyên ngành</TableCell>
               <TableCell>Loại đề tài</TableCell>
               <TableCell>Học kì</TableCell>
               <TableCell>Thời gian tạo</TableCell>
@@ -96,23 +97,39 @@ const ThesisApproval = ({ setSelected }) => {
             </TableRow>
           </TableHead>
           <TableBody>
-            {theses.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((thesis, index) => (
-              <TableRow key={thesis._id}>
-                <TableCell>{(page - 1) * rowsPerPage + index + 1}</TableCell>
-                <TableCell>{thesis.topic_title}</TableCell>
-                <TableCell>{thesis.topic_instructor?.user_name || 'Chưa có GVHD'}</TableCell>
-                <TableCell>{thesis.topic_category?.topic_category_title || '-'}</TableCell>
-                <TableCell>{thesis.topic_registration_period || '-'}</TableCell>
-                <TableCell>{formatDate(thesis.createdAt)}</TableCell>
-                <TableCell>{thesis.topic_max_members || 1}</TableCell>
-                <TableCell>{thesis.academic_staff || '-'}</TableCell>
-                <TableCell>
-                  <IconButton color="primary" onClick={() => handleOpen(thesis)}>
-                    <EditIcon />
-                  </IconButton>
+            {theses.length === 0 ? (
+              <TableRow>
+                <TableCell colSpan={10} align="center" style={{ padding: 48, background: '#fff' }}>
+                  <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.7 }}>
+                    <svg width="48" height="48" fill="none" viewBox="0 0 48 48" style={{ marginBottom: 8 }}>
+                      <rect x="8" y="20" width="32" height="16" rx="2" fill="#fafafa" stroke="#e5e7eb" strokeWidth="2"/>
+                      <path d="M8 20l16-12 16 12" stroke="#e5e7eb" strokeWidth="2" fill="none"/>
+                      <rect x="20" y="28" width="8" height="4" rx="1" fill="#e5e7eb"/>
+                    </svg>
+                    <div style={{ fontSize: 16, color: '#bfbfbf' }}>No data</div>
+                  </div>
                 </TableCell>
               </TableRow>
-            ))}
+            ) : (
+              theses.slice((page - 1) * rowsPerPage, page * rowsPerPage).map((thesis, index) => (
+                <TableRow key={thesis._id}>
+                  <TableCell>{(page - 1) * rowsPerPage + index + 1}</TableCell>
+                  <TableCell>{thesis.topic_title}</TableCell>
+                  <TableCell>{thesis.topic_instructor?.user_name || 'Chưa có GVHD'}</TableCell>
+                  <TableCell>{thesis.topic_major?.major_title || ''}</TableCell>
+                  <TableCell>{thesis.topic_category?.topic_category_title || '-'}</TableCell>
+                  <TableCell>{thesis.topic_registration_period || '-'}</TableCell>
+                  <TableCell>{formatDate(thesis.createdAt)}</TableCell>
+                  <TableCell>{thesis.topic_max_members || 1}</TableCell>
+                  <TableCell>{thesis.academic_staff || '-'}</TableCell>
+                  <TableCell>
+                    <IconButton color="primary" onClick={() => handleOpen(thesis)}>
+                      <EditIcon />
+                    </IconButton>
+                  </TableCell>
+                </TableRow>
+              ))
+            )}
           </TableBody>
         </Table>
       </TableContainer>

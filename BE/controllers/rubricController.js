@@ -21,13 +21,13 @@ const handleError = (error, customMessage) => {
 };
 
 const validateRubricData = (data) => {
-  const { rubric_name, rubric_description } = data;
+  const { rubric_name, rubric_note } = data;
   
   if (!rubric_name || !rubric_name.trim()) {
     return { isValid: false, message: 'Vui lòng nhập tên rubric' };
   }
   
-  if (!rubric_description || !rubric_description.trim()) {
+  if (!rubric_note || !rubric_note.trim()) {
     return { isValid: false, message: 'Vui lòng nhập mô tả rubric' };
   }
   

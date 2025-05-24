@@ -427,7 +427,7 @@ const LecturerList = () => {
 
       if (!formData.user_permanent_address?.trim()) {
         newErrors.user_permanent_address = 'Địa chỉ thường trú không được để trống';
-      }
+                   }
       if (!formData.user_faculty) {
         newErrors.user_faculty = 'Vui lòng chọn khoa';
       }
@@ -457,7 +457,7 @@ const LecturerList = () => {
             break;
           // ... other validations
         }
-      }
+             }
     }
 
     // Remove null errors

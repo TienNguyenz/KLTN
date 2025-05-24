@@ -602,11 +602,6 @@ const CouncilManagement = () => {
               <Button onClick={handleSubmit} variant="contained" color="primary">
                 {isEdit ? 'Cập nhật' : 'Tạo hội đồng'}
           </Button>
-          {isEdit && (
-            <Button onClick={handleOpenAssignDialog} variant="outlined" color="secondary">
-              Gán đề tài
-            </Button>
-          )}
         </DialogActions>
       </Dialog>
 
@@ -634,21 +629,86 @@ const CouncilManagement = () => {
               <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, fontSize: 18 }}>Phân công hội đồng</Typography>
               {assignCouncil && (
                 <>
-                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 2, width: '100%' }}>
-                    <Box sx={{ background: 'linear-gradient(90deg,#1976d2,#2196f3)', color: '#fff', px: 2, py: 1.5, borderRadius: 2, fontWeight: 700, minWidth: 180, textAlign: 'center', fontSize: 17, boxShadow: 2 }}>
-                      {getLecturerInfo(assignCouncil.chairman)}<br/>
-                      <span style={{ fontSize: 14, fontWeight: 400 }}>Chủ tịch</span>
+                  <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 0, mt: 2 }}>
+                    {/* Chủ tịch */}
+                    <Box sx={{
+                      minWidth: 220,
+                      px: 3, py: 2,
+                      borderRadius: 3,
+                      background: '#6C63FF',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: 18,
+                      textAlign: 'center',
+                      boxShadow: 3,
+                      position: 'relative'
+                    }}>
+                      {getLecturerInfo(assignCouncil.chairman)}
+                      <div style={{
+                        position: 'absolute',
+                        left: '50%',
+                        bottom: -16,
+                        transform: 'translateX(-50%)',
+                        width: 0, height: 0,
+                        borderLeft: '8px solid transparent',
+                        borderRight: '8px solid transparent',
+                        borderTop: '16px solid #6C63FF',
+                        zIndex: 2
+                      }} />
+                      <Typography sx={{ fontSize: 14, fontWeight: 400, mt: 1 }}>Chủ tịch</Typography>
                     </Box>
-                    <Box sx={{ background: 'linear-gradient(90deg,#0288d1,#26c6da)', color: '#fff', px: 2, py: 1.5, borderRadius: 2, fontWeight: 700, minWidth: 180, textAlign: 'center', fontSize: 17, boxShadow: 2 }}>
-                      {getLecturerInfo(assignCouncil.secretary)}<br/>
-                      <span style={{ fontSize: 14, fontWeight: 400 }}>Thư ký</span>
+                    {/* Đường nối */}
+                    <div style={{
+                      width: 2, height: 24, background: '#bdbdbd', margin: '0 auto', zIndex: 1
+                    }} />
+                    {/* Thư ký */}
+                    <Box sx={{
+                      minWidth: 220,
+                      px: 3, py: 2,
+                      borderRadius: 3,
+                      background: '#4FC3F7',
+                      color: '#fff',
+                      fontWeight: 700,
+                      fontSize: 18,
+                      textAlign: 'center',
+                      boxShadow: 3,
+                      position: 'relative'
+                    }}>
+                      {getLecturerInfo(assignCouncil.secretary)}
+                      <div style={{
+                        position: 'absolute',
+                        left: '50%',
+                        bottom: -16,
+                        transform: 'translateX(-50%)',
+                        width: 0, height: 0,
+                        borderLeft: '8px solid transparent',
+                        borderRight: '8px solid transparent',
+                        borderTop: '16px solid #4FC3F7',
+                        zIndex: 2
+                      }} />
+                      <Typography sx={{ fontSize: 14, fontWeight: 400, mt: 1 }}>Thư ký</Typography>
                     </Box>
+                    {/* Đường nối */}
+                    <div style={{
+                      width: 2, height: 24, background: '#bdbdbd', margin: '0 auto', zIndex: 1
+                    }} />
+                    {/* Ủy viên */}
                     {assignCouncil.members && assignCouncil.members.length > 0 && (
-                      <Box sx={{ background: 'linear-gradient(90deg,#512da8,#7c43bd)', color: '#fff', px: 2, py: 1.5, borderRadius: 2, fontWeight: 700, minWidth: 180, textAlign: 'center', fontSize: 17, boxShadow: 2 }}>
+                      <Box sx={{
+                        minWidth: 220,
+                        px: 3, py: 2,
+                        borderRadius: 3,
+                        background: '#9575CD',
+                        color: '#fff',
+                        fontWeight: 700,
+                        fontSize: 18,
+                        textAlign: 'center',
+                        boxShadow: 3
+                      }}>
                         {assignCouncil.members.map((m, idx) => (
-                          <span key={m}>{getLecturerInfo(m)}{idx < assignCouncil.members.length - 1 ? <br/> : null}</span>
-                        ))}<br/>
-                        <span style={{ fontSize: 14, fontWeight: 400 }}>Ủy viên</span>
+                          <span key={m}>{getLecturerInfo(m)}{idx < assignCouncil.members.length - 1 ? <br /> : null}</span>
+                        ))}
+                        <Typography sx={{ fontSize: 14, fontWeight: 400, mt: 1 }}>Thành Viên</Typography>
                       </Box>
                     )}
                   </Box>
@@ -657,7 +717,16 @@ const CouncilManagement = () => {
             </Box>
             {/* Bảng đề tài bên phải */}
             <Box sx={{ flex: 2, pl: { md: 4 }, width: '100%', py: 4, pr: 4 }}>
-              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, fontSize: 18 }}>Đề tài</Typography>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, fontSize: 18 }}>
+                Đề tài
+                {assignCouncil && majors.length > 0 && (
+                  <span style={{ fontWeight: 400, fontSize: 16, color: '#666', marginLeft: 8 }}>
+                    (chuyên ngành: {
+                      majors.find(m => String(m._id) === String(assignCouncil.assembly_major))?.major_title || '---'
+                    })
+                  </span>
+                )}
+              </Typography>
               <TableContainer sx={{ background: '#fff', borderRadius: 2, boxShadow: 1, maxWidth: '100%', overflowX: 'auto' }}>
                 <Table size="medium" sx={{ tableLayout: 'fixed', width: '100%' }}>
                   <TableHead>

@@ -15,12 +15,10 @@ const Evaluation = () => {
   const [isCriteriaCountModalVisible, setIsCriteriaCountModalVisible] = useState(false);
   const [isCriteriaFormVisible, setIsCriteriaFormVisible] = useState(false);
   const [isViewCriteriaModalVisible, setIsViewCriteriaModalVisible] = useState(false);
-  const [isAssignModalVisible, setIsAssignModalVisible] = useState(false);
   const [criteriaCount, setCriteriaCount] = useState(5);
   const [currentCriteriaStep, setCurrentCriteriaStep] = useState(0);
   const [form] = Form.useForm();
   const [criteriaForm] = Form.useForm();
-  const [assignForm] = Form.useForm();
   const [rubrics, setRubrics] = useState([]);
   const [loading, setLoading] = useState(false);
   const [selectedRubric, setSelectedRubric] = useState(null);
@@ -147,13 +145,13 @@ const Evaluation = () => {
       width: '40%',
     },
     {
-      title: 'Đánh cho',
-      dataIndex: 'rubric_category',
-      key: 'rubric_category',
+      title: 'Loại đề tài',
+      dataIndex: 'rubric_topic_category',
+      key: 'rubric_topic_category',
       width: '20%',
-      render: (cat) => {
-        const types = { 1: 'GVHD', 2: 'GVPB', 3: 'Hội đồng' };
-        return <span className="px-2 py-1 bg-green-100 text-green-800 rounded-full text-xs">{types[cat] || cat}</span>;
+      render: (catId) => {
+        const cat = topicCategories.find(c => c._id === catId);
+        return <span className="px-2 py-1 bg-blue-100 text-blue-800 rounded-full text-xs">{cat ? cat.topic_category_title : catId}</span>;
       },
     },
     {
@@ -380,10 +378,9 @@ const Evaluation = () => {
         // Chuyển đổi type thành rubric_category theo yêu cầu của API
         const apiData = {
           rubric_name: values.name,
-          rubric_description: values.description,
-          rubric_category: values.type === 'supervisor' ? 1 : values.type === 'reviewer' ? 2 : 3,
+          rubric_note: values.description,
+          rubric_category: 3, // Đã bỏ trường type
           rubric_topic_category: values.topicCategory,
-          rubric_note: '', // Thêm trường này nếu cần
           rubric_template: '' // Thêm trường này nếu cần
         };
 
@@ -485,20 +482,6 @@ const Evaluation = () => {
     ));
   };
 
-  const handleAssignModalOk = () => {
-    assignForm.validateFields().then((values) => {
-      console.log('Assignment Values:', values);
-      console.log('Phân công rubric thành công');
-      assignForm.resetFields();
-      setIsAssignModalVisible(false);
-    });
-  };
-
-  const handleAssignModalCancel = () => {
-    assignForm.resetFields();
-    setIsAssignModalVisible(false);
-  };
-
   const handleEditCriteria = (criteriaId) => {
     setCriteria(criteria.map(item =>
       item.id === criteriaId ? { ...item, isEditing: true } : item
@@ -576,23 +559,14 @@ const Evaluation = () => {
     <div className="p-6">
       <div className="flex justify-between items-center mb-6">
         <h1 className="text-2xl font-bold">Phiếu đánh giá</h1>
-        <Space>
-          <Button
-            type="primary"
-            className="bg-indigo-600"
-            onClick={() => setIsAssignModalVisible(true)}
-          >
-            + Phân công rubric
-          </Button>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => setIsModalVisible(true)}
-            className="bg-blue-600"
-          >
-            Thêm Phiếu đánh giá
-          </Button>
-        </Space>
+        <Button
+          type="primary"
+          icon={<PlusOutlined />}
+          onClick={() => setIsModalVisible(true)}
+          className="bg-blue-600"
+        >
+          Thêm Phiếu đánh giá
+        </Button>
       </div>
 
       <div className="bg-white rounded-lg shadow">
@@ -643,18 +617,6 @@ const Evaluation = () => {
             rules={[{ required: true, message: 'Vui lòng nhập mô tả phiếu đánh giá!' }]}
           >
             <Input.TextArea placeholder="Nhập mô tả phiếu đánh giá" />
-          </Form.Item>
-
-          <Form.Item
-            name="type"
-            label="Phiếu đánh giá dành cho"
-            rules={[{ required: true, message: 'Vui lòng chọn đối tượng đánh giá!' }]}
-          >
-            <Select placeholder="Vui lòng chọn">
-              <Select.Option value="supervisor">Giảng viên hướng dẫn</Select.Option>
-              <Select.Option value="reviewer">Giảng viên phản biện</Select.Option>
-              <Select.Option value="committee">Hội đồng bảo vệ</Select.Option>
-            </Select>
           </Form.Item>
 
           <Form.Item
@@ -785,119 +747,6 @@ const Evaluation = () => {
           pagination={false}
           rowKey="id"
         />
-      </Modal>
-
-      {/* Modal phân công rubric */}
-      <Modal
-        title="Phân công rubric"
-        open={isAssignModalVisible}
-        onOk={handleAssignModalOk}
-        onCancel={handleAssignModalCancel}
-        okText="Phân công"
-        cancelText="Hủy"
-        width={800}
-      >
-        <Form
-          form={assignForm}
-          layout="vertical"
-          name="assignForm"
-        >
-          <Form.Item
-            name="topic"
-            label="Đề tài"
-            rules={[{ required: true, message: 'Vui lòng chọn đề tài!' }]}
-          >
-            <Select
-              showSearch
-              placeholder="Chọn đề tài"
-              optionFilterProp="children"
-            >
-              <Select.Option value="topic1">Đề tài 1</Select.Option>
-              <Select.Option value="topic2">Đề tài 2</Select.Option>
-              <Select.Option value="topic3">Đề tài 3</Select.Option>
-            </Select>
-          </Form.Item>
-
-          <div className="grid grid-cols-2 gap-4">
-            <Form.Item
-              name="supervisor"
-              label="Giảng viên hướng dẫn"
-              rules={[{ required: true, message: 'Vui lòng chọn GVHD!' }]}
-            >
-              <Select
-                showSearch
-                placeholder="Chọn GVHD"
-                optionFilterProp="children"
-              >
-                <Select.Option value="supervisor1">Giảng viên 1</Select.Option>
-                <Select.Option value="supervisor2">Giảng viên 2</Select.Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              name="supervisorRubric"
-              label="Phiếu đánh giá GVHD"
-              rules={[{ required: true, message: 'Vui lòng chọn phiếu đánh giá!' }]}
-            >
-              <Select placeholder="Chọn phiếu đánh giá">
-                <Select.Option value="rubric1">Phiếu đánh giá GVHD 1</Select.Option>
-                <Select.Option value="rubric2">Phiếu đánh giá GVHD 2</Select.Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              name="reviewer"
-              label="Giảng viên phản biện"
-              rules={[{ required: true, message: 'Vui lòng chọn GVPB!' }]}
-            >
-              <Select
-                showSearch
-                placeholder="Chọn GVPB"
-                optionFilterProp="children"
-              >
-                <Select.Option value="reviewer1">Giảng viên 3</Select.Option>
-                <Select.Option value="reviewer2">Giảng viên 4</Select.Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              name="reviewerRubric"
-              label="Phiếu đánh giá GVPB"
-              rules={[{ required: true, message: 'Vui lòng chọn phiếu đánh giá!' }]}
-            >
-              <Select placeholder="Chọn phiếu đánh giá">
-                <Select.Option value="rubric3">Phiếu đánh giá GVPB 1</Select.Option>
-                <Select.Option value="rubric4">Phiếu đánh giá GVPB 2</Select.Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              name="committee"
-              label="Hội đồng"
-              rules={[{ required: true, message: 'Vui lòng chọn hội đồng!' }]}
-            >
-              <Select
-                showSearch
-                placeholder="Chọn hội đồng"
-                optionFilterProp="children"
-              >
-                <Select.Option value="committee1">Hội đồng 1</Select.Option>
-                <Select.Option value="committee2">Hội đồng 2</Select.Option>
-              </Select>
-            </Form.Item>
-
-            <Form.Item
-              name="committeeRubric"
-              label="Phiếu đánh giá hội đồng"
-              rules={[{ required: true, message: 'Vui lòng chọn phiếu đánh giá!' }]}
-            >
-              <Select placeholder="Chọn phiếu đánh giá">
-                <Select.Option value="rubric5">Phiếu đánh giá hội đồng 1</Select.Option>
-                <Select.Option value="rubric6">Phiếu đánh giá hội đồng 2</Select.Option>
-              </Select>
-            </Form.Item>
-          </div>
-        </Form>
       </Modal>
     </div>
   );

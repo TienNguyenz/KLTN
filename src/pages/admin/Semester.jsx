@@ -105,14 +105,51 @@ const Semester = () => {
     setIsModalVisible(true);
   };
 
+  // Hàm kiểm tra moment hợp lệ, nhận cả DD/MM/YYYY, ISO string, Date object
+  const getValidMoment = (date) => {
+    if (!date) return null;
+    if (typeof date === 'string') {
+      // Nếu là dạng DD/MM/YYYY
+      if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) {
+        const [d, m, y] = date.split('/');
+        const mDate = moment(`${y}-${m}-${d}`);
+        return mDate.isValid() ? mDate : null;
+      }
+      // Nếu là ISO string
+      const mDate = moment(date);
+      return mDate.isValid() ? mDate : null;
+    }
+    if (date instanceof Date) {
+      const mDate = moment(date);
+      return mDate.isValid() ? mDate : null;
+    }
+    // Nếu là moment object
+    if (moment.isMoment(date)) return date;
+    return null;
+  };
+
+  const formatDateString = (date) => {
+    if (!date) return '';
+    if (typeof date === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(date)) return date;
+    // Nếu là Date object hoặc moment object
+    const m = moment(date);
+    return m.isValid() ? m.format('DD/MM/YYYY') : '';
+  };
+
   const handleEdit = (record) => {
     setEditingRecord(record);
     editForm.setFieldsValue({
       semester: record.semester,
-      school_year_start: moment(record.school_year_start),
-      school_year_end: moment(record.school_year_end),
+      school_year_start: formatDateString(record.school_year_start),
+      school_year_end: formatDateString(record.school_year_end),
     });
     setIsEditModalVisible(true);
+  };
+
+  const parseDate = (str) => {
+    if (!str) return null;
+    const [d, m, y] = str.split('/');
+    return new Date(`${y}-${m}-${d}`);
   };
 
   const handleModalOk = () => {
@@ -146,8 +183,8 @@ const Semester = () => {
       try {
         const payload = {
           semester: values.semester,
-          school_year_start: values.school_year_start.toDate(),
-          school_year_end: values.school_year_end.toDate(),
+          school_year_start: parseDate(values.school_year_start),
+          school_year_end: parseDate(values.school_year_end),
         };
         
         await axios.put(`http://localhost:5000/api/semesters/${editingRecord._id}`, payload);
@@ -235,10 +272,9 @@ const Semester = () => {
             <DatePicker 
               className="w-full" 
               format="DD/MM/YYYY"
-              changeOnBlur
               showToday={false}
               allowClear
-              inputReadOnly={false}
+              inputReadOnly={true}
               placeholder="Nhập hoặc chọn ngày"
             />
           </Form.Item>
@@ -250,10 +286,9 @@ const Semester = () => {
             <DatePicker 
               className="w-full" 
               format="DD/MM/YYYY"
-              changeOnBlur
               showToday={false}
               allowClear
-              inputReadOnly={false}
+              inputReadOnly={true}
               placeholder="Nhập hoặc chọn ngày"
             />
           </Form.Item>
@@ -284,32 +319,22 @@ const Semester = () => {
           <Form.Item
             name="school_year_start"
             label="Thời gian bắt đầu"
-            rules={[{ required: true, message: 'Vui lòng chọn thời gian bắt đầu!' }]}
+            rules={[
+              { required: true, message: 'Vui lòng nhập thời gian bắt đầu!' },
+              { pattern: /^\d{2}\/\d{2}\/\d{4}$/, message: 'Định dạng ngày phải là DD/MM/YYYY' }
+            ]}
           >
-            <DatePicker 
-              className="w-full" 
-              format="DD/MM/YYYY"
-              changeOnBlur
-              showToday={false}
-              allowClear
-              inputReadOnly={false}
-              placeholder="Nhập hoặc chọn ngày"
-            />
+            <Input placeholder="VD: 25/05/2025" />
           </Form.Item>
           <Form.Item
             name="school_year_end"
             label="Thời gian kết thúc"
-            rules={[{ required: true, message: 'Vui lòng chọn thời gian kết thúc!' }]}
+            rules={[
+              { required: true, message: 'Vui lòng nhập thời gian kết thúc!' },
+              { pattern: /^\d{2}\/\d{2}\/\d{4}$/, message: 'Định dạng ngày phải là DD/MM/YYYY' }
+            ]}
           >
-            <DatePicker 
-              className="w-full" 
-              format="DD/MM/YYYY"
-              changeOnBlur
-              showToday={false}
-              allowClear
-              inputReadOnly={false}
-              placeholder="Nhập hoặc chọn ngày"
-            />
+            <Input placeholder="VD: 30/06/2025" />
           </Form.Item>
         </Form>
       </Modal>

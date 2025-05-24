@@ -62,7 +62,8 @@ router.get('/collections/:name', async (req, res) => {
         .populate('topic_instructor', 'user_name')
         .populate('topic_category', 'topic_category_title')
         .populate('topic_major', 'major_title')
-        .populate('topic_group_student', 'user_name user_id');
+        .populate('topic_group_student', 'user_name user_id')
+        .populate('topic_assembly', 'assembly_name');
       return res.json({ success: true, data });
     }
     const data = await mongoose.connection.db.collection(collectionName).find({}).toArray();
@@ -198,6 +199,10 @@ router.put('/collections/Topic/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const update = req.body;
+    // Ép kiểu topic_assembly về ObjectId nếu là string
+    if (update.topic_assembly && typeof update.topic_assembly === 'string') {
+      update.topic_assembly = new mongoose.Types.ObjectId(update.topic_assembly);
+    }
     // Tìm theo cả string và ObjectId
     let query = { _id: id };
     if (mongoose.Types.ObjectId.isValid(id)) {
