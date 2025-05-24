@@ -247,6 +247,17 @@ router.post('/:id/register', async (req, res) => {
       members: topic.topic_group_student
     });
 
+    // Gửi thông báo cho giảng viên hướng dẫn
+    await UserNotification.create({
+      user_notification_title: 'Nhóm sinh viên đăng ký đề tài',
+      user_notification_sender: studentId, // id sinh viên trưởng nhóm
+      user_notification_recipient: topic.topic_instructor, // id giảng viên
+      user_notification_content: `Nhóm sinh viên vừa đăng ký đề tài "${topic.topic_title}". Vui lòng kiểm tra!`,
+      user_notification_type: 2,
+      user_notification_isRead: false,
+      user_notification_topic: 'topic',
+    });
+
     res.json({
       message: 'Đăng ký thành công',
       topic
@@ -369,36 +380,73 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
       }
 
     // Tạo đề tài mới
-      const newTopic = new Topic({
-        topic_title,
-        topic_instructor,
-        topic_major,
-        topic_category,
-        topic_description,
-        topic_max_members,
+    const newTopic = new Topic({
+      topic_title,
+      topic_instructor,
+      topic_major,
+      topic_category,
+      topic_description,
+      topic_max_members,
       topic_group_student: safe_group_student,
-        topic_creator,
-        topic_teacher_status: 'pending',
-        topic_leader_status: 'pending',
-        topic_block: false
-      });
+      topic_creator,
+      topic_teacher_status: 'pending',
+      topic_leader_status: 'pending',
+      topic_block: false,
+      // Thêm các trường bắt buộc
+      name: topic_title,
+      supervisor: instructor.user_name,
+      reviewer: '', // Sẽ được admin cập nhật sau
+      type: topicType.topic_category_title,
+      studentId: topic_creator,
+      lecturer: instructor.user_name,
+      major: major.major_title,
+      description: topic_description,
+      status: 'pending',
+      maxStudents: topic_max_members,
+      groups: safe_group_student.map(memberId => ({
+        studentName: memberId.user_name,
+        studentId: memberId.user_id
+      }))
+    });
 
-      await newTopic.save();
+    await newTopic.save();
+
+    console.log('Creating notification for instructor:', {
+      sender: topic_creator,
+      recipient: topic_instructor,
+      title: topic_title
+    });
+
+    // Tạo thông báo cho giảng viên hướng dẫn
+    try {
+      const notification = await UserNotification.create({
+        user_notification_title: 'Đề xuất đề tài mới',
+        user_notification_sender: topic_creator, // id sinh viên
+        user_notification_recipient: topic_instructor, // id giảng viên
+        user_notification_content: `Sinh viên đã đề xuất đề tài mới: "${topic_title}". Vui lòng kiểm tra và duyệt đề tài trong mục "Đề tài sinh viên đề xuất"!`,
+        user_notification_type: 2,
+        user_notification_isRead: false,
+        user_notification_topic: 'topic',
+      });
+      console.log('Notification created successfully:', notification);
+    } catch (error) {
+      console.error('Error creating notification:', error);
+    }
 
     // Populate các trường liên quan (không cần populate topic_group_student nếu mảng rỗng)
-      await newTopic.populate([
-        { path: 'topic_instructor', select: 'user_name user_id' },
-        { path: 'topic_major', select: 'major_title' },
+    await newTopic.populate([
+      { path: 'topic_instructor', select: 'user_name user_id' },
+      { path: 'topic_major', select: 'major_title' },
       { path: 'topic_category', select: 'topic_category_title' }
-      ]);
+    ]);
     if (safe_group_student.length > 0) {
       await newTopic.populate({ path: 'topic_group_student', select: 'user_name user_id' });
     }
 
-      res.status(201).json({
-        message: 'Đề xuất đề tài thành công.',
-        topic: newTopic
-      });
+    res.status(201).json({
+      message: 'Đề xuất đề tài thành công.',
+      topic: newTopic
+    });
 
   } catch (error) {
     console.error('Error proposing topic:', error);
@@ -656,10 +704,10 @@ router.post('/:id/cancel-registration', async (req, res) => {
       await Topic.deleteOne({ _id: topic._id });
       // Gửi thông báo cho giảng viên
       await UserNotification.create({
-        user_notification_title: 'Nhóm sinh viên đã hủy đăng ký đề tài',
+        user_notification_title: 'Sinh viên đã hủy đề xuất đề tài',
         user_notification_sender: studentId,
         user_notification_recipient: topic.topic_instructor,
-        user_notification_content: `Nhóm sinh viên đã hủy đăng ký và đề tài "${topic.topic_title}" đã bị xóa!`,
+        user_notification_content: `Sinh viên đã hủy đề xuất đề tài "${topic.topic_title}". Đề tài đã bị xóa khỏi hệ thống!`,
         user_notification_type: 2,
         user_notification_isRead: false,
         user_notification_topic: 'topic',
@@ -676,10 +724,10 @@ router.post('/:id/cancel-registration', async (req, res) => {
 
     // Gửi thông báo cho giảng viên
     await UserNotification.create({
-      user_notification_title: 'Nhóm sinh viên đã hủy đăng ký đề tài',
+      user_notification_title: 'Sinh viên đã hủy đăng ký đề tài',
       user_notification_sender: studentId,
       user_notification_recipient: topic.topic_instructor,
-      user_notification_content: `Nhóm sinh viên đã hủy đăng ký đề tài "${topic.topic_title}"`,
+      user_notification_content: `Nhóm sinh viên đã hủy đăng ký đề tài "${topic.topic_title}". Đề tài đã được mở lại để đăng ký!`,
       user_notification_type: 2,
       user_notification_isRead: false,
       user_notification_topic: 'topic',
@@ -694,7 +742,7 @@ router.post('/:id/cancel-registration', async (req, res) => {
 
 // Lấy tất cả đề tài của 1 giảng viên (không filter trạng thái)
 router.get('/instructor/:instructorId/all', async (req, res) => {
-  // console.log(`topic.js: Hit GET /instructor/${req.params.instructorId}/all`); // Xóa dòng log này
+  // console.log(`topic.js: Hit GET /instructor/${req.params.instructorId}/all`); // Xóa dòng này (đã xóa ở trên, nhưng đảm bảo)
   try {
     const instructorId = req.params.instructorId;
     // let objectId = null; // Xóa dòng này (đã xóa ở trên, nhưng đảm bảo)
@@ -941,6 +989,63 @@ router.get('/admin/topics', async (req, res) => {
     res.json(topics);
   } catch (err) {
     res.status(500).json({ error: err.message });
+  }
+});
+
+// API lấy danh sách đề tài hướng dẫn cho giảng viên (chỉ lấy các status hợp lệ)
+router.get('/supervised-topics', async (req, res) => {
+  try {
+    const topics = await Topic.find({
+      topic_instructor: req.user._id,
+      status: { $in: ['pending', 'waiting_admin', 'active'] }
+    });
+    const validStatuses = ['pending', 'waiting_admin', 'active'];
+    const filteredTopics = topics.filter(topic => validStatuses.includes(topic.status));
+    res.json(filteredTopics);
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi khi lấy danh sách đề tài hướng dẫn', error: err.message });
+  }
+});
+
+// API giảng viên từ chối đề xuất
+router.put('/:id/reject-by-lecturer', async (req, res) => {
+  try {
+    const { reason } = req.body;
+    const topic = await Topic.findById(req.params.id);
+    if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+    topic.status = 'rejected';
+    topic.reject_reason = reason || '';
+    await topic.save();
+
+    // Log giá trị trước khi tạo notification
+    console.log('Tạo notification cho sinh viên:', {
+      sender: req.user?._id,
+      recipient: topic.topic_creator,
+      topicId: topic._id,
+      topicName: topic.name,
+      reason
+    });
+
+    // Gửi notification cho sinh viên
+    try {
+      const notification = await UserNotification.create({
+        user_notification_title: 'Đề tài bị từ chối',
+        user_notification_sender: req.user?._id,
+        user_notification_recipient: topic.topic_creator,
+        user_notification_content: `Đề tài "${topic.name}" đã bị từ chối. Lý do: ${reason || 'Không có lý do cụ thể.'}`,
+        user_notification_type: 2,
+        user_notification_isRead: false,
+        user_notification_topic: 'topic',
+      });
+      console.log('Notification đã tạo:', notification);
+    } catch (err) {
+      console.error('Lỗi khi tạo notification:', err);
+    }
+
+    res.json({ message: 'Đã từ chối đề tài và gửi thông báo cho sinh viên', topic });
+  } catch (err) {
+    console.error('Lỗi khi từ chối đề tài:', err);
+    res.status(500).json({ message: 'Lỗi khi từ chối đề tài', error: err.message });
   }
 });
 

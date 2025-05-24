@@ -117,13 +117,14 @@ const topicSchema = new mongoose.Schema({
         type: String,
         required: true
     },
-    reviewer: {
-        type: String,
-        required: true
-    },
+    // reviewer: {
+    //     type: String,
+    //     required: true
+    // },
     type: {
         type: String,
-        enum: ['Ứng dụng', 'Nghiên cứu'],
+        // enum: ['Ứng dụng', 'Nghiên cứu'],
+        enum: ['Tin tức'],
         required: true
     },
     studentId: {
@@ -136,8 +137,8 @@ const topicSchema = new mongoose.Schema({
     },
     status: {
         type: String,
-        enum: ['ACTIVE', 'REGISTERED'],
-        default: 'REGISTERED'
+        enum: ['pending', 'waiting_admin', 'active', 'rejected'],
+        default: 'pending'
     },
     maxStudents: {
         type: Number,
@@ -162,6 +163,10 @@ const topicSchema = new mongoose.Schema({
     isCommitteeTopic: {
         type: Boolean,
         default: false
+    },
+    reject_reason: {
+        type: String,
+        trim: true
     }
 }, { timestamps: true, collection: 'Topic' });
 

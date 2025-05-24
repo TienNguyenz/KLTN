@@ -9,18 +9,119 @@ import * as XLSX from 'xlsx';
 
 const { Search } = Input;
 
-const majorsByDepartment = {
-  "Khoa Công nghệ thông tin": [
-    "Khoa học máy tính",
-    "Kỹ thuật phần mềm",
-    "Hệ thống Thông tin",
-  ],
-  "Khoa Quản trị kinh doanh": [
-    "Quản trị Logistics",
-    "Quản trị Makerting",
-    "Digital Markerting",
-    "Quản trị nhân sự",
-  ],
+// Constants
+const API_BASE_URL = 'http://localhost:5000/api';
+const MIN_LECTURER_AGE = 22;
+const RANDOM_ID_DIGITS = 3; // For lecturer ID
+const MAX_ID_GENERATION_ATTEMPTS = 100;
+
+// Validation regex patterns
+const VALIDATION_PATTERNS = {
+  email: /^[a-zA-Z0-9._%+-]+@gmail\.com$/,
+  phone: /^0\d{9}$/,
+  cccd: /^\d{12}$/,
+  name: /^[^0-9!@#$%^&*(),.?":{}|<>]+$/
+};
+
+// Helper functions
+const generateFacultyCode = (facultyTitle) => {
+  if (!facultyTitle) return null;
+  const titleWithoutPrefix = facultyTitle.replace(/^(Khoa )/i, '').trim();
+  if (!titleWithoutPrefix) return null;
+  return titleWithoutPrefix.split(/\s+/)
+    .map(word => word.charAt(0))
+    .join('')
+    .toUpperCase();
+};
+
+const generateRandomNumberString = (digits) => {
+  return Array(digits).fill(0)
+    .map(() => Math.floor(Math.random() * 10))
+    .join('');
+};
+
+const calculateAge = (birthDate) => {
+  if (!birthDate) return 0;
+  const today = new Date();
+  const birth = new Date(birthDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+// API calls
+const api = {
+  checkUserIdExists: async (userId, role) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/database/users/check-user-id`, {
+        params: { user_id: userId, role }
+      });
+      return response.data.exists;
+    } catch (error) {
+      console.error('Error checking user ID existence:', error);
+      return true;
+    }
+  },
+
+  uploadImage: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      const response = await axios.post(`${API_BASE_URL}/database/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data.url;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      message.error('Không thể tải lên ảnh. Vui lòng thử lại.');
+      return null;
+    }
+  },
+
+  deleteImage: async (filename) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/database/uploads/${filename}`);
+    } catch (error) {
+      console.error('Error deleting image:', error);
+    }
+  }
+};
+
+// Validation functions
+const validateLecturer = {
+  name: (name) => {
+    if (!name?.trim()) return 'Họ tên không được để trống';
+    if (!VALIDATION_PATTERNS.name.test(name)) return 'Họ tên không được chứa số hoặc ký tự đặc biệt';
+    return null;
+  },
+
+  email: (email) => {
+    if (!email?.trim()) return 'Email không được để trống';
+    if (!VALIDATION_PATTERNS.email.test(email)) return 'Email không hợp lệ (Chỉ chấp nhận @gmail.com)';
+    return null;
+  },
+
+  phone: (phone) => {
+    if (!phone?.trim()) return 'Số điện thoại không được để trống';
+    if (!VALIDATION_PATTERNS.phone.test(phone)) return 'Số điện thoại không hợp lệ (phải 10 số, bắt đầu bằng 0)';
+    return null;
+  },
+
+  cccd: (cccd) => {
+    if (!cccd?.trim()) return 'CCCD không được để trống';
+    if (!VALIDATION_PATTERNS.cccd.test(cccd)) return 'CCCD phải có 12 chữ số';
+    return null;
+  },
+
+  age: (birthDate) => {
+    const age = calculateAge(birthDate);
+    if (age < MIN_LECTURER_AGE) return `Giảng viên phải từ ${MIN_LECTURER_AGE} tuổi trở lên`;
+    return null;
+  }
 };
 
 const disabledDate = (current) => {
@@ -63,7 +164,6 @@ const LecturerList = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
-  const [datePickerMode, setDatePickerMode] = useState('year');
   const [importError, setImportError] = useState('');
   const [importSuccess, setImportSuccess] = useState('');
 
@@ -154,14 +254,14 @@ const LecturerList = () => {
 
   useEffect(() => {
     if (importSuccess) {
-      const timer = setTimeout(() => setImportSuccess(''), 2000);
+      const timer = setTimeout(() => setImportSuccess(''), 5000);
       return () => clearTimeout(timer);
     }
   }, [importSuccess]);
 
   useEffect(() => {
     if (importError) {
-      const timer = setTimeout(() => setImportError(''), 2000);
+      const timer = setTimeout(() => setImportError(''), 5000);
       return () => clearTimeout(timer);
     }
   }, [importError]);
@@ -289,121 +389,195 @@ const LecturerList = () => {
   };
 
   const handleUpdate = async () => {
-    setIsConfirmModalVisible(true);
+    setErrors({});
+    const newErrors = {};
+
+    if (!selectedLecturer) {
+      // Validate new lecturer
+      if (!formData.user_faculty) {
+        newErrors.user_faculty = 'Vui lòng chọn khoa để tạo mã giảng viên';
+      } else {
+        const facultyCode = generateFacultyCode(faculties.find(f => f._id === formData.user_faculty)?.faculty_title);
+        if (!facultyCode) {
+          newErrors.user_faculty = 'Không tìm thấy mã khoa để tạo mã giảng viên';
+        } else {
+          let generatedId = '';
+          let isUnique = false;
+          
+          for (let i = 0; i < MAX_ID_GENERATION_ATTEMPTS; i++) {
+            generatedId = facultyCode + generateRandomNumberString(RANDOM_ID_DIGITS);
+            isUnique = !(await api.checkUserIdExists(generatedId, 'giangvien'));
+            if (isUnique) break;
+          }
+
+          if (isUnique) {
+            setFormData(prev => ({ ...prev, user_id: generatedId }));
+          } else {
+            newErrors.user_id = 'Không thể tạo mã giảng viên duy nhất sau nhiều lần thử. Vui lòng thử lại.';
+          }
+        }
+      }
+
+      // Validate other fields
+      newErrors.user_name = validateLecturer.name(formData.user_name);
+      newErrors.email = validateLecturer.email(formData.email);
+      newErrors.user_phone = validateLecturer.phone(formData.user_phone);
+      newErrors.user_CCCD = validateLecturer.cccd(formData.user_CCCD);
+      newErrors.user_date_of_birth = validateLecturer.age(formData.user_date_of_birth);
+
+      if (!formData.user_permanent_address?.trim()) {
+        newErrors.user_permanent_address = 'Địa chỉ thường trú không được để trống';
+      }
+      if (!formData.user_faculty) {
+        newErrors.user_faculty = 'Vui lòng chọn khoa';
+      }
+      if (!formData.user_major) {
+        newErrors.user_major = 'Vui lòng chọn chuyên ngành';
+      }
+    } else {
+      // Validate edited lecturer
+      const changedFields = Object.keys(formData);
+      
+      for (const field of changedFields) {
+        switch (field) {
+          case 'user_name':
+            newErrors.user_name = validateLecturer.name(formData.user_name);
+            break;
+          case 'email':
+            newErrors.email = validateLecturer.email(formData.email);
+            break;
+          case 'user_phone':
+            newErrors.user_phone = validateLecturer.phone(formData.user_phone);
+            break;
+          case 'user_CCCD':
+            newErrors.user_CCCD = validateLecturer.cccd(formData.user_CCCD);
+            break;
+          case 'user_date_of_birth':
+            newErrors.user_date_of_birth = validateLecturer.age(formData.user_date_of_birth);
+            break;
+          // ... other validations
+        }
+      }
+    }
+
+    // Remove null errors
+    const filteredErrors = Object.fromEntries(
+      Object.entries(newErrors).filter(([, value]) => value !== null)
+    );
+
+    if (Object.keys(filteredErrors).length > 0) {
+      setErrors(filteredErrors);
+      message.error('Vui lòng kiểm tra lại thông tin!');
+           return;
+      }
+
+      setIsConfirmModalVisible(true);
   };
 
   const handleConfirmUpdate = async () => {
+    // Hàm này chỉ chạy sau khi người dùng xác nhận VÀ handleUpdate đã qua validation
     setIsSubmitting(true);
     try {
-      // Nếu không có trường nào thay đổi khi chỉnh sửa
-      if (selectedLecturer && Object.keys(formData).length === 0) {
-        setSuccessMessage('Cập nhật thông tin giảng viên thành công!');
-        setIsSuccessModalVisible(true);
-        setIsSubmitting(false);
-        setIsConfirmModalVisible(false);
-        return;
-      }
-
-      // Validate age
-      const today = new Date();
-      const birthDateStr = formData.user_date_of_birth || selectedLecturer?.user_date_of_birth;
-      const birthDate = birthDateStr ? new Date(birthDateStr) : null;
-      
-      if (!birthDate) {
-        throw new Error('Vui lòng chọn ngày sinh');
-      }
-
-      let calculatedAge = today.getFullYear() - birthDate.getFullYear();
-      const monthDiff = today.getMonth() - birthDate.getMonth();
-      
-      if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birthDate.getDate())) {
-        calculatedAge--;
-      }
-      
-      if (calculatedAge < 22) {
-        throw new Error('Giảng viên phải từ 22 tuổi trở lên');
-      }
+      // --- Đoạn code xử lý tạo mật khẩu, upload avatar, gửi API call sẽ nằm ở đây ---
 
       // Format password from YYYY-MM-DD to DDMMYYYY
-      const dateToUse = birthDateStr;
-      const formattedPassword = dateToUse ? 
-        dateToUse.split('-').reverse().join('') : 
+      const birthDateStr = formData.user_date_of_birth || selectedLecturer?.user_date_of_birth;
+      const formattedPassword = birthDateStr ?
+        birthDateStr.split('-').reverse().join('') :
         null;
 
       if (!formattedPassword) {
-        throw new Error('Không thể tạo mật khẩu từ ngày sinh');
+         throw new Error('Không thể tạo mật khẩu từ ngày sinh'); // Should not happen if date validation passed
       }
 
       let user_avatar = formData.user_avatar;
       if (formData.avatarFile) {
         user_avatar = await handleImageUpload(formData.avatarFile);
         if (!user_avatar) {
+          // handleImageUpload đã hiển thị message lỗi
           setIsSubmitting(false);
-          return;
+          setIsConfirmModalVisible(false);
+          return; // Dừng xử lý nếu upload ảnh thất bại
         }
       }
 
-      // Validate faculty and major selection
       if (!selectedLecturer) {
-        // For new lecturer, both faculty and major are required
-        if (!formData.user_faculty) {
-          throw new Error('Vui lòng chọn khoa');
-        }
+         // Logic gửi API tạo mới
+         const newLecturer = {
+           ...formData,
+           role: 'giangvien',
+           user_status: 'active',
+           password: formattedPassword,
+           createdAt: new Date().toISOString(),
+           updatedAt: new Date().toISOString()
+         };
+         // Xóa avatarFile trước khi gửi đi
+         delete newLecturer.avatarFile;
+         // Sử dụng user_avatar đã upload
+         newLecturer.user_avatar = user_avatar;
 
-        if (!formData.user_major) {
-          throw new Error('Vui lòng chọn chuyên ngành');
-        }
+         console.log('Sending create request with data:', newLecturer);
+         const response = await axios.post('http://localhost:5000/api/database/collections/User', newLecturer);
+         console.log('Create response:', response.data);
 
-        // Verify that faculty exists
-        const selectedFacultyExists = faculties.some(f => f._id === formData.user_faculty);
-        if (!selectedFacultyExists) {
-          throw new Error('Khoa đã chọn không tồn tại');
-        }
+         if (response.data) {
+           setSuccessMessage('Thêm giảng viên mới thành công!');
+           setIsSuccessModalVisible(true); // Mở modal thành công
+           fetchLecturers(); // Refresh danh sách
+         } else {
+            throw new Error('API response empty on create'); // Should not happen often
+         }
 
-        // Verify that major exists and belongs to selected faculty
-        const selectedMajorExists = majors.some(m => 
-          m._id === formData.user_major && 
-          m.major_faculty === formData.user_faculty
-        );
-        if (!selectedMajorExists) {
-          throw new Error('Chuyên ngành đã chọn không tồn tại hoặc không thuộc khoa đã chọn');
-        }
       } else {
-        // For updating existing lecturer
-        const oldAvatar = selectedLecturer.user_avatar;
-        const updatedData = {
-          ...selectedLecturer,
-          ...formData,
-          user_faculty: formData.user_faculty || selectedLecturer.user_faculty,
-          user_major: formData.user_major || selectedLecturer.user_major,
-          user_avatar: user_avatar || selectedLecturer.user_avatar,
-          role: 'giangvien',
-          password: formattedPassword
-        };
+         // Logic gửi API cập nhật
+         const oldAvatar = selectedLecturer.user_avatar;
+         const updatedData = {
+           ...formData, // formData chỉ chứa các trường đã thay đổi
+           // Không cần merge với selectedLecturer ở đây, backend chỉ cần các trường thay đổi
+           // backend sẽ tự merge với dữ liệu cũ
+           user_avatar: user_avatar, // Sử dụng user_avatar mới (nếu có) hoặc undefined
+           password: formattedPassword // Cập nhật mật khẩu dựa trên ngày sinh mới
+         };
+         // Xóa avatarFile trước khi gửi đi
+         delete updatedData.avatarFile;
 
-        // Remove faculty_name and major_name before sending to server
-        delete updatedData.faculty_name;
-        delete updatedData.major_name;
+         // Nếu không có trường nào thay đổi và không có avatar mới, bỏ qua request PUT
+         if (Object.keys(updatedData).length === 0 && !user_avatar) {
+              setSuccessMessage('Không có thay đổi để cập nhật!');
+              setIsSuccessModalVisible(true);
+              setIsSubmitting(false);
+              setIsConfirmModalVisible(false);
+              return;
+         }
 
-        console.log('Sending update request with data:', updatedData);
-        const response = await axios.put(
-          `http://localhost:5000/api/database/collections/User/${selectedLecturer._id}`,
-          updatedData
-        );
-        console.log('Update response:', response.data);
-        
-        if (response.data) {
-          // Xóa file avatar cũ nếu có và khác file mới
-          if (oldAvatar && oldAvatar !== user_avatar) {
-            const filename = oldAvatar.split('/').pop();
-            await axios.delete(`http://localhost:5000/api/database/uploads/${filename}`);
-          }
-            console.log('API update thành công, response:', response.data);
-            setIsSuccessModalVisible(true);
-        }
+         console.log('Sending update request with data:', updatedData);
+         const response = await axios.put(
+           `http://localhost:5000/api/database/collections/User/${selectedLecturer._id}`,
+           updatedData // Gửi chỉ các trường thay đổi và user_avatar mới (nếu có)
+         );
+         console.log('Update response:', response.data);
+
+         if (response.data) {
+           // Xóa file avatar cũ nếu có và khác file mới (nếu có)
+           if (oldAvatar && user_avatar && oldAvatar !== user_avatar) {
+             const filename = oldAvatar.split('/').pop();
+             try {
+                await axios.delete(`http://localhost:5000/api/database/uploads/${filename}`);
+             } catch (delError) {
+                console.error('Error deleting old avatar:', delError);
+                // Tiếp tục dù xóa avatar cũ lỗi
+             }
+           }
+           setSuccessMessage('Cập nhật thông tin giảng viên thành công!');
+           setIsSuccessModalVisible(true); // Mở modal thành công
+           fetchLecturers(); // Refresh danh sách
+         } else {
+            throw new Error('API response empty on update'); // Should not happen often
+         }
       }
+
     } catch (error) {
-      console.error('Error:', error);
+      console.error('Error in handleConfirmUpdate:', error);
       // Ưu tiên lấy message chi tiết từ backend nếu có
       const errorMessage = error.response?.data?.message
         || error.message
@@ -453,13 +627,29 @@ const LecturerList = () => {
         }
 
         // Process and send data to server
-        const processedData = jsonData.map(row => ({
-          ...row,
-          role: 'giangvien',
-          user_status: 'active',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }));
+        const processedData = jsonData.map(row => {
+          const processedRow = { ...row };
+          
+          // Xử lý cột ngày sinh từ import (có thể là DD/MM/YYYY hoặc YYYY-MM-DD)
+          if (processedRow.user_date_of_birth) {
+            let date = dayjs(processedRow.user_date_of_birth, ['DD/MM/YYYY', 'YYYY-MM-DD'], true); // Thử parse với cả 2 định dạng
+            if (date.isValid()) {
+              processedRow.user_date_of_birth = date.format('YYYY-MM-DD'); // Lưu lại dưới dạng YYYY-MM-DD
+            } else {
+               // Nếu không parse được, có thể ghi log hoặc bỏ qua
+              console.warn(`Could not parse date: ${row.user_date_of_birth}`);
+              delete processedRow.user_date_of_birth; // Hoặc set về null/undefined tùy logic
+            }
+          }
+
+          return {
+            ...processedRow,
+            role: 'giangvien',
+            user_status: 'active',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+        });
 
         await axios.post('http://localhost:5000/api/database/collections/User/bulk', processedData);
         setImportSuccess('Import dữ liệu giảng viên thành công!');
@@ -483,8 +673,8 @@ const LecturerList = () => {
         'CCCD': lecturer.user_CCCD,
         'Số điện thoại': lecturer.user_phone,
         'Địa chỉ thường trú': lecturer.user_permanent_address,
-        'Ngày sinh': lecturer.user_date_of_birth && typeof lecturer.user_date_of_birth === 'string' && lecturer.user_date_of_birth.match(/^\d{4}-\d{2}-\d{2}$/)
-          ? lecturer.user_date_of_birth
+        'Ngày sinh': lecturer.user_date_of_birth
+          ? dayjs(lecturer.user_date_of_birth).format('DD/MM/YYYY')
           : '',
         'Khoa': faculties.find(f => f._id === lecturer.user_faculty)?.faculty_title || '',
         'Chuyên ngành': majors.find(m => m._id === lecturer.user_major)?.major_title || ''
@@ -605,9 +795,9 @@ const LecturerList = () => {
           }}
           allowClear
         >
-          {Object.keys(majorsByDepartment).map((dep, idx) => (
-            <Select.Option key={idx} value={dep}>
-              {dep}
+          {faculties.map((faculty) => (
+            <Select.Option key={faculty._id} value={faculty.faculty_title}>
+              {faculty.faculty_title}
             </Select.Option>
           ))}
         </Select>
@@ -618,9 +808,14 @@ const LecturerList = () => {
           disabled={!filterFaculty}
           allowClear
         >
-          {majorsByDepartment[filterFaculty]?.map((major) => (
-            <Select.Option key={major} value={major}>
-              {major}
+          {majors
+            .filter((major) => {
+              const faculty = faculties.find(f => f.faculty_title === filterFaculty);
+              return faculty && major.major_faculty === faculty._id;
+            })
+            .map((major) => (
+              <Select.Option key={major._id} value={major.major_title}>
+                {major.major_title}
             </Select.Option>
           ))}
         </Select>
@@ -787,6 +982,7 @@ const LecturerList = () => {
                     }`}
                     value={formData.user_id || selectedLecturer?.user_id || ''}
                     onChange={(e) => handleInputChange('user_id', e.target.value)}
+                    disabled={!selectedLecturer} // Disable input when adding new
                   />
                   {errors.user_id && (
                     <span className="text-red-500 text-sm">{errors.user_id}</span>
@@ -864,23 +1060,20 @@ const LecturerList = () => {
                     className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
                       errors.user_date_of_birth ? 'border-red-500' : ''
                     }`}
-                    value={formData.user_date_of_birth ? dayjs(formData.user_date_of_birth) : (selectedLecturer?.user_date_of_birth ? dayjs(selectedLecturer.user_date_of_birth) : null)}
-                    onChange={(date, dateString) => handleInputChange('user_date_of_birth', dateString)}
-                    format="YYYY-MM-DD"
+                    value={formData.user_date_of_birth ? dayjs(formData.user_date_of_birth) : (selectedLecturer?.user_date_of_birth ? dayjs(selectedLecturer.user_date_of_birth) : (selectedLecturer === null ? dayjs().subtract(22, 'year') : null))}
+                    onChange={(date) => {
+                      // dateString ở định dạng hiển thị (DD/MM/YYYY)
+                      // Chuyển đổi lại sang YYYY-MM-DD để lưu vào state
+                      const formattedDate = date ? date.format('YYYY-MM-DD') : null;
+                      handleInputChange('user_date_of_birth', formattedDate);
+                    }}
+                    format="DD/MM/YYYY" // <--- Thay đổi định dạng hiển thị
                     disabledDate={disabledDate}
                     placeholder="Chọn ngày sinh"
                     style={{ width: '100%' }}
                     showToday={false}
                     placement="bottomLeft"
-                    picker="date"
-                    mode={datePickerMode}
-                    onPanelChange={(_, mode) => {
-                      setDatePickerMode(mode);
-                    }}
-                    prevIcon={<span>←</span>}
-                    nextIcon={<span>→</span>}
-                    superPrevIcon={<span>⇐</span>}
-                    superNextIcon={<span>⇒</span>}
+                    picker="date" // Mặc định hiển thị lịch chọn ngày
                   />
                   {errors.user_date_of_birth && (
                     <span className="text-red-500 text-sm">{errors.user_date_of_birth}</span>
@@ -1022,7 +1215,7 @@ const LecturerList = () => {
         <div className="text-center py-4">
           <CheckCircleFilled style={{ fontSize: '48px', color: '#52c41a' }} />
           <p className="mt-4 text-lg">
-            {'Cập nhật thông tin giảng viên thành công!'}
+            {successMessage}
           </p>
         </div>
       </Modal>

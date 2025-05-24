@@ -9,20 +9,6 @@ import * as XLSX from 'xlsx';
 
 const { Search } = Input;
 
-const majorsByDepartment = {
-  "Khoa Công nghệ thông tin": [
-    "Khoa học máy tính",
-    "Kỹ thuật phần mềm",
-    "Hệ thống Thông tin",
-  ],
-  "Khoa Quản trị kinh doanh": [
-    "Quản trị Logistics",
-    "Quản trị Makerting",
-    "Digital Markerting",
-    "Quản trị nhân sự",
-  ],
-};
-
 const disabledDate = (current) => {
   if (!current) return false;
   const year = current.year();
@@ -41,6 +27,109 @@ const VIETNAMESE_TO_FIELD = {
   'Ngày sinh': 'user_date_of_birth',
   'Khoa': 'user_faculty',
   'Chuyên ngành': 'user_major',
+};
+
+const API_BASE_URL = 'http://localhost:5000/api';
+const MIN_STUDENT_AGE = 18;
+const RANDOM_ID_DIGITS = 4; // For student ID
+const MAX_ID_GENERATION_ATTEMPTS = 100;
+
+const VALIDATION_PATTERNS = {
+  email: /^[a-zA-Z0-9._%+-]+@gmail\.com$/,
+  phone: /^0\d{9}$/,
+  cccd: /^\d{12}$/,
+  name: /^[^0-9!@#$%^&*(),.?":{}|<>]+$/
+};
+
+const generateFacultyCode = (facultyTitle) => {
+  if (!facultyTitle) return null;
+  const titleWithoutPrefix = facultyTitle.replace(/^(Khoa )/i, '').trim();
+  if (!titleWithoutPrefix) return null;
+  return titleWithoutPrefix.split(/\s+/)
+    .map(word => word.charAt(0))
+    .join('')
+    .toUpperCase();
+};
+
+const generateRandomNumberString = (digits) => {
+  return Array(digits).fill(0)
+    .map(() => Math.floor(Math.random() * 10))
+    .join('');
+};
+
+const calculateAge = (birthDate) => {
+  if (!birthDate) return 0;
+  const today = new Date();
+  const birth = new Date(birthDate);
+  let age = today.getFullYear() - birth.getFullYear();
+  const monthDiff = today.getMonth() - birth.getMonth();
+  if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+    age--;
+  }
+  return age;
+};
+
+const api = {
+  checkUserIdExists: async (userId, role) => {
+    try {
+      const response = await axios.get(`${API_BASE_URL}/database/users/check-user-id`, {
+        params: { user_id: userId, role }
+      });
+      return response.data.exists;
+    } catch (error) {
+      console.error('Error checking user ID existence:', error);
+      return true;
+    }
+  },
+  uploadImage: async (file) => {
+    try {
+      const formData = new FormData();
+      formData.append('avatar', file);
+      const response = await axios.post(`${API_BASE_URL}/database/upload`, formData, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      return response.data.url;
+    } catch (error) {
+      console.error('Error uploading image:', error);
+      message.error('Không thể tải lên ảnh. Vui lòng thử lại.');
+      return null;
+    }
+  },
+  deleteImage: async (filename) => {
+    try {
+      await axios.delete(`${API_BASE_URL}/database/uploads/${filename}`);
+    } catch (error) {
+      console.error('Error deleting image:', error);
+    }
+  }
+};
+
+const validateStudent = {
+  name: (name) => {
+    if (!name?.trim()) return 'Họ tên không được để trống';
+    if (!VALIDATION_PATTERNS.name.test(name)) return 'Họ tên không được chứa số hoặc ký tự đặc biệt';
+    return null;
+  },
+  email: (email) => {
+    if (!email?.trim()) return 'Email không được để trống';
+    if (!VALIDATION_PATTERNS.email.test(email)) return 'Email không hợp lệ (Chỉ chấp nhận @gmail.com)';
+    return null;
+  },
+  phone: (phone) => {
+    if (!phone?.trim()) return 'Số điện thoại không được để trống';
+    if (!VALIDATION_PATTERNS.phone.test(phone)) return 'Số điện thoại không hợp lệ (phải 10 số, bắt đầu bằng 0)';
+    return null;
+  },
+  cccd: (cccd) => {
+    if (!cccd?.trim()) return 'CCCD không được để trống';
+    if (!VALIDATION_PATTERNS.cccd.test(cccd)) return 'CCCD phải có 12 chữ số';
+    return null;
+  },
+  age: (birthDate) => {
+    const age = calculateAge(birthDate);
+    if (age < MIN_STUDENT_AGE) return `Sinh viên phải từ ${MIN_STUDENT_AGE} tuổi trở lên`;
+    return null;
+  }
 };
 
 const Students = () => {
@@ -63,7 +152,6 @@ const Students = () => {
   const [successMessage, setSuccessMessage] = useState('');
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [showErrorModal, setShowErrorModal] = useState(false);
-  const [datePickerMode, setDatePickerMode] = useState('year');
   const [importError, setImportError] = useState('');
   const [importSuccess, setImportSuccess] = useState('');
 
@@ -143,14 +231,14 @@ const Students = () => {
 
   useEffect(() => {
     if (importSuccess) {
-      const timer = setTimeout(() => setImportSuccess(''), 2000);
+      const timer = setTimeout(() => setImportSuccess(''), 5000);
       return () => clearTimeout(timer);
     }
   }, [importSuccess]);
 
   useEffect(() => {
     if (importError) {
-      const timer = setTimeout(() => setImportError(''), 2000);
+      const timer = setTimeout(() => setImportError(''), 5000);
       return () => clearTimeout(timer);
     }
   }, [importError]);
@@ -316,190 +404,81 @@ const Students = () => {
     }
   };
 
-  const validateForm = async () => {
-    const newErrors = {};
-    const changedFields = Object.keys(formData);
-
-    // Validate họ tên nếu đã thay đổi
-    if (changedFields.includes('user_name')) {
-      if (!formData.user_name?.trim()) {
-        newErrors.user_name = 'Họ tên không được để trống';
-      } else if (/\d|[!@#$%^&*(),.?":{}|<>]/.test(formData.user_name)) {
-        newErrors.user_name = 'Họ tên không được chứa số hoặc ký tự đặc biệt';
-      }
-    }
-
-    // Validate email nếu đã thay đổi
-    if (changedFields.includes('email')) {
-      if (!formData.email?.trim()) {
-        newErrors.email = 'Email không được để trống';
-      } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)) {
-        newErrors.email = 'Email không hợp lệ';
-      } else {
-        // Kiểm tra email trùng
-        try {
-          const response = await axios.get(`http://localhost:5000/api/database/collections/User`, {
-            params: {
-              email: formData.email,
-              excludeId: selectedStudent?._id // Loại trừ ID hiện tại khi kiểm tra
-            }
-          });
-          const existingUser = response.data.find(user => user.email === formData.email && user._id !== selectedStudent?._id);
-          if (existingUser) {
-              newErrors.email = 'Email này đã được sử dụng';
-          }
-        } catch (error) {
-          console.error('Error checking email:', error);
-        }
-      }
-    }
-
-    // Validate mã số nếu đã thay đổi
-    if (changedFields.includes('user_id')) {
-      if (!formData.user_id?.trim()) {
-        newErrors.user_id = 'Mã số không được để trống';
-      } else {
-        // Kiểm tra mã số trùng
-        try {
-          const response = await axios.get(`http://localhost:5000/api/database/collections/User`, {
-            params: {
-              user_id: formData.user_id,
-              excludeId: selectedStudent?._id // Loại trừ ID hiện tại khi kiểm tra
-            }
-          });
-          const existingUser = response.data.find(user => user.user_id === formData.user_id && user._id !== selectedStudent?._id);
-          if (existingUser) {
-            newErrors.user_id = 'Mã số đã tồn tại';
-          }
-        } catch (error) {
-          console.error('Error checking user ID:', error);
-        }
-      }
-    }
-
-    // Validate CCCD nếu đã thay đổi
-    if (changedFields.includes('user_CCCD')) {
-      if (!formData.user_CCCD?.trim()) {
-        newErrors.user_CCCD = 'CCCD không được để trống';
-      } else if (!/^\d{12}$/.test(formData.user_CCCD)) {
-        newErrors.user_CCCD = 'CCCD phải có 12 chữ số';
-      }
-    }
-
-    // Validate số điện thoại nếu đã thay đổi
-    if (changedFields.includes('user_phone')) {
-      if (!formData.user_phone?.trim()) {
-        newErrors.user_phone = 'Số điện thoại không được để trống';
-      } else if (!/^\d{10}$/.test(formData.user_phone)) {
-        newErrors.user_phone = 'Số điện thoại phải có 10 chữ số';
-      }
-    }
-
-    // Validate địa chỉ nếu đã thay đổi
-    if (changedFields.includes('user_permanent_address') && !formData.user_permanent_address?.trim()) {
-      newErrors.user_permanent_address = 'Địa chỉ không được để trống';
-    }
-
-    // Validate ngày sinh nếu đã thay đổi
-    if (changedFields.includes('user_date_of_birth') && !formData.user_date_of_birth) {
-      newErrors.user_date_of_birth = 'Ngày sinh không được để trống';
-    }
-
-    // Validate khoa nếu đã thay đổi
-    if (changedFields.includes('user_faculty') && !formData.user_faculty) {
-      newErrors.user_faculty = 'Vui lòng chọn khoa';
-    }
-
-    // Validate chuyên ngành nếu đã thay đổi
-    if (changedFields.includes('user_major') && !formData.user_major) {
-      newErrors.user_major = 'Vui lòng chọn chuyên ngành';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleUpdate = async () => {
-    console.log('handleUpdate called');
-    
-    // Validate all fields when adding new student
+    setErrors({});
+    const newErrors = {};
+
     if (!selectedStudent) {
-      const newErrors = {};
-      
-      if (!formData.user_name?.trim()) {
-        newErrors.user_name = 'Họ tên không được để trống';
-      } else if (/[\d!@#$%^&*(),.?":{}|<>]/.test(formData.user_name)) {
-        newErrors.user_name = 'Họ tên không được chứa số hoặc ký tự đặc biệt';
+      // Validate new student
+      if (!formData.user_faculty) {
+        newErrors.user_faculty = 'Vui lòng chọn khoa để tạo mã sinh viên';
+      } else {
+        const facultyCode = generateFacultyCode(faculties.find(f => f._id === formData.user_faculty)?.faculty_title);
+        if (!facultyCode) {
+          newErrors.user_faculty = 'Không tìm thấy mã khoa để tạo mã sinh viên';
+        } else {
+          let generatedId = '';
+          let isUnique = false;
+          for (let i = 0; i < MAX_ID_GENERATION_ATTEMPTS; i++) {
+            generatedId = facultyCode + generateRandomNumberString(RANDOM_ID_DIGITS);
+            isUnique = !(await api.checkUserIdExists(generatedId, 'sinhvien'));
+            if (isUnique) break;
+          }
+          if (isUnique) {
+            setFormData(prev => ({ ...prev, user_id: generatedId }));
+          } else {
+            newErrors.user_id = 'Không thể tạo mã sinh viên duy nhất sau nhiều lần thử. Vui lòng thử lại.';
+          }
+        }
       }
-
-      if (!formData.email?.trim()) {
-        newErrors.email = 'Email không được để trống';
-      } else if (!/^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i.test(formData.email)) {
-        newErrors.email = 'Email không hợp lệ';
-      }
-
-      if (!formData.user_id?.trim()) {
-        newErrors.user_id = 'Mã số sinh viên không được để trống';
-      }
-
-      if (!formData.user_CCCD?.trim()) {
-        newErrors.user_CCCD = 'CCCD không được để trống';
-      } else if (!/^\d{12}$/.test(formData.user_CCCD)) {
-        newErrors.user_CCCD = 'CCCD phải có 12 chữ số';
-      }
-
-      if (!formData.user_phone?.trim()) {
-        newErrors.user_phone = 'Số điện thoại không được để trống';
-      } else if (!/^\d{10}$/.test(formData.user_phone)) {
-        newErrors.user_phone = 'Số điện thoại phải có 10 chữ số';
-      }
-
+      // Validate other fields
+      newErrors.user_name = validateStudent.name(formData.user_name);
+      newErrors.email = validateStudent.email(formData.email);
+      newErrors.user_phone = validateStudent.phone(formData.user_phone);
+      newErrors.user_CCCD = validateStudent.cccd(formData.user_CCCD);
+      newErrors.user_date_of_birth = validateStudent.age(formData.user_date_of_birth);
       if (!formData.user_permanent_address?.trim()) {
         newErrors.user_permanent_address = 'Địa chỉ thường trú không được để trống';
       }
-
-      if (!formData.user_date_of_birth) {
-        newErrors.user_date_of_birth = 'Ngày sinh không được để trống';
-      }
-
       if (!formData.user_faculty) {
         newErrors.user_faculty = 'Vui lòng chọn khoa';
       }
-
       if (!formData.user_major) {
         newErrors.user_major = 'Vui lòng chọn chuyên ngành';
       }
-
-      // Check for duplicate email and user_id
-      try {
-        const response = await axios.get(`http://localhost:5000/api/database/collections/User`);
-        const existingUsers = response.data;
-
-        if (existingUsers.find(user => user.email === formData.email)) {
-          newErrors.email = 'Email đã được sử dụng';
-        }
-        if (existingUsers.find(user => user.user_id === formData.user_id)) {
-          newErrors.user_id = 'Mã số sinh viên đã tồn tại';
-        }
-      } catch (error) {
-        console.error('Error checking duplicates:', error);
-      }
-
-      if (Object.keys(newErrors).length > 0) {
-        setErrors(newErrors);
-        message.error('Vui lòng kiểm tra lại thông tin!');
-        return;
-      }
     } else {
-      // For editing existing student
-      if (!await validateForm()) {
-        console.log('Validation failed');
-        message.error('Vui lòng kiểm tra lại thông tin!');
-        return;
+      // Validate edited student
+      const changedFields = Object.keys(formData);
+      for (const field of changedFields) {
+        switch (field) {
+          case 'user_name':
+            newErrors.user_name = validateStudent.name(formData.user_name);
+            break;
+          case 'email':
+            newErrors.email = validateStudent.email(formData.email);
+            break;
+          case 'user_phone':
+            newErrors.user_phone = validateStudent.phone(formData.user_phone);
+            break;
+          case 'user_CCCD':
+            newErrors.user_CCCD = validateStudent.cccd(formData.user_CCCD);
+            break;
+          case 'user_date_of_birth':
+            newErrors.user_date_of_birth = validateStudent.age(formData.user_date_of_birth);
+            break;
+          // ... other validations
+        }
       }
     }
-
-    console.log('Showing confirmation dialog...');
+    // Remove null errors
+    const filteredErrors = Object.fromEntries(
+      Object.entries(newErrors).filter(([, value]) => value !== null)
+    );
+    if (Object.keys(filteredErrors).length > 0) {
+      setErrors(filteredErrors);
+      message.error('Vui lòng kiểm tra lại thông tin!');
+      return;
+    }
     setIsConfirmModalVisible(true);
   };
 
@@ -615,7 +594,7 @@ const Students = () => {
           // Xóa file avatar cũ nếu có và khác file mới
           if (oldAvatar && oldAvatar !== user_avatar) {
             const filename = oldAvatar.split('/').pop();
-            await axios.delete(`http://localhost:5000/api/database/uploads/${filename}`);
+            await api.deleteImage(filename);
           }
             setIsSuccessModalVisible(true);
             fetchStudents();
@@ -672,13 +651,29 @@ const Students = () => {
         }
 
         // Process and send data to server
-        const processedData = jsonData.map(row => ({
-          ...row,
-          role: 'sinhvien',
-          user_status: 'active',
-          createdAt: new Date().toISOString(),
-          updatedAt: new Date().toISOString()
-        }));
+        const processedData = jsonData.map(row => {
+          const processedRow = { ...row };
+          
+          // Xử lý cột ngày sinh từ import (có thể là DD/MM/YYYY hoặc YYYY-MM-DD)
+          if (processedRow.user_date_of_birth) {
+            let date = dayjs(processedRow.user_date_of_birth, ['DD/MM/YYYY', 'YYYY-MM-DD'], true); // Thử parse với cả 2 định dạng
+            if (date.isValid()) {
+              processedRow.user_date_of_birth = date.format('YYYY-MM-DD'); // Lưu lại dưới dạng YYYY-MM-DD
+            } else {
+              // Nếu không parse được, có thể ghi log hoặc bỏ qua
+              console.warn(`Could not parse date: ${row.user_date_of_birth}`);
+              delete processedRow.user_date_of_birth; // Hoặc set về null/undefined tùy logic
+            }
+          }
+
+          return {
+            ...processedRow,
+            role: 'sinhvien',
+            user_status: 'active',
+            createdAt: new Date().toISOString(),
+            updatedAt: new Date().toISOString()
+          };
+        });
 
         await axios.post('http://localhost:5000/api/database/collections/User/bulk', processedData);
         setImportSuccess('Import dữ liệu sinh viên thành công!');
@@ -703,7 +698,9 @@ const Students = () => {
         'Số điện thoại': student.user_phone,
         'Địa chỉ thường trú': student.user_permanent_address,
         'Địa chỉ tạm trú': student.user_temporary_address,
-        'Ngày sinh': student.user_date_of_birth,
+        'Ngày sinh': student.user_date_of_birth
+          ? dayjs(student.user_date_of_birth).format('DD/MM/YYYY')
+          : '',
         'Khoa': faculties.find(f => f._id === student.user_faculty)?.faculty_title || '',
         'Chuyên ngành': majors.find(m => m._id === student.user_major)?.major_title || ''
       }));
@@ -790,24 +787,29 @@ const Students = () => {
           }}
           allowClear
         >
-          {Object.keys(majorsByDepartment).map((dep, idx) => (
-            <Select.Option key={idx} value={dep}>
-              {dep}
+          {faculties.map((faculty) => (
+            <Select.Option key={faculty._id} value={faculty.faculty_title}>
+              {faculty.faculty_title}
             </Select.Option>
           ))}
         </Select>
         <Select
           style={{ width: 200 }}
-          placeholder="-- Chọn chuyên ngành --"
+          placeholder="-- Chọn Chuyên ngành --"
           onChange={(value) => setFilterMajor(value)}
           disabled={!filterFaculty}
           allowClear
         >
-          {majorsByDepartment[filterFaculty]?.map((m, idx) => (
-            <Select.Option key={idx} value={m}>
-              {m}
-            </Select.Option>
-          ))}
+          {majors
+            .filter((major) => {
+              const faculty = faculties.find(f => f.faculty_title === filterFaculty);
+              return faculty && major.major_faculty === faculty._id;
+            })
+            .map((major) => (
+              <Select.Option key={major._id} value={major.major_title}>
+                {major.major_title}
+              </Select.Option>
+            ))}
         </Select>
         <Button
           type="primary"
@@ -970,6 +972,7 @@ const Students = () => {
                     }`}
                     value={formData.user_id || selectedStudent?.user_id || ''}
                     onChange={(e) => handleInputChange('user_id', e.target.value)}
+                    disabled={!selectedStudent} // Disable input when adding new
                   />
                   {errors.user_id && (
                     <span className="text-red-500 text-sm">{errors.user_id}</span>
@@ -1047,23 +1050,18 @@ const Students = () => {
                     className={`w-full p-2 border rounded-md focus:ring-2 focus:ring-blue-500 ${
                       errors.user_date_of_birth ? 'border-red-500' : ''
                     }`}
-                    value={formData.user_date_of_birth ? dayjs(formData.user_date_of_birth) : (selectedStudent?.user_date_of_birth ? dayjs(selectedStudent.user_date_of_birth) : null)}
-                    onChange={(date, dateString) => handleInputChange('user_date_of_birth', dateString)}
-                    format="YYYY-MM-DD"
+                    value={formData.user_date_of_birth ? dayjs(formData.user_date_of_birth) : (selectedStudent?.user_date_of_birth ? dayjs(selectedStudent.user_date_of_birth) : (selectedStudent === null ? dayjs().subtract(18, 'year') : null))}
+                    onChange={(date) => {
+                      const formattedDate = date ? date.format('YYYY-MM-DD') : null;
+                      handleInputChange('user_date_of_birth', formattedDate);
+                    }}
+                    format="DD/MM/YYYY"
                     disabledDate={disabledDate}
                     placeholder="Chọn ngày sinh"
                     style={{ width: '100%' }}
                     showToday={false}
                     placement="bottomLeft"
                     picker="date"
-                    mode={datePickerMode}
-                    onPanelChange={(_, mode) => {
-                      setDatePickerMode(mode);
-                    }}
-                    prevIcon={<span>←</span>}
-                    nextIcon={<span>→</span>}
-                    superPrevIcon={<span>⇐</span>}
-                    superNextIcon={<span>⇒</span>}
                   />
                   {errors.user_date_of_birth && (
                     <span className="text-red-500 text-sm">{errors.user_date_of_birth}</span>

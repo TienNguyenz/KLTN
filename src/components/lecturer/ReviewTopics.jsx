@@ -37,7 +37,7 @@ const ReviewTopics = () => {
 
   const fetchTopics = async (reviewerId) => {
     try {
-      setLoading(true);
+    setLoading(true);
       const response = await getReviewTopics(reviewerId);
       if (response.success) {
         setData(response.data);
@@ -49,7 +49,7 @@ const ReviewTopics = () => {
       message.error('Có lỗi xảy ra khi tải danh sách đề tài phản biện');
       setData([]);
     } finally {
-      setLoading(false);
+    setLoading(false);
     }
   };
 

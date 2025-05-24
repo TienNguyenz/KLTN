@@ -26,9 +26,15 @@ const AddTopic = () => {
           axios.get('/api/topics/topic-types'),
           axios.get('/api/students')
         ]);
+        
+        console.log('API response for topic types:', typesRes.data);
+
+        // Có thể thêm log cho students response để kiểm tra cấu trúc nếu cần
+        console.log('API response for students:', studentsRes.data);
+
         setSemesters(semestersRes.data);
-        setTopicTypes(typesRes.data);
-        setStudents(studentsRes.data);
+        setTopicTypes(typesRes.data.data);
+        setStudents(studentsRes.data.data);
       } catch (error) {
         console.error('Error fetching data:', error);
       }
@@ -170,7 +176,7 @@ const AddTopic = () => {
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
             >
               <option value="">Vui lòng chọn</option>
-              {semesters.map(s => (
+              {Array.isArray(semesters) && semesters.map(s => (
                 <option key={s._id} value={s._id}>{s.semester}</option>
               ))}
             </select>
@@ -185,7 +191,7 @@ const AddTopic = () => {
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
             >
               <option value="">Vui lòng chọn</option>
-              {topicTypes.map(t => (
+              {Array.isArray(topicTypes) && topicTypes.map(t => (
                 <option key={t._id} value={t._id}>{t.topic_category_title}</option>
               ))}
             </select>

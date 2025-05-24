@@ -181,19 +181,19 @@ const ReviewTopicDetail = () => {
                     <th className="px-4 py-2 border text-center">Mã số SV</th>
                     <th className="px-4 py-2 border text-center">Đánh giá</th>
                     <th className="px-4 py-2 border text-center">Chi tiết</th>
-                  </tr>
-                </thead>
-                <tbody>
+              </tr>
+            </thead>
+            <tbody>
                   {topic.groups.map((member, idx) => (
                     <tr key={member.id || member._id || idx} className="hover:bg-blue-50 transition">
                       <td className="px-4 py-2 border text-center font-semibold">{idx + 1}</td>
                       <td className="px-4 py-2 border text-center">{member.name || member.user_name || '-'}</td>
                       <td className="px-4 py-2 border text-center">{member.studentId || member.user_id || '-'}</td>
                       <td className="px-4 py-2 border text-center">
-                        <Button
+                    <Button 
                           type="link"
-                          icon={<EditOutlined />}
-                          onClick={() => showModal(member)}
+                      icon={<EditOutlined />} 
+                      onClick={() => showModal(member)}
                           className="text-blue-600 hover:text-blue-800"
                           style={{ fontSize: 18 }}
                         />
@@ -205,12 +205,12 @@ const ReviewTopicDetail = () => {
                           onClick={() => handleViewStudentDetail(member)}
                           className="text-green-600 hover:text-green-800"
                           style={{ fontSize: 18 }}
-                        />
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+                    />
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
             </div>
           ) : (
             <div className="text-gray-500 mt-4">Chưa có nhóm thực hiện đăng ký</div>

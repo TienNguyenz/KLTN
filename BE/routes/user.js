@@ -232,4 +232,26 @@ router.get('/:id', async (req, res) => {
   }
 });
 
+// New route to check user ID existence by userId and role
+router.get('/check-user-id', async (req, res) => {
+  try {
+    const userId = req.query.user_id;
+    const role = req.query.role;
+
+    if (!userId || !role) {
+      return res.status(400).json({ success: false, message: 'Missing userId or role query parameters' });
+    }
+
+    // Find user by userId and role
+    const user = await User.findOne({ user_id: userId, role: role });
+
+    // Return data as an array (for frontend compatibility with length check)
+    res.json({ success: true, data: user ? [user] : [] });
+
+  } catch (err) {
+    console.error('Error checking user ID existence:', err);
+    res.status(500).json({ success: false, message: 'Server error checking user ID', error: err.message });
+  }
+});
+
 module.exports = router; 
