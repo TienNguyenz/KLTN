@@ -14,6 +14,7 @@ const path = require('path');
 const fs = require('fs');
 const libre = require('libreoffice-convert');
 const topicController = require('../controllers/topicController');
+const { auth } = require('../middleware/auth');
 
 const upload = multer({ dest: 'uploads/' });
 
@@ -620,21 +621,40 @@ router.put('/:id/reject-by-leader', async (req, res) => {
 
     // Gửi thông báo cho giảng viên
     const { comment } = req.body;
-    const notifications = [
-      {
+    let recipientId = topic.topic_creator;
+    const mongoose = require('mongoose');
+    if (!recipientId) {
+      console.error('topic_creator is null or undefined for topic:', topic._id);
+      return res.status(400).json({ message: 'Không tìm thấy sinh viên nhận thông báo!' });
+    }
+    if (typeof recipientId === 'string') {
+      if (mongoose.Types.ObjectId.isValid(recipientId)) {
+        recipientId = new mongoose.Types.ObjectId(recipientId);
+      } else {
+        console.error('topic_creator không phải là ObjectId hợp lệ:', recipientId);
+        // Vẫn cho phép từ chối đề tài, chỉ không gửi notification
+        return res.json({ message: 'Đã từ chối đề tài (không gửi được thông báo do topic_creator không hợp lệ)', topic });
+      }
+    }
+
+    try {
+      const notification = await UserNotification.create({
         user_notification_title: 'Đề tài bị từ chối',
-        user_notification_sender: req.user?._id || null, // id leader nếu có
-        user_notification_recipient: topic.topic_instructor,
-        user_notification_content: `Đề tài "${topic.topic_title}" đã bị từ chối bởi leader.${comment && comment.trim() ? `\nNhận xét: ${comment}` : ''}`,
+        user_notification_sender: req.user?._id,
+        user_notification_recipient: recipientId,
+        user_notification_content: `Đề tài "${topic.name}" đã bị từ chối. Lý do: ${comment || 'Không có lý do cụ thể.'}`,
         user_notification_type: 2,
         user_notification_isRead: false,
         user_notification_topic: 'topic',
-      }
-    ];
-    await UserNotification.insertMany(notifications);
+      });
+      console.log('Notification đã tạo:', notification);
+    } catch (err) {
+      console.error('Lỗi khi tạo notification:', err);
+    }
 
-    res.json({ message: 'Đã từ chối đề tài và gửi thông báo.' });
+    res.json({ message: 'Đã từ chối đề tài và gửi thông báo cho sinh viên', topic });
   } catch (err) {
+    console.error('Lỗi khi từ chối đề tài:', err);
     res.status(500).json({ message: 'Lỗi khi từ chối đề tài', error: err.message });
   }
 });
@@ -1008,7 +1028,7 @@ router.get('/supervised-topics', async (req, res) => {
 });
 
 // API giảng viên từ chối đề xuất
-router.put('/:id/reject-by-lecturer', async (req, res) => {
+router.put('/:id/reject-by-lecturer', auth, async (req, res) => {
   try {
     const { reason } = req.body;
     const topic = await Topic.findById(req.params.id);
@@ -1027,11 +1047,27 @@ router.put('/:id/reject-by-lecturer', async (req, res) => {
     });
 
     // Gửi notification cho sinh viên
+    let recipientId = topic.topic_creator;
+    const mongoose = require('mongoose');
+    if (!recipientId) {
+      console.error('topic_creator is null or undefined for topic:', topic._id);
+      return res.status(400).json({ message: 'Không tìm thấy sinh viên nhận thông báo!' });
+    }
+    if (typeof recipientId === 'string') {
+      if (mongoose.Types.ObjectId.isValid(recipientId)) {
+        recipientId = new mongoose.Types.ObjectId(recipientId);
+      } else {
+        console.error('topic_creator không phải là ObjectId hợp lệ:', recipientId);
+        // Vẫn cho phép từ chối đề tài, chỉ không gửi notification
+        return res.json({ message: 'Đã từ chối đề tài (không gửi được thông báo do topic_creator không hợp lệ)', topic });
+      }
+    }
+
     try {
       const notification = await UserNotification.create({
         user_notification_title: 'Đề tài bị từ chối',
         user_notification_sender: req.user?._id,
-        user_notification_recipient: topic.topic_creator,
+        user_notification_recipient: recipientId,
         user_notification_content: `Đề tài "${topic.name}" đã bị từ chối. Lý do: ${reason || 'Không có lý do cụ thể.'}`,
         user_notification_type: 2,
         user_notification_isRead: false,
