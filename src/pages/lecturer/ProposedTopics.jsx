@@ -48,7 +48,16 @@ const ProposedTopics = () => {
   const handleReject = async (proposalId, topicName) => {
     if (window.confirm(`Bạn có chắc chắn muốn từ chối đề tài "${topicName}"?`)) {
       try {
-        await axios.put(`/api/topics/${proposalId}/reject`);
+        const token = localStorage.getItem('token');
+        await axios.put(
+          `/api/topics/${proposalId}/reject-by-lecturer`,
+          {},
+          {
+            headers: {
+              Authorization: `Bearer ${token}`
+            }
+          }
+        );
         alert(`Đã từ chối đề tài "${topicName}"!`);
         setProposals(prev => prev.filter(p => p._id !== proposalId));
       } catch (error) {

@@ -40,12 +40,26 @@ const TopicDetails = () => {
     <div className="p-6 md:p-8 bg-gray-50 min-h-full">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Trang chủ Sinh viên</h1>
       {registeredTopic && registeredTopic.topic_title ? (
-        <RegisteredTopicDetails
-          topic={registeredTopic}
-          onCancel={handleCancelRegistration}
-          onViewGrades={handleViewGrades}
-          onViewCommittee={handleViewCommittee}
-        />
+        registeredTopic.status === 'rejected' || registeredTopic.topic_teacher_status === 'rejected' ? (
+          <div className="bg-white p-6 rounded-lg shadow-md text-center">
+            <span className="text-4xl text-red-500 mx-auto mb-4 inline-block">❌</span>
+            <p className="text-lg text-red-600 mb-2 font-semibold">Đề tài của bạn đã bị từ chối!</p>
+            <p className="text-gray-600 mb-4">Bạn có thể đề xuất lại đề tài mới hoặc chọn đề tài khác.</p>
+            <button
+              className="mt-2 bg-[#008bc3] hover:bg-[#0073a8] text-white font-semibold py-2 px-6 rounded-full transition-colors duration-300"
+              onClick={() => navigate('/student/proposals')}
+            >
+              Đề xuất lại đề tài
+            </button>
+          </div>
+        ) : (
+          <RegisteredTopicDetails
+            topic={registeredTopic}
+            onCancel={handleCancelRegistration}
+            onViewGrades={handleViewGrades}
+            onViewCommittee={handleViewCommittee}
+          />
+        )
       ) : (
         <div className="bg-white p-6 rounded-lg shadow-md text-center">
           <FaInfoCircle className="text-4xl text-blue-500 mx-auto mb-4" />
@@ -286,6 +300,7 @@ const Proposals = () => {
   const [topicTypes, setTopicTypes] = useState([]);
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const navigate = useNavigate();
 
   useEffect(() => {
     const fetchData = async () => {
@@ -327,7 +342,11 @@ const Proposals = () => {
 
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+    // Bắt buộc phải có file đơn xin hướng dẫn
+    if (!guidanceFile) {
+      alert('Vui lòng chọn và tải lên file đơn xin hướng dẫn (PDF, DOC, DOCX)!');
+      return;
+    }
     try {
       // Tạo mảng thành viên, bắt đầu với trưởng nhóm
       let leaderId = user._id;
@@ -403,6 +422,7 @@ const Proposals = () => {
             student4Id: ''
           });
           setGuidanceFile(null);
+          navigate('/student'); // Chuyển về trang chủ sinh viên
         }
       } catch (error) {
         console.error('Error submitting proposal:', error);
