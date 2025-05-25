@@ -290,9 +290,20 @@ const TopicDetail = () => {
               <Space direction="vertical" className="w-full">
                 <FileTextOutlined className="text-2xl" />
                 <Text>Đơn xin hướng dẫn</Text>
-                <Button type="link" danger disabled>
-                  Chưa nộp
-                </Button>
+                {topic.topic_advisor_request ? (
+                  <a
+                    href={topic.topic_advisor_request}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="ant-btn ant-btn-link ant-btn-dangerous"
+                  >
+                    Xem tài liệu
+                  </a>
+                ) : (
+                  <Button type="link" danger disabled>
+                    Chưa nộp
+                  </Button>
+                )}
               </Space>
             </Card>
           </Col>

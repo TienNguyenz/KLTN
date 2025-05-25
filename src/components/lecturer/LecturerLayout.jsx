@@ -60,22 +60,10 @@ const LecturerLayout = () => {
                        <FaListAlt className="mr-3 w-4 opacity-0" /> Quản lí đề tài
                    </NavLink>
                    <NavLink 
-                      to="/lecturer/approve-groups" 
-                      className={({ isActive }) => `${subMenuLinkClasses} ${isActive ? activeLinkClasses : ''}`}
-                    >
-                      <FaClipboardCheck className="mr-3 w-4 opacity-0" /> Duyệt nhóm thực hiện
-                   </NavLink>
-                   <NavLink 
                       to="/lecturer/supervised-topics" 
                       className={({ isActive }) => `${subMenuLinkClasses} ${isActive ? activeLinkClasses : ''}`}
                     >
                       <FaChalkboardTeacher className="mr-3 w-4 opacity-0" /> Đề tài hướng dẫn
-                   </NavLink>
-                    <NavLink 
-                      to="/lecturer/review-topics" 
-                      className={({ isActive }) => `${subMenuLinkClasses} ${isActive ? activeLinkClasses : ''}`}
-                    >
-                      <FaComments className="mr-3 w-4 opacity-0" /> Đề tài phản biện
                    </NavLink>
                 </div>
              )} 
