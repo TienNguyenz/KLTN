@@ -96,7 +96,7 @@ const ThesisList = () => {
       'Giảng viên hướng dẫn': thesis.topic_instructor?.user_name || '',
       'Loại đề tài': thesis.topic_category?.topic_category_title || thesis.topic_category?.type_name || '',
       'Chuyên ngành': thesis.topic_major?.major_title || '',
-      'Học kì': thesis.topic_registration_period?.semester_name || thesis.topic_registration_period?.name || '',
+      'Đợt đăng ký': thesis.topic_registration_period?.registration_period_name || thesis.topic_registration_period?.name || '',
       'Thời gian tạo': thesis.createdAt ? new Date(thesis.createdAt).toLocaleDateString('vi-VN') : '',
       'Số lượng SV': thesis.topic_max_members,
       'Trạng thái': (() => {
@@ -222,10 +222,14 @@ const ThesisList = () => {
       render: (cat) => (cat && (cat.topic_category_title || cat.type_name)) ? (cat.topic_category_title || cat.type_name) : (typeof cat === 'string' ? cat : '-'),
     },
     {
-      title: 'Học kì',
+      title: 'Đợt đăng ký',
       dataIndex: 'topic_registration_period',
       key: 'topic_registration_period',
-      render: (period) => (period && (period.semester_name || period.name)) ? (period.semester_name || period.name) : (typeof period === 'string' ? period : '-'),
+      render: (period) => {
+        if (!period) return '-';
+        if (typeof period === 'string') return period;
+        return period.registration_period_name || period.name || '-';
+      },
     },
     {
       title: 'Thời gian tạo',

@@ -111,6 +111,7 @@ const AppLayout = () => {
           <Route path="approve-groups" element={<ApproveTopicList />} />
           <Route path="approve-groups/:topicId" element={<ApproveGroupDetails />} />
           <Route path="proposed-topics" element={<ProposedTopics />} />
+          <Route path="proposed-topics/:id" element={<TopicDetail />} />
           <Route path="supervised-topics" element={<SupervisedTopics />} />
           <Route path="supervised-topics/:id" element={<TopicDetail />} />
           <Route path="review-topics" element={<ReviewTopics />} />

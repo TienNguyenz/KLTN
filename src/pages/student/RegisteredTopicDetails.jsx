@@ -337,28 +337,6 @@ const RegisteredTopicDetails = ({ topic, onViewGrades }) => {
           </div>
         </div>
       )}
-      {/* Giảng viên phản biện */}
-      <div className="mt-8">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-md font-semibold text-gray-700">Giảng viên phản biện</h3>
-          {topic.topic_teacher_status === 'approved' && topic.topic_leader_status === 'approved' && (
-            <button 
-              onClick={onViewGrades}
-              className="flex items-center bg-green-100 hover:bg-green-200 text-green-700 text-sm font-medium px-4 py-2 rounded transition-colors duration-300 border border-green-300"
-              style={{ minWidth: 100, justifyContent: 'center' }}
-            >
-              <FaEye className="mr-2" /> Xem điểm
-            </button>
-          )}
-        </div>
-        <div className="bg-white border border-blue-200 rounded-lg p-4">
-          {topic.topic_reviewer && topic.topic_reviewer.user_name ? (
-            <span className="text-gray-800 font-semibold">{topic.topic_reviewer.user_name} ({topic.topic_reviewer.user_id})</span>
-          ) : (
-            <span className="text-gray-400 italic">Chưa có thông tin giảng viên phản biện.</span>
-          )}
-        </div>
-      </div>
       {/* Hội đồng phản biện */}
       <div className="mt-8">
         <div className="flex justify-between items-center mb-2">

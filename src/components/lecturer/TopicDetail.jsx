@@ -12,7 +12,6 @@ const TopicDetail = () => {
   const [topic, setTopic] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
-  const [selectedStudent, setSelectedStudent] = useState(null);
   const [majors, setMajors] = useState([]);
   const [categories, setCategories] = useState([]);
   const [lecturers, setLecturers] = useState([]);
@@ -76,18 +75,6 @@ const TopicDetail = () => {
     }
     const found = categories.find(c => String(c._id) === String(id));
     return found ? found.topic_category_title : '-';
-  };
-  const getLecturerName = (id) => {
-    if (!id) return '-';
-    if (typeof id === 'object' && id.user_name) return id.user_name;
-    const found = lecturers.find(l => String(l._id) === String(id));
-    console.log('getLecturerName:', { id, found, lecturers });
-    return found ? found.user_name : id;
-  };
-
-  const showModal = (student) => {
-    setSelectedStudent(student);
-    setIsModalVisible(true);
   };
 
   const handleCancel = () => {
@@ -298,18 +285,7 @@ const TopicDetail = () => {
       <Card className="mb-6">
         <Title level={5}>Tài liệu quan trọng</Title>
         <Row gutter={[24, 16]} className="mt-4">
-          <Col span={8}>
-            <Card size="small" className="text-center">
-              <Space direction="vertical" className="w-full">
-                <FileTextOutlined className="text-2xl" />
-                <Text>Đơn xin bảo vệ</Text>
-                <Button type="link" danger disabled>
-                  Chưa nộp
-                </Button>
-              </Space>
-            </Card>
-          </Col>
-          <Col span={8}>
+          <Col span={8} offset={8}>
             <Card size="small" className="text-center">
               <Space direction="vertical" className="w-full">
                 <FileTextOutlined className="text-2xl" />
@@ -320,76 +296,47 @@ const TopicDetail = () => {
               </Space>
             </Card>
           </Col>
-          <Col span={8}>
-            <Card size="small" className="text-center">
-              <Space direction="vertical" className="w-full">
-                <FileTextOutlined className="text-2xl" />
-                <Text>Báo cáo khóa luận</Text>
-                <Button type="link" danger disabled>
-                  Chưa nộp
-                </Button>
-              </Space>
-            </Card>
-          </Col>
         </Row>
       </Card>
 
       <Card>
-        <div className="flex justify-between items-center mb-4">
-          <Title level={5} className="m-0">Giảng viên phản biện</Title>
-          <EditOutlined className="text-lg cursor-pointer" />
-        </div>
-        <Text>{getLecturerName(topic.topic_reviewer)}</Text>
-
-        <div className="mt-6">
-          <Title level={5}>Nhóm đăng ký</Title>
-          {topic.topic_group_student && topic.topic_group_student.length > 0 ? (
-            <div className="mt-4 overflow-x-auto">
-              <table className="min-w-full border rounded-lg shadow-sm bg-white">
-                <thead>
-                  <tr className="bg-gray-100 text-gray-700">
-                    <th className="px-4 py-2 border text-center">STT</th>
-                    <th className="px-4 py-2 border text-center">Số lượng</th>
-                    <th className="px-4 py-2 border text-center">Thành viên</th>
-                    <th className="px-4 py-2 border text-center">Mã số SV</th>
-                    <th className="px-4 py-2 border text-center">Đánh giá</th>
-                    <th className="px-4 py-2 border text-center">Chi tiết</th>
+        <Title level={5}>Nhóm đăng ký</Title>
+        {topic.topic_group_student && topic.topic_group_student.length > 0 ? (
+          <div className="mt-4 overflow-x-auto">
+            <table className="min-w-full border rounded-lg shadow-sm bg-white">
+              <thead>
+                <tr className="bg-gray-100 text-gray-700">
+                  <th className="px-4 py-2 border text-center">STT</th>
+                  <th className="px-4 py-2 border text-center">Số lượng</th>
+                  <th className="px-4 py-2 border text-center">Thành viên</th>
+                  <th className="px-4 py-2 border text-center">Mã số SV</th>
+                  <th className="px-4 py-2 border text-center">Chi tiết</th>
+                </tr>
+              </thead>
+              <tbody>
+                {topic.topic_group_student.map((student, idx) => (
+                  <tr key={student._id || student.user_id || student.id || idx} className="hover:bg-blue-50 transition">
+                    <td className="px-4 py-2 border text-center font-semibold">{idx + 1}</td>
+                    <td className="px-4 py-2 border text-center">1</td>
+                    <td className="px-4 py-2 border text-center">{student.user_name || student.name || '-'}</td>
+                    <td className="px-4 py-2 border text-center">{student.user_id || '-'}</td>
+                    <td className="px-4 py-2 border text-center">
+                      <Button
+                        type="link"
+                        icon={<EyeOutlined />}
+                        onClick={() => handleViewStudentDetail(student)}
+                        className="text-green-600 hover:text-green-800"
+                        style={{ fontSize: 18 }}
+                      />
+                    </td>
                   </tr>
-                </thead>
-                <tbody>
-                  {topic.topic_group_student.map((student, idx) => (
-                    <tr key={student._id || student.user_id || student.id || idx} className="hover:bg-blue-50 transition">
-                      <td className="px-4 py-2 border text-center font-semibold">{idx + 1}</td>
-                      <td className="px-4 py-2 border text-center">1</td>
-                      <td className="px-4 py-2 border text-center">{student.user_name || student.name || '-'}</td>
-                      <td className="px-4 py-2 border text-center">{student.user_id || '-'}</td>
-                      <td className="px-4 py-2 border text-center">
-                        <Button
-                          type="link"
-                          icon={<EditOutlined />}
-                          onClick={() => showModal(student)}
-                          className="text-blue-600 hover:text-blue-800"
-                          style={{ fontSize: 18 }}
-                        />
-                      </td>
-                      <td className="px-4 py-2 border text-center">
-                        <Button
-                          type="link"
-                          icon={<EyeOutlined />}
-                          onClick={() => handleViewStudentDetail(student)}
-                          className="text-green-600 hover:text-green-800"
-                          style={{ fontSize: 18 }}
-                        />
-                      </td>
-                    </tr>
-              ))}
-                </tbody>
-              </table>
-            </div>
-          ) : (
-            <div className="text-gray-500 mt-4">Chưa có sinh viên đăng ký</div>
-          )}
-        </div>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : (
+          <div className="text-gray-500 mt-4">Chưa có sinh viên đăng ký</div>
+        )}
       </Card>
 
       <Modal
@@ -428,8 +375,8 @@ const TopicDetail = () => {
               </thead>
               <tbody>
                 <tr>
-                  <td className="border px-4 py-2">{selectedStudent?.user_name || '-'}</td>
-                  <td className="border px-4 py-2">{selectedStudent?.user_id || '-'}</td>
+                  <td className="border px-4 py-2">{selectedStudentDetail?.user_name || '-'}</td>
+                  <td className="border px-4 py-2">{selectedStudentDetail?.user_id || '-'}</td>
                 </tr>
               </tbody>
             </table>

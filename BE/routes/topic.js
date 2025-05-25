@@ -313,7 +313,11 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
     if (safe_group_student.length > 0) {
     // Kiểm tra xem các thành viên đã có đề tài chưa
     const existingTopics = await Topic.find({
-        'topic_group_student': { $in: safe_group_student }
+        'topic_group_student': { $in: safe_group_student },
+        $or: [
+          { status: { $ne: 'rejected' } },
+          { topic_teacher_status: { $ne: 'rejected' } }
+        ]
     }).populate('topic_group_student', 'user_name user_id');
 
     if (existingTopics.length > 0) {
@@ -488,7 +492,8 @@ router.get('/instructor/:instructorId/proposals', async (req, res) => {
     const topics = await Topic.find({
       topic_instructor: req.params.instructorId,
       topic_teacher_status: 'pending',
-      topic_leader_status: 'pending'
+      topic_leader_status: 'pending',
+      status: { $ne: 'rejected' }
     })
     .populate('topic_group_student', 'user_name user_id')
     .populate('topic_major', 'major_title')
@@ -531,6 +536,7 @@ router.put('/:id/reject', async (req, res) => {
     }
 
     topic.topic_teacher_status = 'rejected';
+    topic.status = 'rejected';
     await topic.save();
 
     res.json({ message: 'Đã từ chối đề tài', topic });
@@ -670,8 +676,10 @@ router.get('/student/:user_id', async (req, res) => {
     }
 
     // Sau đó tìm topic có chứa _id của user trong mảng topic_group_student
-    const topic = await Topic.findOne({
-      topic_group_student: user._id
+    let topic = await Topic.findOne({
+      topic_group_student: user._id,
+      status: { $ne: 'rejected' },
+      topic_teacher_status: { $ne: 'rejected' }
     })
       .populate('topic_instructor', 'user_name')
       .populate('topic_major', 'major_title')
@@ -679,9 +687,22 @@ router.get('/student/:user_id', async (req, res) => {
       .populate('topic_group_student', 'user_name user_id')
       .populate('topic_reviewer', 'user_name user_id')
       .populate({ path: 'topic_assembly', model: 'Council', select: 'assembly_name' });
-
     if (!topic) {
-      return res.json(null);
+      // Nếu không có đề tài hợp lệ, lấy đề tài bị từ chối gần nhất
+      topic = await Topic.findOne({
+        topic_group_student: user._id,
+        $or: [
+          { status: 'rejected' },
+          { topic_teacher_status: 'rejected' }
+        ]
+      })
+        .sort({ updatedAt: -1 })
+        .populate('topic_instructor', 'user_name')
+        .populate('topic_major', 'major_title')
+        .populate('topic_category', 'topic_category_title')
+        .populate('topic_group_student', 'user_name user_id')
+        .populate('topic_reviewer', 'user_name user_id')
+        .populate({ path: 'topic_assembly', model: 'Council', select: 'assembly_name' });
     }
     res.json(topic);
   } catch (err) {
@@ -1033,8 +1054,8 @@ router.put('/:id/reject-by-lecturer', auth, async (req, res) => {
     const { reason } = req.body;
     const topic = await Topic.findById(req.params.id);
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+    topic.topic_teacher_status = 'rejected';
     topic.status = 'rejected';
-    topic.reject_reason = reason || '';
     await topic.save();
 
     // Log giá trị trước khi tạo notification
@@ -1082,6 +1103,42 @@ router.put('/:id/reject-by-lecturer', auth, async (req, res) => {
   } catch (err) {
     console.error('Lỗi khi từ chối đề tài:', err);
     res.status(500).json({ message: 'Lỗi khi từ chối đề tài', error: err.message });
+  }
+});
+
+// Đề xuất lại đề tài bị từ chối (resubmit)
+router.put('/:id/resubmit', async (req, res) => {
+  try {
+    const topic = await Topic.findById(req.params.id);
+    if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+
+    // Chỉ cho phép resubmit nếu đề tài đang bị từ chối
+    if (topic.status !== 'rejected' && topic.topic_teacher_status !== 'rejected') {
+      return res.status(400).json({ message: 'Chỉ có thể đề xuất lại đề tài đã bị từ chối' });
+    }
+
+    // Cập nhật lại các trường
+    topic.topic_title = req.body.topic_title;
+    topic.topic_description = req.body.topic_description;
+    topic.topic_category = req.body.topic_category;
+    topic.topic_major = req.body.topic_major;
+    topic.topic_instructor = req.body.topic_instructor;
+    topic.topic_max_members = req.body.topic_max_members;
+    topic.topic_group_student = req.body.topic_group_student;
+    // ... các trường khác nếu cần
+
+    // Reset trạng thái
+    topic.topic_teacher_status = 'pending';
+    topic.topic_leader_status = 'pending';
+    topic.status = 'pending';
+    topic.topic_block = false;
+    topic.reject_reason = '';
+
+    await topic.save();
+
+    res.json({ message: 'Đề xuất lại đề tài thành công', topic });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi khi đề xuất lại đề tài', error: err.message });
   }
 });
 

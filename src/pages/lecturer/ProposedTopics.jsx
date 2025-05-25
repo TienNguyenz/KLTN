@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { FaEye, FaCheck, FaTimes } from 'react-icons/fa';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { Modal, Input, message } from 'antd';
 
 const ProposedTopics = () => {
   const navigate = useNavigate();
@@ -10,6 +11,8 @@ const ProposedTopics = () => {
   const [proposals, setProposals] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState('');
+  const [rejectModal, setRejectModal] = useState({ open: false, proposalId: null, topicName: '', reason: '' });
+  const [rejectLoading, setRejectLoading] = useState(false);
 
   useEffect(() => {
     const fetchProposals = async () => {
@@ -45,25 +48,36 @@ const ProposedTopics = () => {
     }
   };
 
-  const handleReject = async (proposalId, topicName) => {
-    if (window.confirm(`Bạn có chắc chắn muốn từ chối đề tài "${topicName}"?`)) {
-      try {
-        const token = localStorage.getItem('token');
-        await axios.put(
-          `/api/topics/${proposalId}/reject-by-lecturer`,
-          {},
-          {
-            headers: {
-              Authorization: `Bearer ${token}`
-            }
-          }
-        );
-        alert(`Đã từ chối đề tài "${topicName}"!`);
-        setProposals(prev => prev.filter(p => p._id !== proposalId));
-      } catch (error) {
-        console.error('Error rejecting topic:', error);
-        alert(error.response?.data?.message || 'Có lỗi xảy ra khi từ chối đề tài!');
-      }
+  const handleReject = (proposalId, topicName) => {
+    setRejectModal({ open: true, proposalId, topicName, reason: '' });
+  };
+
+  const handleRejectConfirm = async () => {
+    if (!rejectModal.reason.trim()) {
+      message.error('Vui lòng nhập lý do từ chối!');
+      return;
+    }
+    const confirmMsg = `Bạn có chắc chắn muốn từ chối đề tài "${rejectModal.topicName}" với lý do:\n"${rejectModal.reason}"?`;
+    if (!window.confirm(confirmMsg)) {
+      setRejectLoading(false);
+      return;
+    }
+    setRejectLoading(true);
+    try {
+      const token = localStorage.getItem('token');
+      await axios.put(
+        `/api/topics/${rejectModal.proposalId}/reject-by-lecturer`,
+        { reason: rejectModal.reason },
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+      message.success(`Đã từ chối đề tài "${rejectModal.topicName}"!`);
+      setProposals(prev => prev.filter(p => p._id !== rejectModal.proposalId));
+      setRejectModal({ open: false, proposalId: null, topicName: '', reason: '' });
+    } catch (error) {
+      console.error('Error rejecting topic:', error);
+      message.error(error.response?.data?.message || 'Có lỗi xảy ra khi từ chối đề tài!');
+    } finally {
+      setRejectLoading(false);
     }
   };
 
@@ -130,6 +144,29 @@ const ProposedTopics = () => {
           )}
         </div>
       )}
+
+      <Modal
+        title={`Từ chối đề tài: "${rejectModal.topicName}"`}
+        open={rejectModal.open}
+        onCancel={() => setRejectModal({ open: false, proposalId: null, topicName: '', reason: '' })}
+        onOk={handleRejectConfirm}
+        confirmLoading={rejectLoading}
+        okText="Từ chối"
+        cancelText="Hủy"
+      >
+        <div>
+          <label className="block mb-2 font-medium">Lý do từ chối <span className="text-red-500">*</span></label>
+          <Input.TextArea
+            rows={4}
+            value={rejectModal.reason}
+            onChange={e => setRejectModal(modal => ({ ...modal, reason: e.target.value }))}
+            placeholder="Nhập lý do từ chối..."
+            maxLength={500}
+            showCount
+            required
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

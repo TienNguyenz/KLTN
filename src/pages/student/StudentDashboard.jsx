@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavLink, Outlet, useNavigate } from 'react-router-dom';
+import { NavLink, Outlet, useNavigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../../context/AuthContext';
 import { FaTimesCircle, FaBook, FaUserGraduate, FaUsers, FaTag, FaInfoCircle, FaHome, FaListAlt, FaLightbulb, FaSearch, FaSort, FaPencilAlt, FaCalendarAlt, FaClock, FaPaperPlane, FaUpload, FaDownload, FaEye, FaInfo, FaUserCircle, FaFilePdf } from 'react-icons/fa';
 import StudentHeader from '../../components/student/StudentHeader';
@@ -45,12 +45,20 @@ const TopicDetails = () => {
             <span className="text-4xl text-red-500 mx-auto mb-4 inline-block">❌</span>
             <p className="text-lg text-red-600 mb-2 font-semibold">Đề tài của bạn đã bị từ chối!</p>
             <p className="text-gray-600 mb-4">Bạn có thể đề xuất lại đề tài mới hoặc chọn đề tài khác.</p>
-            <button
-              className="mt-2 bg-[#008bc3] hover:bg-[#0073a8] text-white font-semibold py-2 px-6 rounded-full transition-colors duration-300"
-              onClick={() => navigate('/student/proposals')}
-            >
-              Đề xuất lại đề tài
-            </button>
+            <div className="flex flex-col md:flex-row justify-center gap-4 mt-4">
+              <button
+                className="bg-[#008bc3] hover:bg-[#0073a8] text-white font-semibold py-2 px-6 rounded-full transition-colors duration-300"
+                onClick={() => navigate('/student/proposals', { state: { resubmitTopic: registeredTopic } })}
+              >
+                Đề xuất lại đề tài
+              </button>
+              <button
+                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-full transition-colors duration-300"
+                onClick={() => navigate('/student/proposals')}
+              >
+                Đề xuất đề tài mới
+              </button>
+            </div>
           </div>
         ) : (
           <RegisteredTopicDetails
@@ -278,14 +286,23 @@ const TopicsList = () => {
 // Component Đề xuất Đề tài
 const Proposals = () => {
   const { user } = useAuth();
+  const location = useLocation();
+  const resubmitTopic = location.state?.resubmitTopic;
   const facultyId = user?.user_faculty; // Lấy facultyId của sinh viên
+  // Helper để lấy _id đúng kiểu string
+  const getId = (field) => {
+    if (!field) return '';
+    if (typeof field === 'string') return field;
+    if (typeof field === 'object' && field._id) return field._id;
+    return '';
+  };
   const [formData, setFormData] = useState({
-    topicName: '',
-    supervisorId: '',
-    majorId: '',
-    topicTypeId: '',
-    description: '',
-    maxMembers: 2, // Mặc định 2 thành viên
+    topicName: resubmitTopic?.topic_title || '',
+    supervisorId: getId(resubmitTopic?.topic_instructor),
+    majorId: getId(resubmitTopic?.topic_major),
+    topicTypeId: getId(resubmitTopic?.topic_category),
+    description: resubmitTopic?.topic_description || '',
+    maxMembers: resubmitTopic?.topic_max_members || 2,
     student1Id: user?.user_id || '',
     student2Id: '',
     student3Id: '',
@@ -331,6 +348,19 @@ const Proposals = () => {
 
     if (facultyId) fetchData();
   }, [user?.user_id, facultyId]);
+
+  useEffect(() => {
+    // Nếu đang resubmit và đã có danh sách, set lại formData cho đúng _id
+    if (resubmitTopic && instructors.length && majors.length && topicTypes.length) {
+      setFormData(prev => ({
+        ...prev,
+        supervisorId: getId(resubmitTopic?.topic_instructor),
+        majorId: getId(resubmitTopic?.topic_major),
+        topicTypeId: getId(resubmitTopic?.topic_category),
+      }));
+    }
+    // eslint-disable-next-line
+  }, [instructors, majors, topicTypes]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -401,40 +431,36 @@ const Proposals = () => {
         description: formData.description
       };
 
-      try {
-        // Gửi request
+      let isSuccess = false;
+      if (resubmitTopic && resubmitTopic._id && resubmitTopic.topic_teacher_status === 'rejected') {
+        // Đề xuất lại: gọi API cập nhật lại đề tài cũ
+        const res = await axios.put(`/api/topics/${resubmitTopic._id}/resubmit`, proposalData, {
+          headers: { 'Content-Type': 'application/json' }
+        });
+        isSuccess = res.data && res.data.topic;
+      } else {
+        // Đề xuất mới hoàn toàn
         const response = await axios.post('http://localhost:5000/api/topics/propose', proposalData, {
           headers: { 'Content-Type': 'application/json' }
         });
-
-        if (response.data) {
-          alert('Đề xuất đã được gửi thành công!');
-          // Reset form
-          setFormData({
-            ...formData,
-            topicName: '',
-            supervisorId: '',
-            majorId: '',
-            topicTypeId: '',
-            description: '',
-            student2Id: '',
-            student3Id: '',
-            student4Id: ''
-          });
-          setGuidanceFile(null);
-          navigate('/student'); // Chuyển về trang chủ sinh viên
-        }
-      } catch (error) {
-        console.error('Error submitting proposal:', error);
-        if (error.response?.data?.message) {
-          if (error.response.data.registeredMembers) {
-            alert(`${error.response.data.message}\n\n${error.response.data.registeredMembers.join('\n')}`);
-          } else {
-            alert(error.response.data.message);
-          }
-        } else {
-          alert('Có lỗi xảy ra khi gửi đề xuất!');
-        }
+        isSuccess = response.data;
+      }
+      if (isSuccess) {
+        alert('Đề xuất đã được gửi thành công!');
+        // Reset form
+        setFormData({
+          ...formData,
+          topicName: '',
+          supervisorId: '',
+          majorId: '',
+          topicTypeId: '',
+          description: '',
+          student2Id: '',
+          student3Id: '',
+          student4Id: ''
+        });
+        setGuidanceFile(null);
+        navigate('/student'); // Chuyển về trang chủ sinh viên
       }
     } catch (error) {
       console.error('Error submitting proposal:', error);
