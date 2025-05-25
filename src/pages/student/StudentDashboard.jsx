@@ -313,6 +313,10 @@ const Proposals = () => {
   });
   // Thêm state cho file đơn xin hướng dẫn
   const [guidanceFile, setGuidanceFile] = useState(null);
+  const [convertedPdfUrl, setConvertedPdfUrl] = useState('');
+  const [convertedPdfName, setConvertedPdfName] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [docFile, setDocFile] = useState(null);
 
   // States cho dữ liệu từ MongoDB
   const [instructors, setInstructors] = useState([]);
@@ -373,11 +377,81 @@ const Proposals = () => {
     }));
   };
 
+  // Hàm xử lý chọn file
+  const handleGuidanceFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setConvertedPdfUrl('');
+    setConvertedPdfName('');
+    setDocFile(null);
+    setGuidanceFile(null);
+    if (file.type === 'application/msword' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      setDocFile(file);
+      alert('File DOC/DOCX sẽ được chuyển sang PDF trước khi upload. Bấm "Tải lên" để chuyển đổi.');
+      return;
+    }
+    if (file.type === 'application/pdf') {
+      setGuidanceFile(file);
+    } else {
+      alert('Chỉ hỗ trợ file PDF, DOC, DOCX.');
+    }
+  };
+
+  const handleUploadAdvisorRequest = async () => {
+    setIsUploading(true);
+    try {
+      const formDataFile = new FormData();
+      formDataFile.append('file', docFile || guidanceFile);
+      // Hiện modal thông báo đang convert
+      const convertModal = document.createElement('div');
+      convertModal.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50';
+      convertModal.innerHTML = `
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p class="text-lg font-semibold text-gray-800">Đang chuyển đổi Word sang PDF...</p>
+        </div>
+      `;
+      document.body.appendChild(convertModal);
+
+      const response = await fetch('/api/topics/upload-advisor-request', {
+        method: 'POST',
+        body: formDataFile
+      });
+      const data = await response.json();
+      setConvertedPdfUrl(data.file);
+      setConvertedPdfName(data.originalName || 'advisor_request.pdf');
+      setDocFile(null);
+      setGuidanceFile(null);
+
+      // Xóa modal đang convert
+      document.body.removeChild(convertModal);
+
+      // Hiện modal thông báo thành công
+      const successModal = document.createElement('div');
+      successModal.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50';
+      successModal.innerHTML = `
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+          <div class="text-green-500 text-5xl mb-4">✓</div>
+          <p class="text-lg font-semibold text-gray-800">Tải file và chuyển đổi thành công!</p>
+          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Đóng</button>
+        </div>
+      `;
+      document.body.appendChild(successModal);
+
+      // Xóa modal thành công khi click nút đóng
+      successModal.querySelector('button').onclick = () => {
+        document.body.removeChild(successModal);
+      };
+    } catch {
+      alert('Lỗi khi upload file đơn xin hướng dẫn!');
+    }
+    setIsUploading(false);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
-    // Bắt buộc phải có file đơn xin hướng dẫn
-    if (!guidanceFile) {
-      alert('Vui lòng chọn và tải lên file đơn xin hướng dẫn (PDF, DOC, DOCX)!');
+    if (!convertedPdfUrl) {
+      alert('Vui lòng tải lên file đơn xin hướng dẫn (PDF, DOC, DOCX) và chuyển đổi thành công trước khi gửi đề xuất!');
       return;
     }
     try {
@@ -408,11 +482,7 @@ const Proposals = () => {
         const leader = students.find(s => s.user_id === user.user_id);
         creatorId = leader?._id;
       }
-      const proposalType = ['Ứng dụng', 'Nghiên cứu'].includes(
-        topicTypes.find(t => t._id === formData.topicTypeId)?.topic_category_title
-      )
-        ? topicTypes.find(t => t._id === formData.topicTypeId)?.topic_category_title
-        : 'Ứng dụng';
+      const proposalType = topicTypes.find(t => t._id === formData.topicTypeId)?.topic_category_title || '';
 
       const proposalData = {
         topic_title: formData.topicName,
@@ -423,15 +493,15 @@ const Proposals = () => {
         topic_max_members: parseInt(formData.maxMembers),
         topic_group_student: members,
         topic_creator: creatorId,
-        // Các trường bắt buộc cho model
         name: formData.topicName,
         supervisor: instructors.find(i => i._id === formData.supervisorId)?.user_name || '',
-        reviewer: 'Chưa có', // Đảm bảo không để rỗng
-        type: proposalType,   // Chỉ 'Ứng dụng' hoặc 'Nghiên cứu'
+        reviewer: 'Chưa có',
+        type: proposalType,
         studentId: user.user_id || '',
         lecturer: instructors.find(i => i._id === formData.supervisorId)?.user_name || '',
         major: majors.find(m => m._id === formData.majorId)?.major_title || '',
-        description: formData.description
+        description: formData.description,
+        topic_advisor_request: convertedPdfUrl
       };
 
       let isSuccess = false;
@@ -465,17 +535,8 @@ const Proposals = () => {
         setGuidanceFile(null);
         navigate('/student'); // Chuyển về trang chủ sinh viên
       }
-    } catch (error) {
-      console.error('Error submitting proposal:', error);
-      if (error.response?.data?.message) {
-        if (error.response.data.registeredMembers) {
-          alert(`${error.response.data.message}\n\n${error.response.data.registeredMembers.join('\n')}`);
-        } else {
-          alert(error.response.data.message);
-        }
-      } else {
-        alert('Có lỗi xảy ra khi gửi đề xuất!');
-      }
+    } catch {
+      alert('Lỗi khi gửi đề xuất!');
     }
   };
 
@@ -686,16 +747,19 @@ const Proposals = () => {
             <div className="flex items-center space-x-2 mb-2 md:mb-0">
               <FaFilePdf className="text-2xl text-red-600" />
               <span className="font-semibold text-blue-900 text-base">Đơn xin hướng dẫn</span>
-              {/* Nếu có file mẫu, thêm link tải mẫu */}
-              {/* <a href="/templates/guidance_request_template.docx" download className="ml-2 text-blue-500 hover:text-blue-700 text-sm flex items-center" title="Tải file mẫu">
-                <FaDownload className="mr-1" /> Tải mẫu
-              </a> */}
             </div>
             <div className="flex-1">
               {guidanceFile ? (
                 <span className="text-green-700 text-sm">{guidanceFile.name}</span>
+              ) : docFile ? (
+                <span className="text-blue-700 text-sm">{docFile.name}</span>
+              ) : convertedPdfUrl ? (
+                <span className="text-green-700 text-sm">{convertedPdfName}</span>
               ) : (
                 <span className="text-red-500 text-sm">Chưa có file.</span>
+              )}
+              {convertedPdfUrl && (
+                <a href={convertedPdfUrl} target="_blank" rel="noopener noreferrer" className="ml-4 text-blue-500 underline text-sm">Xem file</a>
               )}
             </div>
           </div>
@@ -704,19 +768,21 @@ const Proposals = () => {
               <input
                 type="file"
                 accept=".pdf,.doc,.docx"
-                onChange={e => setGuidanceFile(e.target.files[0])}
+                onChange={handleGuidanceFileChange}
                 className="hidden"
               />
               <span className="inline-block px-4 py-2 bg-gray-200 rounded cursor-pointer text-sm font-medium hover:bg-gray-300">Chọn file</span>
             </label>
-            <button
-              type="button"
-              className={`px-4 py-2 rounded text-sm font-medium text-white ${guidanceFile ? 'bg-blue-600 hover:bg-blue-700' : 'bg-gray-300 cursor-not-allowed'}`}
-              disabled={!guidanceFile}
-              onClick={() => document.querySelector('input[type=file][accept=".pdf,.doc,.docx"]').click()}
-            >
-              Tải lên
-            </button>
+            {(docFile || guidanceFile) && !convertedPdfUrl && (
+              <button
+                type="button"
+                className={`px-4 py-2 rounded text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                disabled={isUploading}
+                onClick={handleUploadAdvisorRequest}
+              >
+                {isUploading ? 'Đang tải...' : 'Tải lên'}
+              </button>
+            )}
           </div>
           <p className="mt-1 text-xs text-gray-500">Hỗ trợ các định dạng: PDF, DOC, DOCX</p>
         </div>

@@ -1115,4 +1115,39 @@ router.put('/:id/resubmit', async (req, res) => {
   }
 });
 
+// Upload advisor request (convert docx to pdf, không cần topicId)
+router.post('/upload-advisor-request', upload.single('file'), async (req, res) => {
+  try {
+    const file = req.file;
+    if (!file) return res.status(400).json({ message: 'No file uploaded' });
+    let ext = path.extname(file.originalname).toLowerCase();
+    let pdfFilename = file.filename.endsWith('.pdf') ? file.filename : `${file.filename}.pdf`;
+    let pdfPath = path.join('uploads', pdfFilename);
+    if (ext === '.pdf') {
+      // Nếu là PDF nhưng tên file chưa có .pdf thì thêm vào
+      if (!file.path.endsWith('.pdf')) {
+        fs.renameSync(file.path, pdfPath);
+      } else {
+        pdfPath = file.path;
+      }
+      const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${pdfFilename}`;
+      return res.json({ file: fileUrl, originalName: file.originalname });
+    }
+    // Nếu là doc/docx thì convert
+    const docxBuf = fs.readFileSync(file.path);
+    libre.convert(docxBuf, '.pdf', undefined, (err, done) => {
+      if (err) {
+        fs.unlinkSync(file.path);
+        return res.status(500).json({ message: 'Convert to PDF failed', error: err });
+      }
+      fs.writeFileSync(pdfPath, done);
+      fs.unlinkSync(file.path);
+      const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${pdfFilename}`;
+      res.json({ file: fileUrl, originalName: file.originalname.replace(/\.[^/.]+$/, '') + '.pdf' });
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
 module.exports = router; 
