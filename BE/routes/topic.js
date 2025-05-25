@@ -392,6 +392,7 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
       topic_leader_status: 'pending',
       topic_block: false,
       status: 'pending',
+      topic_advisor_request: req.body.topic_advisor_request || '',
     });
 
     await newTopic.save();
@@ -480,7 +481,12 @@ router.get('/instructor/:instructorId/proposals', async (req, res) => {
     .populate('topic_category', 'topic_category_title')
     .sort({ createdAt: -1 });
     console.log('Kết quả trả về:', topics.length, topics.map(t => t.topic_title));
-    res.json(topics);
+    // Bổ sung trường topic_advisor_request vào object trả về
+    const result = topics.map(t => ({
+      ...t.toObject(),
+      topic_advisor_request: t.topic_advisor_request || ''
+    }));
+    res.json(result);
   } catch (err) {
     console.error('Error fetching instructor proposals:', err);
     res.status(500).json({ error: err.message });

@@ -109,6 +109,7 @@ const ProposedTopics = () => {
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Tên đề tài đề xuất</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Sinh viên đề xuất</th>
                     <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Ngày đề xuất</th>
+                    <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Đơn xin hướng dẫn</th>
                     <th className="px-4 py-3 text-center text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
                   </tr>
                 </thead>
@@ -121,6 +122,13 @@ const ProposedTopics = () => {
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-gray-600">
                         {new Date(proposal.createdAt).toLocaleDateString('vi-VN')}
+                      </td>
+                      <td className="px-4 py-3 whitespace-nowrap text-blue-600">
+                        {proposal.topic_advisor_request ? (
+                          <a href={proposal.topic_advisor_request} target="_blank" rel="noopener noreferrer" className="underline text-blue-700 hover:text-blue-900">Xem đơn</a>
+                        ) : (
+                          <span className="text-gray-400 italic">Chưa nộp</span>
+                        )}
                       </td>
                       <td className="px-4 py-3 whitespace-nowrap text-center text-sm font-medium space-x-2">
                         <button 
