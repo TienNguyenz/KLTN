@@ -101,23 +101,23 @@ const ApproveGroupDetails = () => {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
           <div>
             <span className="font-medium text-gray-500">Tên đề tài:</span>
-            <p className="text-gray-900">{topic.name}</p>
+            <p className="text-gray-900">{topic.topic_title}</p>
           </div>
           <div>
             <span className="font-medium text-gray-500">Tối đa sinh viên:</span>
-            <p className="text-gray-900">{topic.maxStudents || topic.studentCount || 'N/A'}</p>
+            <p className="text-gray-900">{topic.topic_max_members || topic.studentCount || 'N/A'}</p>
           </div>
           <div>
             <span className="font-medium text-gray-500">Chuyên ngành:</span>
-            <p className="text-gray-900">{topic.major || 'N/A'}</p> 
+            <p className="text-gray-900">{topic.topic_major?.major_title || 'N/A'}</p> 
           </div>
            <div className="md:col-span-1">
              <span className="font-medium text-gray-500">Loại đề tài:</span>
-             <p className="text-gray-900">{topic.type}</p>
+             <p className="text-gray-900">{topic.topic_category?.topic_category_title}</p>
            </div>
            <div className="md:col-span-2">
             <span className="font-medium text-gray-500">Mô tả:</span>
-            <p className="text-gray-900 whitespace-pre-wrap">{topic.description}</p>
+            <p className="text-gray-900 whitespace-pre-wrap">{topic.topic_description}</p>
           </div>
         </div>
       </div>

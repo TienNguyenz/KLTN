@@ -391,21 +391,7 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
       topic_teacher_status: 'pending',
       topic_leader_status: 'pending',
       topic_block: false,
-      // Thêm các trường bắt buộc
-      name: topic_title,
-      supervisor: instructor.user_name,
-      reviewer: '', // Sẽ được admin cập nhật sau
-      type: topicType.topic_category_title,
-      studentId: topic_creator,
-      lecturer: instructor.user_name,
-      major: major.major_title,
-      description: topic_description,
       status: 'pending',
-      maxStudents: topic_max_members,
-      groups: safe_group_student.map(memberId => ({
-        studentName: memberId.user_name,
-        studentId: memberId.user_id
-      }))
     });
 
     await newTopic.save();
@@ -620,7 +606,7 @@ router.put('/:id/reject-by-leader', async (req, res) => {
         user_notification_title: 'Đề tài bị từ chối',
         user_notification_sender: req.user?._id,
         user_notification_recipient: recipientId,
-        user_notification_content: `Đề tài "${topic.name}" đã bị từ chối. Lý do: ${comment || 'Không có lý do cụ thể.'}`,
+        user_notification_content: `Đề tài "${topic.topic_title}" đã bị từ chối. Lý do: ${comment || 'Không có lý do cụ thể.'}`,
         user_notification_type: 2,
         user_notification_isRead: false,
         user_notification_topic: 'topic',
@@ -1032,13 +1018,7 @@ router.put('/:id/reject-by-lecturer', auth, async (req, res) => {
     await topic.save();
 
     // Log giá trị trước khi tạo notification
-    console.log('Tạo notification cho sinh viên:', {
-      sender: req.user?._id,
-      recipient: topic.topic_creator,
-      topicId: topic._id,
-      topicName: topic.name,
-      reason
-    });
+    // console.log('Tạo notification cho sinh viên:', { sender: req.user?._id, recipient: topic.topic_creator, topicId: topic._id, reason });
 
     // Gửi notification cho sinh viên
     let recipientId = topic.topic_creator;
@@ -1062,7 +1042,7 @@ router.put('/:id/reject-by-lecturer', auth, async (req, res) => {
         user_notification_title: 'Đề tài bị từ chối',
         user_notification_sender: req.user?._id,
         user_notification_recipient: recipientId,
-        user_notification_content: `Đề tài "${topic.name}" đã bị từ chối. Lý do: ${reason || 'Không có lý do cụ thể.'}`,
+        user_notification_content: `Đề tài "${topic.topic_title}" đã bị từ chối. Lý do: ${reason || 'Không có lý do cụ thể.'}`,
         user_notification_type: 2,
         user_notification_isRead: false,
         user_notification_topic: 'topic',
@@ -1098,8 +1078,6 @@ router.put('/:id/resubmit', async (req, res) => {
     topic.topic_instructor = req.body.topic_instructor;
     topic.topic_max_members = req.body.topic_max_members;
     topic.topic_group_student = req.body.topic_group_student;
-    // ... các trường khác nếu cần
-
     // Reset trạng thái
     topic.topic_teacher_status = 'pending';
     topic.topic_leader_status = 'pending';
