@@ -581,6 +581,10 @@ router.put('/:id/reject-by-leader', async (req, res) => {
     const topic = await Topic.findById(req.params.id);
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
     topic.topic_leader_status = 'rejected';
+    topic.topic_teacher_status = 'rejected';
+    topic.status = 'rejected';
+    topic.topic_group_student = []; // Gỡ toàn bộ sinh viên khỏi đề tài
+    topic.reject_reason = req.body.reason || '';
     await topic.save();
 
     // Gửi thông báo cho giảng viên
@@ -606,7 +610,7 @@ router.put('/:id/reject-by-leader', async (req, res) => {
         user_notification_title: 'Đề tài bị từ chối',
         user_notification_sender: req.user?._id,
         user_notification_recipient: recipientId,
-        user_notification_content: `Đề tài "${topic.topic_title}" đã bị từ chối. Lý do: ${comment || 'Không có lý do cụ thể.'}`,
+        user_notification_content: `Đề tài "${topic.topic_title}" đã bị từ chối. Lý do: ${req.body.reason || 'Không có lý do cụ thể.'}`,
         user_notification_type: 2,
         user_notification_isRead: false,
         user_notification_topic: 'topic',
@@ -1014,7 +1018,7 @@ router.put('/:id/reject-by-lecturer', auth, async (req, res) => {
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
     topic.topic_teacher_status = 'rejected';
     topic.status = 'rejected';
-    topic.topic_group_student = []; // Gỡ toàn bộ sinh viên khỏi đề tài
+    topic.reject_reason = reason || '';
     await topic.save();
 
     // Log giá trị trước khi tạo notification
