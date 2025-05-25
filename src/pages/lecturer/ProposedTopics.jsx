@@ -20,7 +20,16 @@ const ProposedTopics = () => {
       setError('');
       try {
         const response = await axios.get(`/api/topics/instructor/${user?.id}/proposals`);
-        setProposals(response.data);
+        if (Array.isArray(response.data)) {
+          setProposals(response.data);
+        } else if (response.data && Array.isArray(response.data.data)) {
+          setProposals(response.data.data);
+        } else if (response.data && Array.isArray(response.data.topics)) {
+          setProposals(response.data.topics);
+        } else {
+          console.error('Expected array of topics but got:', response.data);
+          setProposals([]);
+        }
       } catch (err) {
         console.error("Error fetching proposed topics:", err);
         setError('Lỗi khi tải danh sách đề xuất.');
@@ -38,7 +47,7 @@ const ProposedTopics = () => {
   const handleApprove = async (proposalId, topicName) => {
     if (window.confirm(`Bạn có chắc chắn muốn duyệt đề tài "${topicName}"?`)) {
       try {
-        await axios.put(`/api/topics/${proposalId}/approve`);
+        await axios.put(`/api/topics/${proposalId}/approve-by-lecturer`);
         alert(`Đã duyệt đề tài "${topicName}"!`);
         setProposals(prev => prev.filter(p => p._id !== proposalId));
       } catch (error) {

@@ -51,22 +51,18 @@ router.get('/committee/:id', (req, res, next) => {
   next(); // Chuyển tiếp request đến controller
 }, topicController.getCommitteeTopicById);
 
-// Lấy tất cả đề tài đã duyệt và chưa có sinh viên đăng ký
+// Lấy tất cả đề tài đã duyệt và đang quản lý
 router.get('/', async (req, res) => {
-  console.log('topic.js: Hit GET /');
   try {
     const topics = await Topic.find({
-      topic_teacher_status: 'approved',
-      topic_leader_status: 'approved',
-      topic_group_student: { $size: 0 }
+      status: 'active'
     })
-      .populate('topic_instructor', 'user_name')
-      .populate('topic_major', 'major_name')
-      .populate('topic_category', 'type_name')
-      .populate('topic_group_student', 'user_name user_id');
+    .populate('topic_instructor', 'user_name')
+    .populate('topic_major', 'major_name')
+    .populate('topic_category', 'type_name')
+    .populate('topic_group_student', 'user_name user_id');
     res.json({ success: true, data: topics });
   } catch (err) {
-    console.error('topic.js: Error in GET /', err);
     res.status(500).json({ success: false, message: err.message });
   }
 });
@@ -314,10 +310,8 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
     // Kiểm tra xem các thành viên đã có đề tài chưa
     const existingTopics = await Topic.find({
         'topic_group_student': { $in: safe_group_student },
-        $or: [
-          { status: { $ne: 'rejected' } },
-          { topic_teacher_status: { $ne: 'rejected' } }
-        ]
+        status: { $ne: 'rejected' },
+        topic_teacher_status: { $ne: 'rejected' }
     }).populate('topic_group_student', 'user_name user_id');
 
     if (existingTopics.length > 0) {
@@ -507,55 +501,33 @@ router.get('/instructor/:instructorId/proposals', async (req, res) => {
   }
 });
 
-// Duyệt đề tài
-router.put('/:id/approve', async (req, res) => {
-  console.log(`topic.js: Hit PUT /${req.params.id}/approve`);
-  try {
-    const topic = await Topic.findById(req.params.id);
-    if (!topic) {
-      return res.status(404).json({ message: 'Không tìm thấy đề tài' });
-    }
-
-    topic.topic_teacher_status = 'approved';
-    await topic.save();
-
-    res.json({ message: 'Đã duyệt đề tài thành công', topic });
-  } catch (err) {
-    console.error('Error approving topic:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
-// Từ chối đề tài
-router.put('/:id/reject', async (req, res) => {
-  console.log(`topic.js: Hit PUT /${req.params.id}/reject`);
-  try {
-    const topic = await Topic.findById(req.params.id);
-    if (!topic) {
-      return res.status(404).json({ message: 'Không tìm thấy đề tài' });
-    }
-
-    topic.topic_teacher_status = 'rejected';
-    topic.status = 'rejected';
-    await topic.save();
-
-    res.json({ message: 'Đã từ chối đề tài', topic });
-  } catch (err) {
-    console.error('Error rejecting topic:', err);
-    res.status(500).json({ error: err.message });
-  }
-});
-
 // Giảng viên duyệt đề tài
 router.put('/:id/approve-by-lecturer', async (req, res) => {
   console.log(`topic.js: Hit PUT /${req.params.id}/approve-by-lecturer`);
   try {
-    const topic = await Topic.findById(req.params.id);
+    // Populate để lấy _id của từng sinh viên
+    const topic = await Topic.findById(req.params.id).populate('topic_group_student', '_id user_name user_id');
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
     topic.topic_teacher_status = 'approved';
-    topic.topic_leader_status = 'pending';
+    topic.topic_leader_status = 'approved';
+    topic.status = 'active';
     await topic.save();
-    res.json({ message: 'Đã duyệt đề tài, chờ leader duyệt', topic });
+
+    // Gửi thông báo cho từng sinh viên trong nhóm
+    if (topic.topic_group_student && topic.topic_group_student.length > 0) {
+      const notifications = topic.topic_group_student.map(student => ({
+        user_notification_title: 'Đề tài đã được duyệt',
+        user_notification_sender: topic.topic_instructor, // hoặc req.user?._id nếu có auth
+        user_notification_recipient: student._id,
+        user_notification_content: `Đề tài "${topic.topic_title}" của bạn đã được giảng viên duyệt.`,
+        user_notification_type: 2,
+        user_notification_isRead: false,
+        user_notification_topic: 'topic',
+      }));
+      await UserNotification.insertMany(notifications);
+    }
+
+    res.json({ message: 'Đã duyệt đề tài thành công', topic });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi khi duyệt đề tài bởi giảng viên', error: err.message });
   }
@@ -1056,6 +1028,7 @@ router.put('/:id/reject-by-lecturer', auth, async (req, res) => {
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
     topic.topic_teacher_status = 'rejected';
     topic.status = 'rejected';
+    topic.topic_group_student = []; // Gỡ toàn bộ sinh viên khỏi đề tài
     await topic.save();
 
     // Log giá trị trước khi tạo notification

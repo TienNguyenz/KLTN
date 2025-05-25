@@ -44,7 +44,10 @@ const TopicDetails = () => {
           <div className="bg-white p-6 rounded-lg shadow-md text-center">
             <span className="text-4xl text-red-500 mx-auto mb-4 inline-block">❌</span>
             <p className="text-lg text-red-600 mb-2 font-semibold">Đề tài của bạn đã bị từ chối!</p>
-            <p className="text-gray-600 mb-4">Bạn có thể đề xuất lại đề tài mới hoặc chọn đề tài khác.</p>
+            <p className="text-gray-600 mb-2 font-semibold">{registeredTopic.topic_title}</p>
+            {registeredTopic.reject_reason && (
+              <p className="text-red-500 mb-4">Lý do: {registeredTopic.reject_reason}</p>
+            )}
             <div className="flex flex-col md:flex-row justify-center gap-4 mt-4">
               <button
                 className="bg-[#008bc3] hover:bg-[#0073a8] text-white font-semibold py-2 px-6 rounded-full transition-colors duration-300"
