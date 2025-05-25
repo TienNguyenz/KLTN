@@ -482,7 +482,6 @@ const Proposals = () => {
         const leader = students.find(s => s.user_id === user.user_id);
         creatorId = leader?._id;
       }
-      const proposalType = topicTypes.find(t => t._id === formData.topic_category)?.topic_category_title || '';
 
       const proposalData = {
         topic_title: formData.topic_title,
@@ -527,8 +526,17 @@ const Proposals = () => {
         setGuidanceFile(null);
         navigate('/student'); // Chuyển về trang chủ sinh viên
       }
-    } catch {
-      alert('Lỗi khi gửi đề xuất!');
+    } catch (err) {
+      if (err.response) {
+        const data = err.response.data;
+        if (data.registeredMembers && Array.isArray(data.registeredMembers)) {
+          alert(data.message + ': ' + data.registeredMembers.join('\n'));
+        } else if (data.message) {
+          alert(data.message);
+        } else {
+          alert(JSON.stringify(data));
+        }
+      }
     }
   };
 
