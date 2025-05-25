@@ -5,46 +5,27 @@ const registeredTopics = {
   // Sinh viên có ID 'sv001' đã đăng ký đề tài này
   'sv001': {
     topicId: 'DT001',
-    topicName: 'Xây dựng phần mềm quản lý khối lượng giảng dạy của giảng viên khoa CNTT - Trường Đại học X',
-    supervisor: 'ThS. Ngô Ngọc Đăng Khoa',
-    major: 'Công nghệ phần mềm',
-    type: 'Ứng dụng',
-    details: [
-      '1. Tính cấp thiết của đề tài', 
-      '- Câu hỏi: Vì sao lại nghiên cứu đề tài đó?', 
-      '+ Lí do khách quan: Ý nghĩa trên lý luận và thực tiễn chung', 
-      '+ Lí do chủ quan: Thực trạng nơi tác giả nghiên cứu, nhu cầu, trách nhiệm, sự hứng thú của người nghiên cứu đối với vấn đề', 
-      '- Các nghiên cứu đã được thực hiện trước đó từ đó chỉ ra điểm mới của đề tài, vấn đề mà nhóm lựa chọn.', 
-      '- Trọng số trong bài nghiên cứu: Luận giải rõ ràng tính cấp thiết của vấn đề nghiên cứu: 10%',
-      'Những hướng nghiên cứu chính về vấn đề của đề tài đã được thực hiện', 
-      'Những trường phái lý thuyết đã được sử dụng để nghiên cứu vấn đề này', 
-      'Những phương pháp nghiên cứu chính đã được áp dụng', 
-      'Những kết quả nghiên cứu chính', 
-      'Hạn chế của các nghiên cứu trước – những vấn đề cần tiếp tục nghiên cứu'
-    ],
-    maxStudents: 3,
-    registeredGroups: [
-      { 
-        groupId: 'NHOM1',
-        members: [
-           { id: 'sv001', name: 'Nguyễn Hồng Đức', mssv: '19110308' },
-           { id: 'sv002', name: 'Ngô Đình Đại', mssv: '19110160' },
-           { id: 'sv004', name: 'Nguyễn Văn Truyền', mssv: '19110306' },
-        ]
-      }
+    topic_title: 'Xây dựng phần mềm quản lý khối lượng giảng dạy của giảng viên khoa CNTT - Trường Đại học X',
+    topic_instructor: 'ThS. Ngô Ngọc Đăng Khoa',
+    topic_major: 'Công nghệ phần mềm',
+    topic_category: 'Ứng dụng',
+    topic_description: '1. Tính cấp thiết của đề tài... (rút gọn)',
+    topic_max_members: 3,
+    topic_group_student: [
+      { id: 'sv001', name: 'Nguyễn Hồng Đức', mssv: '19110308' },
+      { id: 'sv002', name: 'Ngô Đình Đại', mssv: '19110160' },
+      { id: 'sv004', name: 'Nguyễn Văn Truyền', mssv: '19110306' },
     ],
     documents: {
-        proposal: { name: null, url: null },
-        defenseRequest: { name: null, url: null },
-        finalReport: { name: null, url: null },
+      proposal: { name: null, url: null },
+      defenseRequest: { name: null, url: null },
+      finalReport: { name: null, url: null },
     },
-    reviewer: null,
-    committee: null,
     grades: {
-        supervisorGrade: null,
-        reviewerGrade: null,
-        committeeGrade: null,
-        finalGrade: null,
+      supervisorGrade: null,
+      reviewerGrade: null,
+      committeeGrade: null,
+      finalGrade: null,
     }
   },
   // Sinh viên có ID 'sv003' chưa đăng ký đề tài nào
@@ -57,9 +38,9 @@ export const getStudentRegisteredTopic = (studentId) => {
   // Tìm xem sinh viên có trong nhóm nào đã đăng ký đề tài không
   for (const studentKey in registeredTopics) {
       const topic = registeredTopics[studentKey];
-      if (topic && topic.registeredGroups) {
-          for (const group of topic.registeredGroups) {
-              if (group.members.includes(studentId)) {
+      if (topic && topic.topic_group_student) {
+          for (const group of topic.topic_group_student) {
+              if (group.id === studentId) {
                   // Trả về thông tin đề tài nếu sinh viên thuộc nhóm đã đăng ký
                   // (Trong ví dụ này, dữ liệu được lưu theo sv001 nên trả về của sv001)
                   // Thực tế bạn cần cấu trúc dữ liệu tốt hơn hoặc tìm theo topicId

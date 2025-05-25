@@ -300,12 +300,12 @@ const Proposals = () => {
     return '';
   };
   const [formData, setFormData] = useState({
-    topicName: resubmitTopic?.topic_title || '',
-    supervisorId: getId(resubmitTopic?.topic_instructor),
-    majorId: getId(resubmitTopic?.topic_major),
-    topicTypeId: getId(resubmitTopic?.topic_category),
-    description: resubmitTopic?.topic_description || '',
-    maxMembers: resubmitTopic?.topic_max_members || 2,
+    topic_title: resubmitTopic?.topic_title || '',
+    topic_instructor: getId(resubmitTopic?.topic_instructor),
+    topic_major: getId(resubmitTopic?.topic_major),
+    topic_category: getId(resubmitTopic?.topic_category),
+    topic_description: resubmitTopic?.topic_description || '',
+    topic_max_members: resubmitTopic?.topic_max_members || 2,
     student1Id: user?.user_id || '',
     student2Id: '',
     student3Id: '',
@@ -361,9 +361,9 @@ const Proposals = () => {
     if (resubmitTopic && instructors.length && majors.length && topicTypes.length) {
       setFormData(prev => ({
         ...prev,
-        supervisorId: getId(resubmitTopic?.topic_instructor),
-        majorId: getId(resubmitTopic?.topic_major),
-        topicTypeId: getId(resubmitTopic?.topic_category),
+        topic_instructor: getId(resubmitTopic?.topic_instructor),
+        topic_major: getId(resubmitTopic?.topic_major),
+        topic_category: getId(resubmitTopic?.topic_category),
       }));
     }
     // eslint-disable-next-line
@@ -464,7 +464,7 @@ const Proposals = () => {
       const members = [leaderId];
       
       // Thêm các thành viên khác nếu có
-      for (let i = 2; i <= formData.maxMembers; i++) {
+      for (let i = 2; i <= formData.topic_max_members; i++) {
         const memberId = formData[`student${i}Id`];
         if (memberId) {
           members.push(memberId);
@@ -482,25 +482,17 @@ const Proposals = () => {
         const leader = students.find(s => s.user_id === user.user_id);
         creatorId = leader?._id;
       }
-      const proposalType = topicTypes.find(t => t._id === formData.topicTypeId)?.topic_category_title || '';
+      const proposalType = topicTypes.find(t => t._id === formData.topic_category)?.topic_category_title || '';
 
       const proposalData = {
-        topic_title: formData.topicName,
-        topic_instructor: formData.supervisorId,
-        topic_major: formData.majorId,
-        topic_category: formData.topicTypeId,
-        topic_description: formData.description,
-        topic_max_members: parseInt(formData.maxMembers),
+        topic_title: formData.topic_title,
+        topic_instructor: formData.topic_instructor,
+        topic_major: formData.topic_major,
+        topic_category: formData.topic_category,
+        topic_description: formData.topic_description,
+        topic_max_members: parseInt(formData.topic_max_members),
         topic_group_student: members,
         topic_creator: creatorId,
-        name: formData.topicName,
-        supervisor: instructors.find(i => i._id === formData.supervisorId)?.user_name || '',
-        reviewer: 'Chưa có',
-        type: proposalType,
-        studentId: user.user_id || '',
-        lecturer: instructors.find(i => i._id === formData.supervisorId)?.user_name || '',
-        major: majors.find(m => m._id === formData.majorId)?.major_title || '',
-        description: formData.description,
         topic_advisor_request: convertedPdfUrl
       };
 
@@ -523,11 +515,11 @@ const Proposals = () => {
         // Reset form
         setFormData({
           ...formData,
-          topicName: '',
-          supervisorId: '',
-          majorId: '',
-          topicTypeId: '',
-          description: '',
+          topic_title: '',
+          topic_instructor: '',
+          topic_major: '',
+          topic_category: '',
+          topic_description: '',
           student2Id: '',
           student3Id: '',
           student4Id: ''
@@ -572,14 +564,14 @@ const Proposals = () => {
         
         {/* Tên đề tài */}
         <div>
-          <label htmlFor="topicName" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="topic_title" className="block text-sm font-medium text-gray-700 mb-1">
              Tên đề tài <span className="text-red-500">*</span>
           </label>
           <input
             type="text"
-            id="topicName"
-            name="topicName"
-            value={formData.topicName}
+            id="topic_title"
+            name="topic_title"
+            value={formData.topic_title}
             onChange={handleChange}
             placeholder="Bạn vui lòng nhập tên đề tài ..."
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#008bc3] focus:border-[#008bc3] text-sm"
@@ -589,13 +581,13 @@ const Proposals = () => {
 
         {/* GVHD */}
         <div>
-          <label htmlFor="supervisorId" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="topic_instructor" className="block text-sm font-medium text-gray-700 mb-1">
              Giảng viên hướng dẫn <span className="text-red-500">*</span>
           </label>
           <select
-            id="supervisorId"
-            name="supervisorId"
-            value={formData.supervisorId}
+            id="topic_instructor"
+            name="topic_instructor"
+            value={formData.topic_instructor}
             onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#008bc3] focus:border-[#008bc3] text-sm bg-white"
             required
@@ -612,13 +604,13 @@ const Proposals = () => {
         {/* Chuyên ngành & Loại đề tài (Inline) */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label htmlFor="majorId" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="topic_major" className="block text-sm font-medium text-gray-700 mb-1">
               Chuyên ngành <span className="text-red-500">*</span>
             </label>
             <select
-              id="majorId"
-              name="majorId"
-              value={formData.majorId}
+              id="topic_major"
+              name="topic_major"
+              value={formData.topic_major}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#008bc3] focus:border-[#008bc3] text-sm bg-white"
               required
@@ -632,13 +624,13 @@ const Proposals = () => {
             </select>
           </div>
            <div>
-            <label htmlFor="topicTypeId" className="block text-sm font-medium text-gray-700 mb-1">
+            <label htmlFor="topic_category" className="block text-sm font-medium text-gray-700 mb-1">
               Loại đề tài <span className="text-red-500">*</span>
             </label>
             <select
-              id="topicTypeId"
-              name="topicTypeId"
-              value={formData.topicTypeId}
+              id="topic_category"
+              name="topic_category"
+              value={formData.topic_category}
               onChange={handleChange}
               className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#008bc3] focus:border-[#008bc3] text-sm bg-white"
               required
@@ -655,13 +647,13 @@ const Proposals = () => {
 
         {/* Số lượng thành viên */}
         <div>
-          <label htmlFor="maxMembers" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="topic_max_members" className="block text-sm font-medium text-gray-700 mb-1">
             Số lượng thành viên <span className="text-red-500">*</span>
           </label>
           <select
-            id="maxMembers"
-            name="maxMembers"
-            value={formData.maxMembers}
+            id="topic_max_members"
+            name="topic_max_members"
+            value={formData.topic_max_members}
             onChange={handleChange}
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#008bc3] focus:border-[#008bc3] text-sm bg-white"
             required
@@ -674,14 +666,14 @@ const Proposals = () => {
 
         {/* Mô tả chi tiết */}
         <div>
-          <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">
+          <label htmlFor="topic_description" className="block text-sm font-medium text-gray-700 mb-1">
              Mô tả chi tiết đề tài <span className="text-red-500">*</span>
           </label>
           <textarea
-            id="description"
-            name="description"
+            id="topic_description"
+            name="topic_description"
             rows="4"
-            value={formData.description}
+            value={formData.topic_description}
             onChange={handleChange}
             placeholder="Viết mô tả đề tài hoặc tính năng của đề tài ..."
             className="w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-1 focus:ring-[#008bc3] focus:border-[#008bc3] text-sm"
@@ -706,7 +698,7 @@ const Proposals = () => {
              </div>
 
             {/* Các thành viên khác */}
-            {Array.from({ length: formData.maxMembers - 1 }, (_, idx) => (
+            {Array.from({ length: formData.topic_max_members - 1 }, (_, idx) => (
               <div key={idx + 2}>
                 <label className="block text-sm font-medium text-gray-700 mb-1">
                   Sinh viên {idx + 2}

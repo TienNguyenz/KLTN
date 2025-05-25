@@ -109,60 +109,10 @@ const topicSchema = new mongoose.Schema({
         type: Boolean,
         default: false
     },
-    name: {
-        type: String,
-        required: true
-    },
-    supervisor: {
-        type: String,
-        required: true
-    },
-    // reviewer: {
-    //     type: String,
-    //     required: true
-    // },
-    type: {
-        type: String,
-        // enum: ['Ứng dụng', 'Nghiên cứu'],
-        enum: ['Tin tức'],
-        required: true
-    },
-    studentId: {
-        type: String,
-        required: true
-    },
-    lecturer: {
-        type: String,
-        required: true
-    },
     status: {
         type: String,
         enum: ['pending', 'waiting_admin', 'active', 'rejected'],
         default: 'pending'
-    },
-    maxStudents: {
-        type: Number,
-        default: 1
-    },
-    major: {
-        type: String,
-        required: true
-    },
-    description: {
-        type: String,
-        required: true
-    },
-    groups: [{
-        studentName: String,
-        studentId: String
-    }],
-    isReviewTopic: {
-        type: Boolean,
-        default: false
-    },
-    isCommitteeTopic: {
-        type: Boolean,
-        default: false
     },
     reject_reason: {
         type: String,

@@ -38,41 +38,32 @@ const TopicManagement = () => {
     },
     {
       title: 'Tên đề tài',
-      dataIndex: 'name',
-      key: 'name',
+      dataIndex: 'topic_title',
+      key: 'topic_title',
       width: '25%',
-      render: (text, record) => (
-        <div>
-          <div className="font-medium">{text}</div>
-          <div className="text-xs text-gray-500">
-            Loại: {record.type} | SV tối đa: {record.maxStudents}
-          </div>
-        </div>
-      ),
-      sorter: (a, b) => a.name.localeCompare(b.name),
     },
     {
       title: 'GVHD',
-      dataIndex: 'supervisor',
-      key: 'supervisor',
+      dataIndex: 'topic_instructor',
+      key: 'topic_instructor',
       width: '15%',
       render: (text, record) => (
         <div>
           <div>{text}</div>
-          <div className="text-xs text-gray-500">{record.supervisorCode}</div>
+          <div className="text-xs text-gray-500">{record.topic_instructor_code}</div>
         </div>
       ),
     },
     {
       title: 'Chuyên ngành',
-      dataIndex: 'major',
-      key: 'major',
+      dataIndex: 'topic_major',
+      key: 'topic_major',
       width: '15%',
       filters: majors.map(major => ({
         text: major.label,
         value: major.value,
       })),
-      onFilter: (value, record) => record.major === value,
+      onFilter: (value, record) => record.topic_major === value,
     },
     {
       title: 'Trạng thái',
@@ -149,34 +140,34 @@ const TopicManagement = () => {
     {
       key: '1',
       code: 'DT001',
-      name: 'Nghiên cứu ứng dụng AI trong y tế',
-      supervisor: 'Nguyễn Văn A',
-      supervisorCode: 'GV001',
-      major: 'CNTT',
-      type: 'Nghiên cứu',
-      maxStudents: 2,
+      topic_title: 'Nghiên cứu ứng dụng AI trong y tế',
+      topic_instructor: 'Nguyễn Văn A',
+      topic_instructor_code: 'GV001',
+      topic_major: 'CNTT',
+      topic_category: 'Nghiên cứu',
+      topic_max_members: 2,
       status: 'PENDING',
     },
     {
       key: '2',
       code: 'DT002',
-      name: 'Phát triển ứng dụng web với React',
-      supervisor: 'Trần Thị B',
-      supervisorCode: 'GV002',
-      major: 'KTPM',
-      type: 'Ứng dụng',
-      maxStudents: 3,
+      topic_title: 'Phát triển ứng dụng web với React',
+      topic_instructor: 'Trần Thị B',
+      topic_instructor_code: 'GV002',
+      topic_major: 'KTPM',
+      topic_category: 'Ứng dụng',
+      topic_max_members: 3,
       status: 'APPROVED',
     },
     {
       key: '3',
       code: 'DT003',
-      name: 'Xây dựng hệ thống IoT Smart Home',
-      supervisor: 'Lê Văn C',
-      supervisorCode: 'GV003',
-      major: 'MMT',
-      type: 'Ứng dụng',
-      maxStudents: 2,
+      topic_title: 'Xây dựng hệ thống IoT Smart Home',
+      topic_instructor: 'Lê Văn C',
+      topic_instructor_code: 'GV003',
+      topic_major: 'MMT',
+      topic_category: 'Ứng dụng',
+      topic_max_members: 2,
       status: 'IN_PROGRESS',
     },
   ];
@@ -194,23 +185,23 @@ const TopicManagement = () => {
             </div>
             <div>
               <div className="font-medium text-gray-500">Tên đề tài</div>
-              <div>{record.name}</div>
+              <div>{record.topic_title}</div>
             </div>
             <div>
               <div className="font-medium text-gray-500">GVHD</div>
-              <div>{record.supervisor} ({record.supervisorCode})</div>
+              <div>{record.topic_instructor} ({record.topic_instructor_code})</div>
             </div>
             <div>
               <div className="font-medium text-gray-500">Chuyên ngành</div>
-              <div>{record.major}</div>
+              <div>{record.topic_major}</div>
             </div>
             <div>
               <div className="font-medium text-gray-500">Loại đề tài</div>
-              <div>{record.type}</div>
+              <div>{record.topic_category}</div>
             </div>
             <div>
               <div className="font-medium text-gray-500">Số SV tối đa</div>
-              <div>{record.maxStudents}</div>
+              <div>{record.topic_max_members}</div>
             </div>
           </div>
           <div>
@@ -246,7 +237,7 @@ const TopicManagement = () => {
     confirm({
       title: 'Xác nhận duyệt đề tài',
       icon: <CheckCircleOutlined className="text-green-600" />,
-      content: `Bạn có chắc chắn muốn duyệt đề tài "${record.name}"?`,
+      content: `Bạn có chắc chắn muốn duyệt đề tài "${record.topic_title}"?`,
       okText: 'Duyệt',
       cancelText: 'Hủy',
       onOk() {
@@ -259,7 +250,7 @@ const TopicManagement = () => {
     confirm({
       title: 'Xác nhận từ chối đề tài',
       icon: <ExclamationCircleOutlined className="text-red-600" />,
-      content: `Bạn có chắc chắn muốn từ chối đề tài "${record.name}"?`,
+      content: `Bạn có chắc chắn muốn từ chối đề tài "${record.topic_title}"?`,
       okText: 'Từ chối',
       okType: 'danger',
       cancelText: 'Hủy',
@@ -279,7 +270,7 @@ const TopicManagement = () => {
     confirm({
       title: 'Xác nhận xóa đề tài',
       icon: <ExclamationCircleOutlined className="text-red-600" />,
-      content: `Bạn có chắc chắn muốn xóa đề tài "${record.name}"?`,
+      content: `Bạn có chắc chắn muốn xóa đề tài "${record.topic_title}"?`,
       okText: 'Xóa',
       okType: 'danger',
       cancelText: 'Hủy',
@@ -376,7 +367,7 @@ const TopicManagement = () => {
         <Form
           form={form}
           layout="vertical"
-          initialValues={{ maxStudents: 2 }}
+          initialValues={{ topic_max_members: 2 }}
         >
           <div className="grid grid-cols-2 gap-4">
             <Form.Item
@@ -388,7 +379,7 @@ const TopicManagement = () => {
             </Form.Item>
             
             <Form.Item
-              name="name"
+              name="topic_title"
               label="Tên đề tài"
               rules={[{ required: true, message: 'Vui lòng nhập tên đề tài!' }]}
             >
@@ -396,7 +387,7 @@ const TopicManagement = () => {
             </Form.Item>
 
             <Form.Item
-              name="supervisor"
+              name="topic_instructor"
               label="Giảng viên hướng dẫn"
               rules={[{ required: true, message: 'Vui lòng chọn GVHD!' }]}
             >
@@ -408,7 +399,7 @@ const TopicManagement = () => {
             </Form.Item>
 
             <Form.Item
-              name="major"
+              name="topic_major"
               label="Chuyên ngành"
               rules={[{ required: true, message: 'Vui lòng chọn chuyên ngành!' }]}
             >
@@ -420,7 +411,7 @@ const TopicManagement = () => {
             </Form.Item>
 
             <Form.Item
-              name="type"
+              name="topic_category"
               label="Loại đề tài"
               rules={[{ required: true, message: 'Vui lòng chọn loại đề tài!' }]}
             >
@@ -432,7 +423,7 @@ const TopicManagement = () => {
             </Form.Item>
 
             <Form.Item
-              name="maxStudents"
+              name="topic_max_members"
               label="Số sinh viên tối đa"
               rules={[{ required: true, message: 'Vui lòng nhập số sinh viên!' }]}
             >

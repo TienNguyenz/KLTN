@@ -64,28 +64,28 @@ const CommitteeTopicDetail = () => {
         <div className="space-y-6">
           <div>
             <div className="text-sm text-gray-500 mb-1">Tên đề tài</div>
-            <div className="text-base">{topic.name}</div>
+            <div className="text-base">{topic.topic_title}</div>
           </div>
 
           <div className="grid grid-cols-3 gap-6">
             <div>
               <div className="text-sm text-gray-500 mb-1">Số lượng thực hiện</div>
-              <div className="text-base">{topic.maxStudents || 1}</div>
+              <div className="text-base">{topic.maxStudents || topic.topic_max_members || 1}</div>
             </div>
             <div>
               <div className="text-sm text-gray-500 mb-1">Chuyên ngành</div>
-              <div className="text-base">{topic.major}</div>
+              <div className="text-base">{topic.topic_major?.major_title || topic.major}</div>
             </div>
             <div>
               <div className="text-sm text-gray-500 mb-1">Loại đề tài</div>
-              <div className="text-base">{topic.type}</div>
+              <div className="text-base">{topic.topic_category?.topic_category_title || topic.type}</div>
             </div>
           </div>
 
           <div>
             <div className="text-sm text-gray-500 mb-1">Mô tả đề tài</div>
             <div className="text-base whitespace-pre-line border rounded-md p-4 bg-gray-50 min-h-[100px]">
-              {topic.description}
+              {topic.topic_description}
             </div>
           </div>
         </div>
