@@ -424,26 +424,14 @@ const TopicDetail = () => {
                 <div className="text-gray-500">{selectedStudentDetail.user_id || '-'}</div>
               </div>
             </div>
+            <div><b>Địa chỉ thường trú:</b> {selectedStudentDetail.user_permanent_address || '-'}</div>
+            <div><b>Khoa:</b> {selectedStudentDetail.user_faculty || '-'}</div>
+            <div><b>Chuyên ngành:</b> {selectedStudentDetail.user_major || '-'}</div>
+            <div><b>Địa chỉ tạm trú:</b> {selectedStudentDetail.user_temporary_address || '-'}</div>
             <div><b>Ngày sinh:</b> {selectedStudentDetail.user_date_of_birth || '-'}</div>
             <div><b>CCCD:</b> {selectedStudentDetail.user_CCCD || '-'}</div>
             <div><b>Email:</b> {selectedStudentDetail.email || '-'}</div>
             <div><b>Số điện thoại:</b> {selectedStudentDetail.user_phone || '-'}</div>
-            <div><b>Địa chỉ thường trú:</b> {selectedStudentDetail.user_permanent_address || '-'}</div>
-            <div><b>Địa chỉ tạm trú:</b> {selectedStudentDetail.user_temporary_address || '-'}</div>
-            <div><b>Khoa:</b> {selectedStudentDetail.user_faculty || '-'}</div>
-            <div><b>Chuyên ngành:</b> {selectedStudentDetail.user_major || '-'}</div>
-            <div><b>Trạng thái:</b> {selectedStudentDetail.user_status || '-'}</div>
-            <div><b>Điểm TB:</b> {selectedStudentDetail.user_average_grade || '-'}</div>
-            <div>
-              <b>Bảng điểm:</b>{' '}
-              {selectedStudentDetail.user_transcript ? (
-                <a href={selectedStudentDetail.user_transcript} target="_blank" rel="noopener noreferrer" className="text-blue-600 underline">
-                  Xem bảng điểm
-                </a>
-              ) : (
-                '-'
-              )}
-            </div>
           </div>
         ) : (
           <div>Không tìm thấy thông tin sinh viên.</div>

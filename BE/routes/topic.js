@@ -81,7 +81,14 @@ router.get('/:id', async (req, res) => {
       .populate('topic_instructor', 'user_name user_id')
       .populate('topic_major', 'major_title')
       .populate('topic_category', 'topic_category_title')
-      .populate('topic_group_student', 'user_name user_id')
+      .populate({
+        path: 'topic_group_student',
+        select: 'user_name user_id email user_date_of_birth user_CCCD user_avatar user_phone user_address user_temporary_address user_major user_faculty user_status user_gpa user_transcript',
+        populate: [
+          { path: 'user_major', select: 'major_title' },
+          { path: 'user_faculty', select: 'faculty_title' }
+        ]
+      })
       .populate('topic_creator', 'user_name user_id role')
       .populate({ path: 'topic_assembly', model: 'Council', select: 'assembly_name' });
     if (!topic) {
@@ -103,7 +110,16 @@ router.get('/:id', async (req, res) => {
       topic_group_student: (topic.topic_group_student || []).map(student => ({
         _id: student._id,
         user_id: student.user_id,
-        user_name: student.user_name
+        user_name: student.user_name,
+        email: student.email,
+        user_date_of_birth: student.user_date_of_birth,
+        user_CCCD: student.user_CCCD,
+        user_avatar: student.user_avatar,
+        user_phone: student.user_phone,
+        user_permanent_address: student.user_permanent_address,
+        user_temporary_address: student.user_temporary_address,
+        user_major: student.user_major?.major_title || '',
+        user_faculty: student.user_faculty?.faculty_title || '',
       })),
       topic_creator: topic.topic_creator ? {
         name: topic.topic_creator.user_name,
@@ -378,6 +394,10 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
         return res.status(400).json({ message: 'Không tìm thấy thông tin loại đề tài.' });
       }
 
+
+      const fileUrl = req.file
+    ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
+    : '';
     // Tạo đề tài mới
     const newTopic = new Topic({
       topic_title,
@@ -386,12 +406,13 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
       topic_category,
       topic_description,
       topic_max_members,
-      topic_group_student: safe_group_student,
+      topic_group_student: Array.isArray(topic_group_student) ? topic_group_student : [],
       topic_creator,
       topic_teacher_status: 'pending',
       topic_leader_status: 'pending',
       topic_block: false,
       status: 'pending',
+      topic_advisor_request: fileUrl
     });
 
     await newTopic.save();
