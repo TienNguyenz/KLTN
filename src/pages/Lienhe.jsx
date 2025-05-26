@@ -18,7 +18,7 @@ const LienHePage = () => {
           <div className="text-gray-700 mb-4">
             <p><strong>Địa chỉ:</strong> 273 An Dương Vương, Phường 3, Quận 5, TP.HCM</p>
             <p><strong>Điện thoại:</strong> (028) 38 354 409</p>
-            <p><strong>Email:</strong> sgu@sgu.edu.vn</p>
+            <p><strong>Email:</strong> daihocsaigon@sgu.edu.vn</p>
             <p><strong>Website:</strong> <a href="https://sgu.edu.vn" className="text-[#008bc3] hover:underline">https://sgu.edu.vn</a></p>
           </div>
           <div className="flex gap-3 mt-4">

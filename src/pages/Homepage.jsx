@@ -3,7 +3,7 @@ import sliderImage from '../images/login_background.jpg';
 
 const Homepage = () => {
   return (
-    <div className="flex flex-col min-h-screen mt-32">
+    <div className="flex flex-col min-h-screen">
       <div className="flex-grow">
         {/* Hero Section */}
         <div className="relative h-[700px] bg-cover bg-center overflow-hidden"
@@ -18,10 +18,10 @@ const Homepage = () => {
               Nơi ươm mầm tri thức, chắp cánh ước mơ cho thế hệ trẻ Việt Nam. SGU - Đổi mới, sáng tạo, hội nhập quốc tế.
             </p>
             <div className="flex gap-4">
-              <a href="/gioithieu" className="px-8 py-3 bg-[#008bc3] text-white rounded-full font-semibold hover:bg-[#0073a8] transition-all duration-300 shadow-lg">
+              <a href="/about" className="px-8 py-3 bg-[#008bc3] text-white rounded-full font-semibold hover:bg-[#0073a8] transition-all duration-300 shadow-lg">
                 Tìm Hiểu SGU
               </a>
-              <a href="/lienhe" className="px-8 py-3 bg-white text-[#008bc3] rounded-full font-semibold hover:bg-gray-100 transition-all duration-300 shadow-lg">
+              <a href="/contact" className="px-8 py-3 bg-white text-[#008bc3] rounded-full font-semibold hover:bg-gray-100 transition-all duration-300 shadow-lg">
                 Liên Hệ Tuyển Sinh
               </a>
             </div>
@@ -79,7 +79,7 @@ const Homepage = () => {
                     <p className="text-gray-600">Đối Tác Doanh Nghiệp</p>
                   </div>
                 </div>
-                <a href="/gioithieu" className="inline-block px-8 py-3 bg-[#008bc3] text-white rounded-full font-semibold hover:bg-[#0073a8] transition-all duration-300">
+                <a href="/about" className="inline-block px-8 py-3 bg-[#008bc3] text-white rounded-full font-semibold hover:bg-[#0073a8] transition-all duration-300">
                   Tìm Hiểu Thêm
                 </a>
               </div>
@@ -94,7 +94,7 @@ const Homepage = () => {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
               <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
                 <div className="w-16 h-16 bg-[#008bc3] rounded-full flex items-center justify-center mb-6">
-                  <img src="/images/sgu_method.png" alt="Phương pháp học" className="w-10 h-10" />
+                  <img src="src/images/SGU-LOGO.png" alt="Phương pháp học" className="w-10 h-10" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4">Phương Pháp Học Hiện Đại</h3>
                 <p className="text-gray-600">Áp dụng phương pháp học tập tiên tiến, kết hợp lý thuyết và thực hành, giúp sinh viên phát triển toàn diện.</p>
@@ -102,7 +102,7 @@ const Homepage = () => {
 
               <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
                 <div className="w-16 h-16 bg-[#008bc3] rounded-full flex items-center justify-center mb-6">
-                  <img src="/images/sgu_job.png" alt="Cam kết việc làm" className="w-10 h-10" />
+                  <img src="src/images/SGU-LOGO.png" alt="Cam kết việc làm" className="w-10 h-10" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4">Cam Kết Việc Làm</h3>
                 <p className="text-gray-600">Hợp tác với doanh nghiệp, đảm bảo cơ hội việc làm cho sinh viên sau tốt nghiệp.</p>
@@ -110,7 +110,7 @@ const Homepage = () => {
 
               <div className="bg-white p-8 rounded-xl shadow-lg hover:shadow-xl transition-all duration-300">
                 <div className="w-16 h-16 bg-[#008bc3] rounded-full flex items-center justify-center mb-6">
-                  <img src="/images/sgu_env.png" alt="Môi trường học tập" className="w-10 h-10" />
+                  <img src="src/images/SGU-LOGO.png" alt="Môi trường học tập" className="w-10 h-10" />
                 </div>
                 <h3 className="text-2xl font-bold mb-4">Môi Trường Học Tập Lý Tưởng</h3>
                 <p className="text-gray-600">Cơ sở vật chất hiện đại, không gian học tập sáng tạo, thân thiện, năng động.</p>
@@ -125,7 +125,7 @@ const Homepage = () => {
             <h2 className="text-4xl font-bold text-center mb-12">Tin Tức SGU</h2>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               <article className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
-                <img src="/images/sgu_news1.jpg" alt="SGU News 1" className="w-full h-64 object-cover" />
+                <img src="src/images/Hội nghị Nghiên cứu khoa học Trường Đại học Sài Gòn năm 2025.jpg" alt="SGU News 1" className="w-full h-64 object-cover" />
                 <div className="p-6">
                   <h4 className="text-2xl font-bold mb-3">
                     SGU tổ chức hội thảo quốc tế về chuyển đổi số trong giáo dục
@@ -141,7 +141,7 @@ const Homepage = () => {
               </article>
 
               <article className="bg-white rounded-xl overflow-hidden shadow-lg hover:shadow-xl transition-all duration-300">
-                <img src="/images/sgu_news2.jpg" alt="SGU News 2" className="w-full h-64 object-cover" />
+                <img src="src/images/Lễ khai mạc Kỳ thi Olympic Toán học Sinh viên và Học sinh Lần thứ 31 – năm 2025.jpg" alt="SGU News 2" className="w-full h-64 object-cover" />
                 <div className="p-6">
                   <h4 className="text-2xl font-bold mb-3">
                     Sinh viên SGU đạt giải thưởng Olympic Tin học toàn quốc
@@ -168,15 +168,15 @@ const Homepage = () => {
                 <div className="p-6">
                   <div className="flex items-center mb-4">
                     <div className="bg-[#008bc3] text-white p-4 rounded-lg text-center mr-4">
-                      <p className="text-lg font-semibold">Tháng 5</p>
+                      <p className="text-lg font-semibold">Tháng 7</p>
                       <p className="text-4xl font-bold">20</p>
                     </div>
                     <div>
-                      <h3 className="text-xl font-bold">Ngày hội việc làm SGU 2024</h3>
+                      <h3 className="text-xl font-bold">Ngày hội việc làm SGU 2025</h3>
                       <p className="text-gray-500">08:00 - 16:00</p>
                     </div>
                   </div>
-                  <a href="/thongbao" className="text-[#008bc3] font-semibold hover:text-[#0073a8] transition-colors">
+                  <a href="/notifications" className="text-[#008bc3] font-semibold hover:text-[#0073a8] transition-colors">
                     Xem Chi Tiết →
                   </a>
                 </div>
@@ -193,7 +193,7 @@ const Homepage = () => {
               <p className="text-gray-600 mb-6">
                 Mọi thắc mắc về tuyển sinh, chương trình đào tạo, vui lòng liên hệ với chúng tôi qua email: <b>sgu@sgu.edu.vn</b> hoặc số điện thoại <b>(028) 38 354 409</b>.
               </p>
-              <a href="/lienhe" className="inline-block px-8 py-3 bg-[#008bc3] text-white rounded-full font-semibold hover:bg-[#0073a8] transition-all duration-300">
+              <a href="/contact" className="inline-block px-8 py-3 bg-[#008bc3] text-white rounded-full font-semibold hover:bg-[#0073a8] transition-all duration-300">
                 Liên Hệ Ngay
               </a>
             </div>

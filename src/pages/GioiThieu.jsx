@@ -1,4 +1,10 @@
 import { Link } from "react-router-dom";
+import imgKhuonVien from '../images/Khuôn viên trường.jpg';
+import imgSinhVien from '../images/Sinhvien.png';
+import imgNangDong from '../images/Năng động.webp';
+import imgSangTao from '../images/Sáng tạo.png';
+import imgHoiNhap from '../images/Hội nhập.jfif';
+import imgTrachNhiem from '../images/Trách nhiệm.webp';
 
 export default function GioiThieu() {
   return (
@@ -52,12 +58,12 @@ export default function GioiThieu() {
 
         <div className="mt-6 md:mt-0 flex flex-col gap-6">
           <img
-            src="/images/sgu_campus2.jpg"
+            src={imgKhuonVien}
             alt="Khuôn viên Đại học Sài Gòn"
             className="w-full h-64 object-cover rounded-lg shadow-lg mb-4"
           />
           <img
-            src="/images/sgu_students.jpg"
+            src={imgSinhVien}
             alt="Sinh viên SGU"
             className="w-full h-64 object-cover rounded-lg shadow-lg"
           />
@@ -70,14 +76,14 @@ export default function GioiThieu() {
           <p className="text-gray-600 mb-10 max-w-2xl mx-auto">SGU tạo điều kiện cho sinh viên phát triển toàn diện qua các hoạt động ngoại khóa, câu lạc bộ, phong trào tình nguyện, nghiên cứu khoa học, giao lưu quốc tế...</p>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-8">
-            {[ { title: "Năng động", img: "sgu_team1" }, 
-               { title: "Sáng tạo", img: "sgu_team2" }, 
-               { title: "Hội nhập", img: "sgu_team3" }, 
-               { title: "Trách nhiệm", img: "sgu_team4" } 
+            {[ { title: "Năng động", img: imgNangDong }, 
+               { title: "Sáng tạo", img: imgSangTao }, 
+               { title: "Hội nhập", img: imgHoiNhap }, 
+               { title: "Trách nhiệm", img: imgTrachNhiem } 
              ].map((item) => (
               <div key={item.title} className="bg-white p-6 rounded-lg shadow-md hover:shadow-xl transition-shadow duration-300 transform hover:-translate-y-1 flex flex-col items-center">
                 <img
-                  src={`/images/${item.img}.jpg`}
+                  src={item.img}
                   alt={item.title}
                   className="w-full h-48 object-cover rounded-md mb-5 shadow-sm"
                 />

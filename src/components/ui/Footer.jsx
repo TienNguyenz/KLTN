@@ -21,8 +21,8 @@ const Footer = () => {
                         </li>
                         <li className="flex items-center space-x-4">
                             <img src="/src/images/Communication-gmail-icon.png" alt="Email" className="w-8 h-8" />
-                            <a href="mailto:sgu@sgu.edu.vn" className="hover:underline">
-                            sgu@sgu.edu.vn
+                            <a href="mailto:daihocsaigon@sgu.edu.vn" className="hover:underline">
+                            daihocsaigon@sgu.edu.vn
                             </a>
                         </li>
                         <li className="flex items-center space-x-4">
@@ -64,7 +64,7 @@ const Footer = () => {
                             <span>Twitter</span>
                         </li>
                         <li className="flex items-center space-x-4">
-                            <img src="/src/images/pinterest_icon.png" alt="Pinterest" className="w-8 h-8" />
+                            <img src="/src/images/pinterest_icon.png" alt="Pinterest" className="w-8 h-8"/>
                             <span>Pinterest</span>
                         </li>
                     </ul>
