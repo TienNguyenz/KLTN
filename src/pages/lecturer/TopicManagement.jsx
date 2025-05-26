@@ -99,13 +99,12 @@ const TopicManagement = () => {
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Loại đề tài</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">SV Thực Hiện</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giảng viên</th>
-                <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Giáo vụ</th>
                 <th className="px-4 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">Hành động</th>
               </tr>
             </thead>
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
-                <tr><td colSpan="7" className="p-4 text-center text-gray-500">Đang tải...</td></tr>
+                <tr><td colSpan="6" className="p-4 text-center text-gray-500">Đang tải...</td></tr>
               ) : filteredTopics.length > 0 ? (
                 filteredTopics.map((topic) => (
                   <tr key={topic._id} className="hover:bg-gray-50">
@@ -116,11 +115,6 @@ const TopicManagement = () => {
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusConfig[topic.topic_teacher_status]?.color || 'bg-gray-100 text-gray-800'}`}>
                         {statusConfig[topic.topic_teacher_status]?.text || '-'}
-                       </span>
-                    </td>
-                     <td className="px-4 py-3 whitespace-nowrap">
-                      <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${statusConfig[topic.topic_leader_status]?.color || 'bg-gray-100 text-gray-800'}`}>
-                        {statusConfig[topic.topic_leader_status]?.text || '-'}
                        </span>
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-sm font-medium space-x-2">
@@ -135,7 +129,7 @@ const TopicManagement = () => {
                   </tr>
                 ))
               ) : (
-                 <tr><td colSpan="7" className="p-4 text-center text-gray-500">Không có đề tài nào.</td></tr>
+                 <tr><td colSpan="6" className="p-4 text-center text-gray-500">Không có đề tài nào.</td></tr>
               )}
             </tbody>
           </table>

@@ -45,18 +45,18 @@ const SupervisedTopics = () => {
     const fetchTopics = async () => {
       setLoading(true);
       try {
-        if (!user || !user._id) return; // Đảm bảo đã có user
-        // Truyền lecturerId nếu backend yêu cầu
-        const response = await axios.get(`/api/topics/supervised-topics?lecturerId=${user._id}`);
-        setData(response.data);
+        if (!user || !user.id) return; // Sử dụng user.id giống TopicManagement.jsx
+        // Lấy danh sách đề tài giống trang quản lý đề tài
+        const response = await axios.get(`/api/topics/instructor/${user.id}/all`);
+        setData(response.data || []);
       } catch {
         setData([]);
       } finally {
         setLoading(false);
       }
     };
-    fetchTopics();
-  }, [user && user._id]);
+    if (user && user.id) fetchTopics();
+  }, [user && user.id]);
 
   useEffect(() => {
     if (!user || !user._id) return;
@@ -76,25 +76,20 @@ const SupervisedTopics = () => {
     const categoryObj = typeof topic.topic_category === 'object' && topic.topic_category !== null
       ? topic.topic_category
       : categories.find(c => c._id === topic.topic_category);
-    let statusLabel = '';
-    if (topic.status === 'pending') statusLabel = 'PENDING';
-    else if (topic.status === 'waiting_admin') statusLabel = 'WAITING ADMIN';
-    else if (topic.status === 'active') statusLabel = 'ACTIVE';
-    else if (topic.status === 'rejected') statusLabel = 'REJECTED';
     return {
       id: topic._id,
       title: topic.topic_title,
       supervisor: instructorObj?.user_name || 'N/A',
       reviewer: reviewerObj?.user_name || 'Chưa có',
-      type: categoryObj?.topic_category_title || 'N/A',
+      type: categoryObj?.topic_category_title || categoryObj?.type_name || 'N/A',
       studentCount: topic.topic_group_student?.length || 0,
       lecturer: instructorObj?.user_name || 'N/A',
-      status: statusLabel
+      teacher_status: topic.topic_teacher_status, // trạng thái duyệt của giảng viên
     };
   });
 
-  const validStatuses = ['WAITING ADMIN', 'ACTIVE'];
-  const filteredData = mappedData.filter(item => validStatuses.includes(item.status));
+  // Lọc các đề tài mà giảng viên đã duyệt
+  const filteredData = mappedData.filter(item => item.teacher_status === 'approved');
 
   const getColumnSearchProps = (dataIndex) => ({
     filterDropdown: ({ setSelectedKeys, selectedKeys, confirm, clearFilters }) => (
@@ -169,7 +164,7 @@ const SupervisedTopics = () => {
       'Loại đề tài': item.type,
       'SVTH': item.studentCount,
       'Giảng viên': item.lecturer,
-      'Trạng thái': item.status,
+      'Trạng thái': item.teacher_status,
     }));
     const ws = XLSX.utils.json_to_sheet(exportData);
     const wb = XLSX.utils.book_new();
@@ -226,33 +221,6 @@ const SupervisedTopics = () => {
       width: '8%',
       align: 'center',
     },
-    {
-      title: 'Giảng viên',
-      dataIndex: 'lecturer',
-      key: 'lecturer',
-      width: '15%',
-      ...getColumnSearchProps('lecturer'),
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      width: '12%',
-      align: 'center',
-      filters: [
-        { text: 'ACTIVE', value: 'ACTIVE' },
-        { text: 'WAITING ADMIN', value: 'WAITING ADMIN' },
-      ],
-      onFilter: (value, record) => record.status === value,
-      render: (status) => (
-        <Tag color={
-          status === 'ACTIVE' ? 'success' :
-          status === 'WAITING ADMIN' ? 'warning' : 'default'
-        } className="px-3 py-1">
-          {status}
-        </Tag>
-      ),
-    },
   ];
 
   if (loading) return <div className="p-6">Đang tải...</div>;
@@ -280,10 +248,10 @@ const SupervisedTopics = () => {
           pagination={{
             current: currentPage,
             pageSize: pageSize,
-            total: mappedData.length,
+            total: filteredData.length,
             showSizeChanger: true,
             showQuickJumper: true,
-            showTotal: (total) => `Tổng cộng ${total} đề tài.`,
+            showTotal: (total) => `Tổng cộng ${total} đề tài`,
             onChange: (page, pageSize) => {
               setCurrentPage(page);
               setPageSize(pageSize);
@@ -293,6 +261,9 @@ const SupervisedTopics = () => {
           size="middle"
           className="custom-table"
         />
+        <div className="mt-2 text-right pr-4 text-gray-700 font-medium">
+          Tổng cộng {filteredData.length} đề tài
+        </div>
       </div>
       <div className="mt-6">
         {notifications.map(noti => (
