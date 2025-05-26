@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Table, Button, Modal, Space, Input, Select, Tooltip } from 'antd';
 import { EyeOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
-import { getTopics } from '../../data/mockThesisData';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -130,7 +129,7 @@ const TopicList = () => {
 
       <Table 
         columns={columns} 
-        dataSource={getTopics()}
+        dataSource={[]}
         rowKey="id"
       />
 

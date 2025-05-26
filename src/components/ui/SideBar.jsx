@@ -10,6 +10,7 @@ import {
   FaCalendarAlt,
   FaClipboardList,
   FaFileAlt,
+  FaTrash,
 } from "react-icons/fa";
 import Logo from "../../images/login_background.jpg";
 import { useState } from "react";
@@ -80,6 +81,11 @@ const Sidebar = ({ setSelected }) => {
                 icon={<FaBook />}
                 text="Đề tài sẵn có"
                 onClick={() => setSelected("available-topics")}
+              />
+              <MenuItem
+                icon={<FaTrash />}
+                text="Yêu cầu xóa đề tài"
+                onClick={() => setSelected("delete-requests")}
               />
             </div>
           )}

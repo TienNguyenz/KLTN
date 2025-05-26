@@ -1,1 +1,0 @@
-{"indexes":[{"v":{"$numberInt":"2"},"key":{"_id":{"$numberInt":"1"}},"name":"_id_"},{"v":{"$numberInt":"2"},"key":{"major_title":{"$numberInt":"1"}},"name":"major_title_1","background":true,"unique":true}],"uuid":"67ae41e5433f424faaf58e5b2a3a1b79","collectionName":"majors","type":"collection"}

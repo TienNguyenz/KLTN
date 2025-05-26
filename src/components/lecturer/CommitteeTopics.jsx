@@ -113,7 +113,6 @@ const CommitteeTopics = () => {
     const exportData = topics.map(item => ({
       'Tên đề tài': item.title,
       'GVHD': item.supervisor,
-      'GVPB': item.reviewer,
       'Loại đề tài': item.type,
       'SVTH': item.studentId,
       'Giảng viên': item.lecturer,
@@ -148,13 +147,6 @@ const CommitteeTopics = () => {
       key: 'supervisor',
       width: '15%',
       ...getColumnSearchProps('supervisor'),
-    },
-    {
-      title: 'GVPB',
-      dataIndex: 'reviewer',
-      key: 'reviewer',
-      width: '15%',
-      ...getColumnSearchProps('reviewer'),
     },
     {
       title: 'Loại đề tài',

@@ -11,6 +11,7 @@ import Registration from "./admin/Registration.jsx";
 import Semester from "./admin/Semester.jsx";
 import Evaluation from "./admin/Evaluation.jsx";
 import AvailableTopics from '../components/admin/AvailableTopics';
+import DeleteRequests from '../components/admin/DeleteRequests';
 import axios from "axios";
 
 const Home = () => {
@@ -124,6 +125,7 @@ const Home = () => {
             {selected === "semester" && "Quản lý Học kỳ"}
             {selected === "registration-period" && "Quản lý Đợt đăng ký"}
             {selected === "evaluation-form" && "Quản lý Phiếu đánh giá"}
+            {selected === "delete-requests" && "Yêu cầu xóa đề tài"}
           </h1>
 
           {/* Nội dung component động */}
@@ -138,6 +140,7 @@ const Home = () => {
             {selected === "semester" && <Semester />}
             {selected === "registration-period" && <Registration />}
             {selected === "evaluation-form" && <Evaluation />}
+            {selected === "delete-requests" && <DeleteRequests />}
           </div>
         </main>
       </div>

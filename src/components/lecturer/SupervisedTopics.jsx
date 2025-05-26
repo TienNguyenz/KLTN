@@ -160,7 +160,6 @@ const SupervisedTopics = () => {
     const exportData = mappedData.map(item => ({
       'Tên đề tài': item.title,
       'GVHD': item.supervisor,
-      'GVPB': item.reviewer,
       'Loại đề tài': item.type,
       'SVTH': item.studentCount,
       'Giảng viên': item.lecturer,
@@ -200,13 +199,6 @@ const SupervisedTopics = () => {
       ...getColumnSearchProps('supervisor'),
     },
     {
-      title: 'GVPB',
-      dataIndex: 'reviewer',
-      key: 'reviewer',
-      width: '15%',
-      ...getColumnSearchProps('reviewer'),
-    },
-    {
       title: 'Loại đề tài',
       dataIndex: 'type',
       key: 'type',
@@ -230,7 +222,7 @@ const SupervisedTopics = () => {
   return (
     <div className="p-6 bg-gray-50 min-h-screen">
       <div className="mb-6 flex justify-between items-center">
-        <Title level={5} className="text-gray-800 m-0">image.png</Title>
+        <Title level={5} className="text-gray-800 m-0">Đề tài hướng dẫn</Title>
         <Button 
           type="primary" 
           icon={<FileExcelOutlined />} 

@@ -69,11 +69,9 @@ router.get('/', async (req, res) => {
 
 // Lấy chi tiết đề tài theo ID
 router.get('/:id', async (req, res) => {
-  console.log(`topic.js: Hit GET /${req.params.id}`);
   try {
     // Kiểm tra xem id có phải là ObjectId hợp lệ không
     if (!mongoose.Types.ObjectId.isValid(req.params.id)) {
-      console.log(`topic.js: Invalid ID format: ${req.params.id}`);
       return res.status(400).json({ success: false, message: 'ID đề tài không hợp lệ' });
     }
 
@@ -83,16 +81,15 @@ router.get('/:id', async (req, res) => {
       .populate('topic_category', 'topic_category_title')
       .populate({
         path: 'topic_group_student',
-        select: 'user_name user_id email user_date_of_birth user_CCCD user_avatar user_phone user_address user_temporary_address user_major user_faculty user_status user_gpa user_transcript',
+        select: 'user_name user_id email user_date_of_birth user_CCCD user_avatar user_phone user_permanent_address user_temporary_address user_major user_faculty user_status user_gpa user_transcript',
         populate: [
           { path: 'user_major', select: 'major_title' },
-          { path: 'user_faculty', select: 'faculty_title' }
+          { path: 'user_faculty', select: 'faculty_title', model: 'Faculty' }
         ]
       })
       .populate('topic_creator', 'user_name user_id role')
       .populate({ path: 'topic_assembly', model: 'Council', select: 'assembly_name' });
     if (!topic) {
-      console.log(`topic.js: Topic with ID ${req.params.id} not found`);
       return res.status(404).json({ success: false, message: 'Không tìm thấy đề tài' });
     }
     const formattedTopic = {
@@ -118,8 +115,11 @@ router.get('/:id', async (req, res) => {
         user_phone: student.user_phone,
         user_permanent_address: student.user_permanent_address,
         user_temporary_address: student.user_temporary_address,
-        user_major: student.user_major?.major_title || '',
-        user_faculty: student.user_faculty?.faculty_title || '',
+        user_major: student.user_major?.major_title || student.user_major || '',
+        user_faculty: student.user_faculty || '',
+        user_status: student.user_status,
+        user_gpa: student.user_gpa,
+        user_transcript: student.user_transcript
       })),
       topic_creator: topic.topic_creator ? {
         name: topic.topic_creator.user_name,
@@ -1153,6 +1153,149 @@ router.post('/upload-advisor-request', upload.single('file'), async (req, res) =
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+// Delete topic
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    console.log('Delete topic request:', {
+      topicId: req.params.id,
+      userId: req.user._id,
+      userRole: req.user.role
+    });
+
+    const topic = await Topic.findById(req.params.id);
+    
+    if (!topic) {
+      console.log('Topic not found:', req.params.id);
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đề tài để xóa' });
+    }
+
+    // Kiểm tra quyền xóa
+    const isInstructor = topic.topic_instructor && topic.topic_instructor.toString() === req.user._id.toString();
+    const isAdmin = req.user.role === 'admin';
+
+    console.log('Permission check:', {
+      isInstructor,
+      isAdmin,
+      topicTeacherStatus: topic.topic_teacher_status,
+      topicLeaderStatus: topic.topic_leader_status
+    });
+
+    // Nếu đã được cả giảng viên và leader duyệt
+    if (topic.topic_teacher_status === 'approved' && topic.topic_leader_status === 'approved') {
+      // Chỉ admin mới có quyền xóa
+      if (!isAdmin) {
+        // Nếu là giảng viên, gửi yêu cầu xóa cho admin
+        if (isInstructor) {
+          topic.delete_request = true;
+          topic.delete_reason = req.body.delete_reason || '';
+          await topic.save();
+
+          // Tìm user admin
+          const adminUser = await User.findOne({ role: 'giaovu' });
+          if (adminUser) {
+            await UserNotification.create({
+              user_notification_title: 'Yêu cầu xóa đề tài',
+              user_notification_sender: req.user._id,
+              user_notification_recipient: adminUser._id,
+              user_notification_content: `Giảng viên yêu cầu xóa đề tài "${topic.topic_title}". Lý do: ${req.body.delete_reason || 'Không có lý do.'}`,
+              user_notification_type: 2,
+              user_notification_isRead: false,
+              user_notification_topic: 'topic',
+            });
+          }
+
+          return res.json({ success: true, message: 'Đã gửi yêu cầu xóa cho admin.' });
+        }
+        return res.status(403).json({ success: false, message: 'Không có quyền xóa đề tài này.' });
+      }
+    }
+
+    // Nếu giảng viên đã từ chối đề tài, cho phép xóa luôn
+    if (topic.topic_teacher_status === 'rejected' && isInstructor) {
+      await Topic.findByIdAndDelete(req.params.id);
+      return res.json({ success: true, message: 'Xóa đề tài thành công.' });
+    }
+
+    // Nếu leader chưa duyệt, cho phép giảng viên xóa
+    if (topic.topic_leader_status === 'pending' && isInstructor) {
+      await Topic.findByIdAndDelete(req.params.id);
+      return res.json({ success: true, message: 'Xóa đề tài thành công.' });
+    }
+
+    // Admin có thể xóa bất kỳ đề tài nào
+    if (isAdmin) {
+      await Topic.findByIdAndDelete(req.params.id);
+      return res.json({ success: true, message: 'Xóa đề tài thành công.' });
+    }
+
+    console.log('No permission to delete topic');
+    res.status(403).json({ success: false, message: 'Không có quyền xóa đề tài này.' });
+  } catch (err) {
+    console.error('Error deleting topic:', err);
+    res.status(500).json({ 
+      success: false, 
+      message: 'Lỗi khi xóa đề tài', 
+      error: err.message,
+      stack: process.env.NODE_ENV === 'development' ? err.stack : undefined
+    });
+  }
+});
+
+// Admin duyệt yêu cầu xóa đề tài
+router.post('/:id/approve-delete', auth, async (req, res) => {
+  try {
+    const topic = await Topic.findById(req.params.id);
+    if (!topic || !topic.delete_request) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đề tài chờ xóa' });
+    }
+    await Topic.findByIdAndDelete(req.params.id);
+
+    // Gửi notification cho giảng viên
+    await UserNotification.create({
+      user_notification_title: 'Yêu cầu xóa đề tài được duyệt',
+      user_notification_sender: req.user?._id, // id admin
+      user_notification_recipient: topic.topic_instructor, // id giảng viên
+      user_notification_content: `Yêu cầu xóa đề tài "${topic.topic_title}" của bạn đã được duyệt thành công.`,
+      user_notification_type: 2,
+      user_notification_isRead: false,
+      user_notification_topic: 'topic',
+    });
+
+    res.json({ success: true, message: 'Đã xóa đề tài.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Lỗi khi duyệt xóa đề tài', error: err.message });
+  }
+});
+
+// Admin từ chối yêu cầu xóa đề tài
+router.post('/:id/reject-delete', auth, async (req, res) => {
+  try {
+    const { reject_reason } = req.body;
+    const topic = await Topic.findById(req.params.id);
+    if (!topic || !topic.delete_request) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy đề tài chờ xóa' });
+    }
+    topic.delete_request = false;
+    topic.delete_reason = '';
+    await topic.save();
+
+    // Gửi notification cho giảng viên
+    await UserNotification.create({
+      user_notification_title: 'Yêu cầu xóa đề tài bị từ chối',
+      user_notification_sender: req.user?._id, // id admin
+      user_notification_recipient: topic.topic_instructor, // id giảng viên
+      user_notification_content: `Yêu cầu xóa đề tài "${topic.topic_title}" bị từ chối. Lý do: ${reject_reason || 'Không có lý do.'}`,
+      user_notification_type: 2,
+      user_notification_isRead: false,
+      user_notification_topic: 'topic',
+    });
+
+    res.json({ success: true, message: 'Đã từ chối yêu cầu xóa.' });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Lỗi khi từ chối xóa đề tài', error: err.message });
   }
 });
 

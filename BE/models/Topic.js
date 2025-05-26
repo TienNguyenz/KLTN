@@ -117,6 +117,15 @@ const topicSchema = new mongoose.Schema({
     reject_reason: {
         type: String,
         trim: true
+    },
+    delete_request: {
+        type: Boolean,
+        default: false
+    },
+    delete_reason: {
+        type: String,
+        trim: true,
+        default: ''
     }
 }, { timestamps: true, collection: 'Topic' });
 

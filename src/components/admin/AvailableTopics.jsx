@@ -12,8 +12,19 @@ const AvailableTopics = () => {
 
   useEffect(() => {
     setLoading(true);
-    axios.get('/api/topics/approved')
-      .then(res => setTopics(res.data.data || res.data || []))
+    axios.get('/api/topics')
+      .then(res => {
+        const allTopics = res.data.data || res.data || [];
+        console.log('All topics:', allTopics);
+        const filtered = allTopics.filter(
+          t =>
+            Array.isArray(t.topic_group_student)
+              ? t.topic_group_student.filter(Boolean).length === 0
+              : !t.topic_group_student || t.topic_group_student.length === 0
+        );
+        console.log('Filtered topics:', filtered);
+        setTopics(filtered);
+      })
       .catch(() => message.error('Không thể tải danh sách đề tài!'))
       .finally(() => setLoading(false));
   }, []);
@@ -27,19 +38,21 @@ const AvailableTopics = () => {
   const columns = [
     { title: 'STT', dataIndex: 'stt', key: 'stt', render: (_, __, idx) => idx + 1, width: 60 },
     { title: 'Tên đề tài', dataIndex: 'topic_title', key: 'topic_title' },
-    { title: 'GVHD', dataIndex: 'lecturer', key: 'lecturer', render: (l) => l?.name || '-' },
-    { title: 'Chuyên ngành', dataIndex: 'major', key: 'major', render: (m) => m?.major_title || '-' },
-    { title: 'Loại đề tài', dataIndex: 'category', key: 'category', render: (c) => c?.topic_category_title || '-' },
-    { title: 'Học kỳ', dataIndex: 'semester', key: 'semester' },
-    { title: 'Số lượng', dataIndex: 'current', key: 'current', render: (_, r) => `${r.current || 0}/${r.max || 1}` },
+    { title: 'GVHD', dataIndex: 'topic_instructor', key: 'topic_instructor', render: (giangvien) => giangvien?.user_name || '-' },
+    { title: 'Chuyên ngành', dataIndex: 'topic_major', key: 'topic_major', render: (major) => major?.major_title || '-' },
+    { title: 'Loại đề tài', dataIndex: 'topic_category', key: 'topic_category', render: (cat) => cat?.topic_category_title || '-' },
+    { title: 'Học kỳ', dataIndex: 'topic_registration_period', key: 'topic_registration_period', render: (sem) => sem?.semester || '-' },
+    { title: 'Số SV tối đa', dataIndex: 'topic_max_members', key: 'topic_max_members' },
+    { title: 'Số SV hiện tại', dataIndex: 'topic_group_student', key: 'topic_group_student', render: (arr) => arr?.length || 0 },
     { title: 'Mô tả', dataIndex: 'topic_description', key: 'topic_description', ellipsis: true },
+    { title: 'Trạng thái', dataIndex: 'status', key: 'status', render: (status) => status || '-' },
     {
       title: 'Thao tác',
       key: 'action',
       render: (_, record) => (
         <Button
           type="primary"
-          disabled={record.current >= record.max}
+          disabled={record.topic_group_student?.length >= record.topic_max_members}
           onClick={() => handleRegister(record._id)}
         >
           Chọn

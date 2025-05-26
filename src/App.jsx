@@ -25,8 +25,6 @@ import LecturerLayout from "./components/lecturer/LecturerLayout";
 import TopicManagement from "./pages/lecturer/TopicManagement";
 import AddTopic from "./pages/lecturer/AddTopic";
 import EditTopic from "./pages/lecturer/EditTopic";
-import ApproveTopicList from "./pages/lecturer/ApproveTopicList";
-import ApproveGroupDetails from "./pages/lecturer/ApproveGroupDetails";
 import ProposedTopics from "./pages/lecturer/ProposedTopics";
 import SupervisedTopics from "./components/lecturer/SupervisedTopics";
 import ReviewTopics from './components/lecturer/ReviewTopics';
@@ -110,8 +108,6 @@ const AppLayout = () => {
           <Route path="topics/add" element={<AddTopic />} />
           <Route path="topics/:id/edit" element={<EditTopic />} />
           <Route path="topics/:id" element={<TopicDetail />} />
-          <Route path="approve-groups" element={<ApproveTopicList />} />
-          <Route path="approve-groups/:topicId" element={<ApproveGroupDetails />} />
           <Route path="proposed-topics" element={<ProposedTopics />} />
           <Route path="proposed-topics/:id" element={<TopicDetail />} />
           <Route path="supervised-topics" element={<SupervisedTopics />} />

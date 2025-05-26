@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Button, Spin, Alert, Input, Select, Form, Card } from 'antd';
+import { Button, Spin, Alert, Input, Select, Form, Card, message, Modal } from 'antd';
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { FaSave, FaArrowLeft, FaTrash, FaPaperPlane } from 'react-icons/fa';
@@ -18,6 +18,8 @@ const EditTopic = () => {
   const [majors, setMajors] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [deleteModalVisible, setDeleteModalVisible] = useState(false);
+  const [deleteReason, setDeleteReason] = useState('');
 
   useEffect(() => {
     const fetchDropdowns = async () => {
@@ -94,13 +96,40 @@ const EditTopic = () => {
     }
   };
 
-  const handleDelete = async () => {
-    if (window.confirm('Bạn có chắc chắn muốn xóa đề tài này?')) {
-      try {
-        await axios.delete(`/api/topics/${id}`);
-      navigate('/lecturer/topics');
-      } catch {
-        alert('Có lỗi khi xóa đề tài!');
+  const handleDelete = async (reason) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        message.error('Vui lòng đăng nhập lại');
+        return;
+      }
+      const res = await axios.delete(
+        `http://localhost:5000/api/topics/${id}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: { delete_reason: reason }
+        }
+      );
+      if (res.data?.message?.includes('Đã gửi yêu cầu xóa cho admin')) {
+        window.alert('Yêu cầu xóa đã được gửi đến giáo vụ!');
+        navigate('/lecturer/topics');
+      } else if (res.data?.message?.includes('Xóa đề tài thành công')) {
+        window.alert('Xóa đề tài thành công');
+        navigate('/lecturer/topics');
+      } else {
+        window.alert(res.data?.message || 'Thao tác thành công');
+        navigate('/lecturer/topics');
+      }
+    } catch (error) {
+      console.error('Error deleting topic:', error);
+      if (error.response?.status === 401) {
+        message.error('Phiên đăng nhập hết hạn, vui lòng đăng nhập lại');
+        navigate('/login');
+      } else {
+        message.error(error.response?.data?.message || 'Lỗi khi xóa đề tài');
       }
     }
   };
@@ -241,7 +270,7 @@ const EditTopic = () => {
               className="hover:bg-red-700 shadow-md"
               icon={<FaTrash className="mr-2" />} 
               size="large"
-              onClick={handleDelete}
+              onClick={() => setDeleteModalVisible(true)}
             >
               Xóa
             </Button>
@@ -267,6 +296,29 @@ const EditTopic = () => {
             </Button>
           </div>
         </Card>
+        <Modal
+          title="Xác nhận xóa đề tài"
+          open={deleteModalVisible}
+          onOk={async () => {
+            await handleDelete(deleteReason);
+            setDeleteModalVisible(false);
+            setDeleteReason('');
+          }}
+          onCancel={() => {
+            setDeleteModalVisible(false);
+            setDeleteReason('');
+          }}
+          okText="Xóa"
+          cancelText="Hủy"
+        >
+          <p>Nhập lý do xóa đề tài:</p>
+          <Input.TextArea
+            value={deleteReason}
+            onChange={e => setDeleteReason(e.target.value)}
+            rows={4}
+            placeholder="Nhập lý do xóa..."
+          />
+        </Modal>
       </div>
     );
   }
@@ -378,7 +430,7 @@ const EditTopic = () => {
               className="hover:bg-red-700 shadow-md"
               icon={<FaTrash className="mr-2" />} 
               size="large"
-              onClick={handleDelete}
+              onClick={() => setDeleteModalVisible(true)}
             >
               Xóa
             </Button>

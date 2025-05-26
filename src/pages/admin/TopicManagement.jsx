@@ -1,6 +1,8 @@
 import React, { useState } from 'react';
 import { Table, Button, Space, Tag, Input, Select, Modal, Form, message, Tooltip, Badge } from 'antd';
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined, EyeOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
+import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const { Option } = Select;
 const { confirm } = Modal;
@@ -12,6 +14,7 @@ const TopicManagement = () => {
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingTopic, setEditingTopic] = useState(null);
   const [form] = Form.useForm();
+  const navigate = useNavigate();
 
   // Mock data cho các chuyên ngành và trạng thái
   const majors = [
@@ -266,18 +269,36 @@ const TopicManagement = () => {
     setIsModalVisible(true);
   };
 
-  const handleDelete = (record) => {
-    confirm({
-      title: 'Xác nhận xóa đề tài',
-      icon: <ExclamationCircleOutlined className="text-red-600" />,
-      content: `Bạn có chắc chắn muốn xóa đề tài "${record.topic_title}"?`,
-      okText: 'Xóa',
-      okType: 'danger',
-      cancelText: 'Hủy',
-      onOk() {
-        message.success('Đã xóa đề tài!');
-      },
-    });
+  const handleDelete = async (record) => {
+    try {
+      const token = localStorage.getItem('token');
+      if (!token) {
+        message.error('Vui lòng đăng nhập lại');
+        return;
+      }
+      const res = await axios.delete(
+        `http://localhost:5000/api/topics/${record.key}`,
+        {
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json'
+          },
+          data: { delete_reason: 'Yêu cầu xóa từ giảng viên' }
+        }
+      );
+      if (res.data?.message?.includes('Đã gửi yêu cầu xóa cho admin')) {
+        window.alert('Yêu cầu xóa đã được gửi đến giáo vụ!');
+        navigate('/lecturer/topics');
+      } else if (res.data?.message?.includes('Xóa đề tài thành công')) {
+        window.alert('Xóa đề tài thành công');
+        navigate('/lecturer/topics');
+      } else {
+        window.alert(res.data?.message || 'Thao tác thành công');
+        navigate('/lecturer/topics');
+      }
+    } catch (error) {
+      // ... như cũ
+    }
   };
 
   const handleModalOk = () => {
