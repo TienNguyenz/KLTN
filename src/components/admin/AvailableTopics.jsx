@@ -1,0 +1,65 @@
+import React, { useEffect, useState } from 'react';
+import { Table, Button, message } from 'antd';
+import axios from 'axios';
+import { Link, useNavigate } from 'react-router-dom';
+import { Menu } from 'antd';
+import { FaBook } from 'react-icons/fa';
+
+const AvailableTopics = () => {
+  const [topics, setTopics] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    setLoading(true);
+    axios.get('/api/topics/approved')
+      .then(res => setTopics(res.data.data || res.data || []))
+      .catch(() => message.error('Không thể tải danh sách đề tài!'))
+      .finally(() => setLoading(false));
+  }, []);
+
+  const handleRegister = (topicId) => {
+    axios.post('/api/topics/register', { topicId })
+      .then(() => message.success('Đăng ký thành công!'))
+      .catch(() => message.error('Đăng ký thất bại!'));
+  };
+
+  const columns = [
+    { title: 'STT', dataIndex: 'stt', key: 'stt', render: (_, __, idx) => idx + 1, width: 60 },
+    { title: 'Tên đề tài', dataIndex: 'topic_title', key: 'topic_title' },
+    { title: 'GVHD', dataIndex: 'lecturer', key: 'lecturer', render: (l) => l?.name || '-' },
+    { title: 'Chuyên ngành', dataIndex: 'major', key: 'major', render: (m) => m?.major_title || '-' },
+    { title: 'Loại đề tài', dataIndex: 'category', key: 'category', render: (c) => c?.topic_category_title || '-' },
+    { title: 'Học kỳ', dataIndex: 'semester', key: 'semester' },
+    { title: 'Số lượng', dataIndex: 'current', key: 'current', render: (_, r) => `${r.current || 0}/${r.max || 1}` },
+    { title: 'Mô tả', dataIndex: 'topic_description', key: 'topic_description', ellipsis: true },
+    {
+      title: 'Thao tác',
+      key: 'action',
+      render: (_, record) => (
+        <Button
+          type="primary"
+          disabled={record.current >= record.max}
+          onClick={() => handleRegister(record._id)}
+        >
+          Chọn
+        </Button>
+      ),
+    },
+  ];
+
+  return (
+    <div style={{ padding: 24 }}>
+      <h2>Đề tài sẵn có</h2>
+      <Table
+        columns={columns}
+        dataSource={topics}
+        rowKey={r => r._id}
+        loading={loading}
+        pagination={{ pageSize: 10 }}
+      />
+    </div>
+  );
+};
+
+export default AvailableTopics; 

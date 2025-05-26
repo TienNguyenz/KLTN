@@ -10,6 +10,7 @@ import ThesisList from "../components/ui/ThesisList.jsx";
 import Registration from "./admin/Registration.jsx";
 import Semester from "./admin/Semester.jsx";
 import Evaluation from "./admin/Evaluation.jsx";
+import AvailableTopics from '../components/admin/AvailableTopics';
 import axios from "axios";
 
 const Home = () => {
@@ -118,6 +119,7 @@ const Home = () => {
             {selected === "lecturers" && "Quản lý Giảng viên"}
             {selected === "topic-list" && "Danh sách đề tài"}
             {selected === "topic-approval" && "Xét duyệt đề tài"}
+            {selected === "available-topics" && "Đề tài sẵn có"}
             {selected === "councils" && "Quản lý Hội đồng"}
             {selected === "semester" && "Quản lý Học kỳ"}
             {selected === "registration-period" && "Quản lý Đợt đăng ký"}
@@ -132,6 +134,7 @@ const Home = () => {
             {selected === "councils" && <CouncilManagement />}
             {selected === "topic-list" && <ThesisList />}
             {selected === "topic-approval" && <ThesisApproval setSelected={setSelected} />}
+            {selected === "available-topics" && <AvailableTopics />}
             {selected === "semester" && <Semester />}
             {selected === "registration-period" && <Registration />}
             {selected === "evaluation-form" && <Evaluation />}

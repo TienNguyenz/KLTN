@@ -76,6 +76,11 @@ const Sidebar = ({ setSelected }) => {
                 text="Xét duyệt đề tài"
                 onClick={() => setSelected("topic-approval")}
               />
+              <MenuItem
+                icon={<FaBook />}
+                text="Đề tài sẵn có"
+                onClick={() => setSelected("available-topics")}
+              />
             </div>
           )}
         </div>
