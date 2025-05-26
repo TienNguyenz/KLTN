@@ -57,9 +57,10 @@ router.get('/', async (req, res) => {
     const topics = await Topic.find({
       status: 'active'
     })
-      .populate('topic_instructor', 'user_name')
-      .populate('topic_major', 'major_name')
-      .populate('topic_category', 'type_name')
+      .populate('topic_instructor', 'user_name user_id email')
+      .populate('topic_major', 'major_title')
+      .populate('topic_category', 'topic_category_title')
+      .populate('topic_registration_period', 'semester title')
       .populate('topic_group_student', 'user_name user_id');
     res.json({ success: true, data: topics });
   } catch (err) {

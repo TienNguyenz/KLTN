@@ -12,21 +12,48 @@ const AvailableTopics = () => {
 
   useEffect(() => {
     setLoading(true);
-    axios.get('/api/topics')
-      .then(res => {
+    const fetchTopics = async () => {
+      try {
+        const res = await axios.get('/api/topics');
         const allTopics = res.data.data || res.data || [];
-        console.log('All topics:', allTopics);
-        const filtered = allTopics.filter(
+        
+        // Fetch details for each topic
+        const topicsWithDetails = await Promise.all(
+          allTopics.map(async (topic) => {
+            try {
+              const [categoryRes, majorRes] = await Promise.all([
+                axios.get(`/api/topic-categories/${topic.topic_category._id}`),
+                axios.get(`/api/majors/${topic.topic_major._id}`)
+              ]);
+              
+              return {
+                ...topic,
+                topic_category: categoryRes.data.data || categoryRes.data,
+                topic_major: majorRes.data.data || majorRes.data
+              };
+            } catch (error) {
+              console.error('Error fetching details:', error);
+              return topic;
+            }
+          })
+        );
+
+        const filtered = topicsWithDetails.filter(
           t =>
             Array.isArray(t.topic_group_student)
               ? t.topic_group_student.filter(Boolean).length === 0
               : !t.topic_group_student || t.topic_group_student.length === 0
         );
-        console.log('Filtered topics:', filtered);
+        
         setTopics(filtered);
-      })
-      .catch(() => message.error('Không thể tải danh sách đề tài!'))
-      .finally(() => setLoading(false));
+      } catch (error) {
+        message.error('Không thể tải danh sách đề tài!');
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTopics();
   }, []);
 
   const handleRegister = (topicId) => {
@@ -39,13 +66,11 @@ const AvailableTopics = () => {
     { title: 'STT', dataIndex: 'stt', key: 'stt', render: (_, __, idx) => idx + 1, width: 60 },
     { title: 'Tên đề tài', dataIndex: 'topic_title', key: 'topic_title' },
     { title: 'GVHD', dataIndex: 'topic_instructor', key: 'topic_instructor', render: (giangvien) => giangvien?.user_name || '-' },
-    { title: 'Chuyên ngành', dataIndex: 'topic_major', key: 'topic_major', render: (major) => major?.major_title || '-' },
-    { title: 'Loại đề tài', dataIndex: 'topic_category', key: 'topic_category', render: (cat) => cat?.topic_category_title || '-' },
-    { title: 'Học kỳ', dataIndex: 'topic_registration_period', key: 'topic_registration_period', render: (sem) => sem?.semester || '-' },
+    { title: 'Chuyên ngành', dataIndex: 'topic_major', key: 'topic_major', render: (major) => major?.major_title || major?.name || '-' },
+    { title: 'Loại đề tài', dataIndex: 'topic_category', key: 'topic_category', render: (cat) => cat?.topic_category_title || cat?.type_name || '-' },
+    { title: 'Học kỳ', dataIndex: 'topic_registration_period', key: 'topic_registration_period', render: (sem) => sem?.semester || sem?.title || '-' },
     { title: 'Số SV tối đa', dataIndex: 'topic_max_members', key: 'topic_max_members' },
     { title: 'Số SV hiện tại', dataIndex: 'topic_group_student', key: 'topic_group_student', render: (arr) => arr?.length || 0 },
-    { title: 'Mô tả', dataIndex: 'topic_description', key: 'topic_description', ellipsis: true },
-    { title: 'Trạng thái', dataIndex: 'status', key: 'status', render: (status) => status || '-' },
     {
       title: 'Thao tác',
       key: 'action',
