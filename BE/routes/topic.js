@@ -57,10 +57,10 @@ router.get('/', async (req, res) => {
     const topics = await Topic.find({
       status: 'active'
     })
-    .populate('topic_instructor', 'user_name')
-    .populate('topic_major', 'major_name')
-    .populate('topic_category', 'type_name')
-    .populate('topic_group_student', 'user_name user_id');
+      .populate('topic_instructor', 'user_name')
+      .populate('topic_major', 'major_name')
+      .populate('topic_category', 'type_name')
+      .populate('topic_group_student', 'user_name user_id');
     res.json({ success: true, data: topics });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -392,7 +392,6 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
       topic_leader_status: 'pending',
       topic_block: false,
       status: 'pending',
-      topic_advisor_request: req.body.topic_advisor_request || '',
     });
 
     await newTopic.save();
@@ -481,12 +480,7 @@ router.get('/instructor/:instructorId/proposals', async (req, res) => {
     .populate('topic_category', 'topic_category_title')
     .sort({ createdAt: -1 });
     console.log('Kết quả trả về:', topics.length, topics.map(t => t.topic_title));
-    // Bổ sung trường topic_advisor_request vào object trả về
-    const result = topics.map(t => ({
-      ...t.toObject(),
-      topic_advisor_request: t.topic_advisor_request || ''
-    }));
-    res.json(result);
+    res.json(topics);
   } catch (err) {
     console.error('Error fetching instructor proposals:', err);
     res.status(500).json({ error: err.message });
@@ -1094,7 +1088,10 @@ router.put('/:id/resubmit', async (req, res) => {
     topic.status = 'pending';
     topic.topic_block = false;
     topic.reject_reason = '';
-
+    // Cập nhật file advisor request mới nếu có
+    if (req.body.topic_advisor_request) {
+      topic.topic_advisor_request = req.body.topic_advisor_request;
+    }
     await topic.save();
 
     res.json({ message: 'Đề xuất lại đề tài thành công', topic });

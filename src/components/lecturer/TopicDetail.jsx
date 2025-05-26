@@ -300,9 +300,9 @@ const TopicDetail = () => {
                     Xem tài liệu
                   </a>
                 ) : (
-                  <Button type="link" danger disabled>
-                    Chưa nộp
-                  </Button>
+                <Button type="link" danger disabled>
+                  Chưa nộp
+                </Button>
                 )}
               </Space>
             </Card>
@@ -311,43 +311,43 @@ const TopicDetail = () => {
       </Card>
 
       <Card>
-        <Title level={5}>Nhóm đăng ký</Title>
-        {topic.topic_group_student && topic.topic_group_student.length > 0 ? (
-          <div className="mt-4 overflow-x-auto">
-            <table className="min-w-full border rounded-lg shadow-sm bg-white">
-              <thead>
-                <tr className="bg-gray-100 text-gray-700">
-                  <th className="px-4 py-2 border text-center">STT</th>
-                  <th className="px-4 py-2 border text-center">Số lượng</th>
-                  <th className="px-4 py-2 border text-center">Thành viên</th>
-                  <th className="px-4 py-2 border text-center">Mã số SV</th>
-                  <th className="px-4 py-2 border text-center">Chi tiết</th>
-                </tr>
-              </thead>
-              <tbody>
-                {topic.topic_group_student.map((student, idx) => (
-                  <tr key={student._id || student.user_id || student.id || idx} className="hover:bg-blue-50 transition">
-                    <td className="px-4 py-2 border text-center font-semibold">{idx + 1}</td>
-                    <td className="px-4 py-2 border text-center">1</td>
-                    <td className="px-4 py-2 border text-center">{student.user_name || student.name || '-'}</td>
-                    <td className="px-4 py-2 border text-center">{student.user_id || '-'}</td>
-                    <td className="px-4 py-2 border text-center">
-                      <Button
-                        type="link"
-                        icon={<EyeOutlined />}
-                        onClick={() => handleViewStudentDetail(student)}
-                        className="text-green-600 hover:text-green-800"
-                        style={{ fontSize: 18 }}
-                      />
-                    </td>
+          <Title level={5}>Nhóm đăng ký</Title>
+          {topic.topic_group_student && topic.topic_group_student.length > 0 ? (
+            <div className="mt-4 overflow-x-auto">
+              <table className="min-w-full border rounded-lg shadow-sm bg-white">
+                <thead>
+                  <tr className="bg-gray-100 text-gray-700">
+                    <th className="px-4 py-2 border text-center">STT</th>
+                    <th className="px-4 py-2 border text-center">Số lượng</th>
+                    <th className="px-4 py-2 border text-center">Thành viên</th>
+                    <th className="px-4 py-2 border text-center">Mã số SV</th>
+                    <th className="px-4 py-2 border text-center">Chi tiết</th>
                   </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        ) : (
-          <div className="text-gray-500 mt-4">Chưa có sinh viên đăng ký</div>
-        )}
+                </thead>
+                <tbody>
+                  {topic.topic_group_student.map((student, idx) => (
+                    <tr key={student._id || student.user_id || student.id || idx} className="hover:bg-blue-50 transition">
+                      <td className="px-4 py-2 border text-center font-semibold">{idx + 1}</td>
+                      <td className="px-4 py-2 border text-center">1</td>
+                      <td className="px-4 py-2 border text-center">{student.user_name || student.name || '-'}</td>
+                      <td className="px-4 py-2 border text-center">{student.user_id || '-'}</td>
+                      <td className="px-4 py-2 border text-center">
+                        <Button
+                          type="link"
+                          icon={<EyeOutlined />}
+                          onClick={() => handleViewStudentDetail(student)}
+                          className="text-green-600 hover:text-green-800"
+                          style={{ fontSize: 18 }}
+                        />
+                      </td>
+                    </tr>
+              ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-gray-500 mt-4">Chưa có sinh viên đăng ký</div>
+          )}
       </Card>
 
       <Modal

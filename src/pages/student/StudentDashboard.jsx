@@ -49,12 +49,12 @@ const TopicDetails = () => {
               <p className="text-red-500 mb-4">Lý do: {registeredTopic.reject_reason}</p>
             )}
             <div className="flex flex-col md:flex-row justify-center gap-4 mt-4">
-              <button
+            <button
                 className="bg-[#008bc3] hover:bg-[#0073a8] text-white font-semibold py-2 px-6 rounded-full transition-colors duration-300"
                 onClick={() => navigate('/student/proposals', { state: { resubmitTopic: registeredTopic } })}
-              >
-                Đề xuất lại đề tài
-              </button>
+            >
+              Đề xuất lại đề tài
+            </button>
               <button
                 className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-full transition-colors duration-300"
                 onClick={() => navigate('/student/proposals')}
@@ -510,22 +510,22 @@ const Proposals = () => {
         isSuccess = response.data;
       }
       if (isSuccess) {
-        alert('Đề xuất đã được gửi thành công!');
-        // Reset form
-        setFormData({
-          ...formData,
+          alert('Đề xuất đã được gửi thành công!');
+          // Reset form
+          setFormData({
+            ...formData,
           topic_title: '',
           topic_instructor: '',
           topic_major: '',
           topic_category: '',
           topic_description: '',
-          student2Id: '',
-          student3Id: '',
-          student4Id: ''
-        });
-        setGuidanceFile(null);
-        navigate('/student'); // Chuyển về trang chủ sinh viên
-      }
+            student2Id: '',
+            student3Id: '',
+            student4Id: ''
+          });
+          setGuidanceFile(null);
+          navigate('/student'); // Chuyển về trang chủ sinh viên
+        }
     } catch (err) {
       if (err.response) {
         const data = err.response.data;
@@ -774,14 +774,14 @@ const Proposals = () => {
               <span className="inline-block px-4 py-2 bg-gray-200 rounded cursor-pointer text-sm font-medium hover:bg-gray-300">Chọn file</span>
             </label>
             {(docFile || guidanceFile) && !convertedPdfUrl && (
-              <button
-                type="button"
+            <button
+              type="button"
                 className={`px-4 py-2 rounded text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
                 disabled={isUploading}
                 onClick={handleUploadAdvisorRequest}
               >
                 {isUploading ? 'Đang tải...' : 'Tải lên'}
-              </button>
+            </button>
             )}
           </div>
           <p className="mt-1 text-xs text-gray-500">Hỗ trợ các định dạng: PDF, DOC, DOCX</p>
