@@ -3,24 +3,54 @@ import React from 'react';
 const ThongBaoPage = () => {
   const notifications = [
     {
-      title: 'Lịch nghỉ lễ 30/4 & 1/5 năm 2024',
-      date: '15/04/2024',
-      desc: 'Trường Đại học Sài Gòn thông báo lịch nghỉ lễ 30/4 & 1/5 cho toàn thể sinh viên, giảng viên từ 27/04 đến hết 01/05/2024.'
+      title: 'Trường Đại học Sài Gòn tổ chức bảo vệ luận án tiến sĩ cấp Cơ sở đào tạo cho Nghiên cứu sinh Nguyễn Minh Đảo',
+      date: '23/05/2025',
+      desc: 'Bảo vệ luận án tiến sĩ ngành Lịch sử Việt Nam, mã số 9229013, vào 08g00, thứ Năm, ngày 26/6/2025 tại Phòng B.101, Trường Đại học Sài Gòn.'
     },
     {
-      title: 'Thông báo tuyển sinh đại học chính quy 2024',
-      date: '01/03/2024',
-      desc: 'SGU bắt đầu nhận hồ sơ tuyển sinh đại học chính quy năm 2024 từ ngày 10/03/2024. Xem chi tiết tại website tuyển sinh.'
+      title: 'Mở ngành đào tạo Lịch sử, Địa lý học',
+      date: '19/05/2025',
+      desc: 'Trường Đại học Sài Gòn thông báo mở ngành đào tạo mới: Lịch sử và Địa lý học.'
     },
     {
-      title: 'Học bổng khuyến khích học tập học kỳ 2 năm học 2023-2024',
-      date: '20/02/2024',
-      desc: 'Sinh viên có thành tích học tập xuất sắc sẽ được xét cấp học bổng khuyến khích học tập. Xem danh sách và điều kiện tại phòng CTSV.'
+      title: 'Thông báo tuyển sinh đào tạo trình độ tiến sĩ khóa 12',
+      date: '19/05/2025',
+      desc: 'Thông báo tuyển sinh đào tạo trình độ tiến sĩ khóa 12 tại Trường Đại học Sài Gòn.'
     },
     {
-      title: 'Hội thảo khoa học "Chuyển đổi số trong giáo dục đại học"',
-      date: '10/02/2024',
-      desc: 'Kính mời giảng viên, sinh viên đăng ký tham dự hội thảo khoa học về chuyển đổi số trong giáo dục đại học tổ chức tại SGU ngày 25/03/2024.'
+      title: 'Thông báo tuyển sinh đào tạo trình độ thạc sĩ khóa 22',
+      date: '19/05/2025',
+      desc: 'Thông báo tuyển sinh đào tạo trình độ thạc sĩ khóa 22 tại Trường Đại học Sài Gòn.'
+    },
+    {
+      title: 'Thông báo tuyển sinh lớp Bồi dưỡng Nghiệp vụ sư phạm dành cho người có bằng cử nhân chuyên ngành phù hợp có nguyện vọng trở thành giáo viên Tiểu học – Khóa 14 năm 2025',
+      date: '16/05/2025',
+      desc: 'Tuyển sinh lớp Bồi dưỡng Nghiệp vụ sư phạm dành cho người có bằng cử nhân chuyên ngành phù hợp có nguyện vọng trở thành giáo viên Tiểu học – Khóa 14 năm 2025.'
+    },
+    {
+      title: 'Thông báo tuyển sinh lớp Bồi dưỡng Nghiệp vụ sư phạm dành cho người có bằng cử nhân chuyên ngành phù hợp có nguyện vọng trở thành giáo viên trung học cơ sở, trung học phổ thông – Khóa 14 năm 2025',
+      date: '16/05/2025',
+      desc: 'Tuyển sinh lớp Bồi dưỡng Nghiệp vụ sư phạm dành cho người có bằng cử nhân chuyên ngành phù hợp có nguyện vọng trở thành giáo viên THCS, THPT – Khóa 14 năm 2025.'
+    },
+    {
+      title: 'Thông báo Tuyển sinh lớp Bồi dưỡng giáo viên dạy các môn Lịch sử và Địa lý, Khoa học tự nhiên, Tin học và Công nghệ năm 2025',
+      date: '16/05/2025',
+      desc: 'Tuyển sinh lớp Bồi dưỡng giáo viên dạy các môn Lịch sử và Địa lý, Khoa học tự nhiên, Tin học và Công nghệ năm 2025.'
+    },
+    {
+      title: 'Thông báo tuyển sinh các lớp Bồi dưỡng theo tiêu chuẩn chức danh nghề nghiệp giáo viên trường mầm non, tiểu học, trung học cơ sở năm 2025',
+      date: '16/05/2025',
+      desc: 'Tuyển sinh các lớp Bồi dưỡng theo tiêu chuẩn chức danh nghề nghiệp giáo viên trường mầm non, tiểu học, trung học cơ sở năm 2025.'
+    },
+    {
+      title: 'Thông báo về kết quả xét bổ nhiệm lần đầu và bổ nhiệm lại chức danh giáo sư, phó giáo sư năm 2025 của Trường Đại học Sài Gòn',
+      date: '09/04/2025',
+      desc: 'Kết quả xét bổ nhiệm lần đầu và bổ nhiệm lại chức danh giáo sư, phó giáo sư năm 2025.'
+    },
+    {
+      title: 'Thông báo về việc tổ chức thi và cấp chứng chỉ tiếng Anh theo Khung năng lực ngoại ngữ 6 bậc dùng cho Việt Nam – Ngày thi 26, 27 tháng 04 năm 2025',
+      date: '03/04/2025',
+      desc: 'Tổ chức thi và cấp chứng chỉ tiếng Anh theo Khung năng lực ngoại ngữ 6 bậc dùng cho Việt Nam vào ngày 26, 27/04/2025.'
     },
   ];
 

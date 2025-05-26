@@ -1,19 +1,26 @@
-import { Link, useNavigate } from "react-router-dom";
+import { Link, useNavigate, useLocation } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
 
 export default function Header() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const location = useLocation();
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
+  const handleNavClick = (path) => {
+    if (location.pathname === path) {
+      window.scrollTo({ top: 0, behavior: "smooth" });
+    }
+  };
+
   return (
     <header className="bg-white shadow-md px-4 py-3 flex items-center justify-between sticky top-0 left-0 w-full z-50">
       <div className="flex items-center">
-        <Link to="/">
+        <Link to="/" onClick={() => handleNavClick("/")}>
           <img 
             src="/src/images/SGU-LOGO.png" 
             alt="Logo SGU" 
@@ -22,11 +29,11 @@ export default function Header() {
         </Link>
       </div>
       <nav className="hidden md:flex space-x-6 items-center">
-        <Link to="/" className="text-base font-medium text-gray-600 hover:text-[#008bc3]">Trang chủ</Link>
-        <Link to="/about" className="text-base font-medium text-gray-600 hover:text-[#008bc3]">Giới thiệu</Link>
-        <Link to="/news" className="text-base font-medium text-gray-600 hover:text-[#008bc3]">Tin tức</Link>
-        <Link to="/notifications" className="text-base font-medium text-gray-600 hover:text-[#008bc3]">Thông báo</Link>
-        <Link to="/contact" className="text-base font-medium text-gray-600 hover:text-[#008bc3]">Liên hệ</Link>
+        <Link to="/" onClick={() => handleNavClick("/")} className="text-base font-medium text-gray-600 hover:text-[#008bc3]">Trang chủ</Link>
+        <Link to="/about" onClick={() => handleNavClick("/about")} className="text-base font-medium text-gray-600 hover:text-[#008bc3]">Giới thiệu</Link>
+        <Link to="/news" onClick={() => handleNavClick("/news")} className="text-base font-medium text-gray-600 hover:text-[#008bc3]">Tin tức</Link>
+        <Link to="/notifications" onClick={() => handleNavClick("/notifications")} className="text-base font-medium text-gray-600 hover:text-[#008bc3]">Thông báo</Link>
+        <Link to="/contact" onClick={() => handleNavClick("/contact")} className="text-base font-medium text-gray-600 hover:text-[#008bc3]">Liên hệ</Link>
       </nav>
       <div className="flex items-center space-x-4">
         {user ? (

@@ -5,6 +5,7 @@ import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import TopicDetail from "./components/lecturer/TopicDetail";
 import HomeRoleManage from "./pages/HomeRoleManage";
+import ScrollToTop from './pages/ScrollToTop';
 
 // Import các trang công khai
 import HomePage from "./pages/Homepage";
@@ -50,6 +51,7 @@ const UserProfilePlaceholder = () => <div className="p-8"><h1>Trang Cá Nhân</h
 function App() {
   return (
     <Router>
+      <ScrollToTop />
       <AuthProvider>
         <AppLayout />
       </AuthProvider>
