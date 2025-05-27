@@ -254,4 +254,20 @@ router.get('/check-user-id', async (req, res) => {
   }
 });
 
+// Lấy chi tiết faculty theo _id
+router.get('/faculties/:id', require('../controllers/userController').getFacultyById);
+
+// Lấy chi tiết chuyên ngành theo _id
+router.get('/majors/:id', async (req, res) => {
+  try {
+    const major = await Major.findById(req.params.id);
+    if (!major) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy chuyên ngành' });
+    }
+    res.json({ success: true, data: major });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Lỗi server', error: err.message });
+  }
+});
+
 module.exports = router; 

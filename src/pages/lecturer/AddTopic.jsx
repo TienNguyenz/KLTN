@@ -17,6 +17,7 @@ const AddTopic = () => {
   const [topicTypes, setTopicTypes] = useState([]);
   const [students, setStudents] = useState([]);
   const [showStudentModal, setShowStudentModal] = useState(false);
+  const [majorName, setMajorName] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -41,6 +42,18 @@ const AddTopic = () => {
     };
     fetchData();
   }, []);
+
+  useEffect(() => {
+    if (user?.user_major && typeof user.user_major === 'string') {
+      axios.get(`/api/majors/${user.user_major}`)
+        .then(res => setMajorName(res.data?.data?.major_title || res.data?.data?.name || user.user_major))
+        .catch(() => setMajorName(user.user_major));
+    } else if (user?.user_major && typeof user.user_major === 'object') {
+      setMajorName(user.user_major.major_title || user.user_major.name || 'Không xác định');
+    } else {
+      setMajorName('Không xác định');
+    }
+  }, [user]);
 
   // Adjust selected students if studentCount changes
   useEffect(() => {
@@ -137,7 +150,7 @@ const AddTopic = () => {
       const payload = {
         topic_title: topicName,
         topic_instructor: lecturerId,
-        topic_major: user.user_major,
+        topic_major: user.user_major?._id || user.user_major,
         topic_category: topicType,
         topic_description: description,
         topic_max_members: studentCount,
@@ -163,6 +176,8 @@ const AddTopic = () => {
     <div className="p-6 md:p-8 bg-gray-100 min-h-full">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Thêm Đề Tài Mới</h1>
 
+      <button type="button" onClick={() => navigate('/lecturer/topics')} className="mb-4 px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500">Quay lại</button>
+
       <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-lg shadow-md space-y-6">
         {/* Row 1: Semester and Topic Type */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -182,23 +197,31 @@ const AddTopic = () => {
             </select>
           </div>
           <div>
-            <label htmlFor="topicType" className="block text-sm font-medium text-gray-700 mb-1">Loại đề tài</label>
-            <select 
-              id="topicType"
-              value={topicType}
-              onChange={(e) => setTopicType(e.target.value)}
-              required
-              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
-            >
-              <option value="">Vui lòng chọn</option>
-              {Array.isArray(topicTypes) && topicTypes.map(t => (
-                <option key={t._id} value={t._id}>{t.topic_category_title}</option>
-              ))}
-            </select>
+            <label className="block text-sm font-medium text-gray-700 mb-1">Chuyên ngành</label>
+            <div className="mt-1 block w-full border border-gray-300 rounded-md shadow-sm py-2 px-3 bg-gray-100 text-gray-700">
+              {majorName}
+            </div>
           </div>
         </div>
 
-        {/* Row 2: Topic Name */}
+        {/* Row 2: Topic Type */}
+        <div>
+          <label htmlFor="topicType" className="block text-sm font-medium text-gray-700 mb-1">Loại đề tài</label>
+          <select 
+            id="topicType"
+            value={topicType}
+            onChange={(e) => setTopicType(e.target.value)}
+            required
+            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
+          >
+            <option value="">Vui lòng chọn</option>
+            {Array.isArray(topicTypes) && topicTypes.map(t => (
+              <option key={t._id} value={t._id}>{t.topic_category_title}</option>
+            ))}
+          </select>
+        </div>
+
+        {/* Row 3: Topic Name */}
         <div>
           <label htmlFor="topicName" className="block text-sm font-medium text-gray-700 mb-1">Tên đề tài</label>
           <input 
@@ -212,7 +235,7 @@ const AddTopic = () => {
           />
         </div>
 
-        {/* Row 3: Student Count and Select Button */}
+        {/* Row 4: Student Count and Select Button */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-end">
            <div>
              <label htmlFor="studentCount" className="block text-sm font-medium text-gray-700 mb-1">Số lượng sinh viên thực hiện</label>
@@ -253,7 +276,7 @@ const AddTopic = () => {
             </div>
         </div>
 
-         {/* Row 4: Selected Students List */}
+         {/* Row 5: Selected Students List */}
          <div>
              <label className="block text-sm font-medium text-gray-700 mb-1">Danh sách sinh viên được chọn</label>
              <div className="mt-1 p-3 h-24 border border-gray-300 rounded-md bg-gray-50 text-sm text-gray-500 overflow-y-auto">
@@ -263,7 +286,7 @@ const AddTopic = () => {
              </div>
          </div>
 
-        {/* Row 5: Description */}
+        {/* Row 6: Description */}
         <div>
           <label htmlFor="description" className="block text-sm font-medium text-gray-700 mb-1">Mô tả chi tiết đề tài</label>
           <textarea 
@@ -277,7 +300,7 @@ const AddTopic = () => {
           ></textarea>
         </div>
 
-        {/* Row 6: Submit Button */}
+        {/* Row 7: Submit Button */}
         <div className="flex justify-end pt-4">
              <button 
               type="submit"

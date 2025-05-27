@@ -434,20 +434,26 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
       title: topic_title
     });
 
-    // Tạo thông báo cho giảng viên hướng dẫn
-    try {
-      const notification = await UserNotification.create({
-        user_notification_title: 'Đề xuất đề tài mới',
-        user_notification_sender: topic_creator, // id sinh viên
-        user_notification_recipient: topic_instructor, // id giảng viên
-        user_notification_content: `Sinh viên đã đề xuất đề tài mới: "${topic_title}". Vui lòng kiểm tra và duyệt đề tài trong mục "Đề tài sinh viên đề xuất"!`,
-        user_notification_type: 2,
-        user_notification_isRead: false,
-        user_notification_topic: 'topic',
-      });
-      console.log('Notification created successfully:', notification);
-    } catch (error) {
-      console.error('Error creating notification:', error);
+    // Xác định vai trò người tạo đề tài
+    const creatorUser = await User.findById(topic_creator);
+    const creatorRole = creatorUser?.role || 'sinhvien';
+    let notificationContent = '';
+    if (creatorRole === 'sinhvien') {
+      notificationContent = `Sinh viên đã đề xuất đề tài mới: "${topic_title}". Vui lòng kiểm tra và duyệt đề tài trong mục "Đề tài sinh viên đề xuất"!`;
+      try {
+        const notification = await UserNotification.create({
+          user_notification_title: 'Đề xuất đề tài mới',
+          user_notification_sender: topic_creator,
+          user_notification_recipient: topic_instructor,
+          user_notification_content: notificationContent,
+          user_notification_type: 2,
+          user_notification_isRead: false,
+          user_notification_topic: 'topic',
+        });
+        console.log('Notification created successfully:', notification);
+      } catch (error) {
+        console.error('Error creating notification:', error);
+      }
     }
 
     // Populate các trường liên quan (không cần populate topic_group_student nếu mảng rỗng)
@@ -499,7 +505,6 @@ router.post('/topic-types', async (req, res) => {
 
 // Lấy danh sách đề xuất của giảng viên
 router.get('/instructor/:instructorId/proposals', async (req, res) => {
-  console.log(`topic.js: Hit GET /instructor/${req.params.instructorId}/proposals`);
   try {
     const topics = await Topic.find({
       topic_instructor: req.params.instructorId,
@@ -510,11 +515,13 @@ router.get('/instructor/:instructorId/proposals', async (req, res) => {
     .populate('topic_group_student', 'user_name user_id')
     .populate('topic_major', 'major_title')
     .populate('topic_category', 'topic_category_title')
+    .populate('topic_creator', 'role')
     .sort({ createdAt: -1 });
-    console.log('Kết quả trả về:', topics.length, topics.map(t => t.topic_title));
-    res.json(topics);
+
+    // Lọc lại chỉ lấy đề tài do sinh viên đề xuất
+    const proposals = topics.filter(t => t.topic_creator?.role === 'sinhvien');
+    res.json(proposals);
   } catch (err) {
-    console.error('Error fetching instructor proposals:', err);
     res.status(500).json({ error: err.message });
   }
 });
@@ -1410,6 +1417,23 @@ router.put('/:id/approve-final', async (req, res) => {
     res.json({ message: 'Cập nhật trạng thái báo cáo cuối cùng thành công', topic });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi khi cập nhật trạng thái báo cáo cuối cùng', error: err.message });
+  }
+});
+
+// Cập nhật đề tài theo id
+router.put('/:id', async (req, res) => {
+  try {
+    const topic = await Topic.findByIdAndUpdate(
+      req.params.id,
+      req.body,
+      { new: true }
+    );
+    if (!topic) {
+      return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+    }
+    res.json({ message: 'Cập nhật đề tài thành công', topic });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi khi cập nhật đề tài', error: err.message });
   }
 });
 

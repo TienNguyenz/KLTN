@@ -161,9 +161,23 @@ const updateProfile = async (req, res) => {
   }
 };
 
+// Lấy chi tiết faculty theo _id
+const getFacultyById = async (req, res) => {
+  try {
+    const faculty = await require('../models/Faculty').findById(req.params.id);
+    if (!faculty) {
+      return res.status(404).json({ success: false, message: 'Không tìm thấy khoa' });
+    }
+    res.json({ success: true, data: faculty });
+  } catch (err) {
+    res.status(500).json({ success: false, message: 'Lỗi server', error: err.message });
+  }
+};
+
 module.exports = {
   getProfile,
   updateProfile,
   getProfileGV,
-  updateProfileGV
+  updateProfileGV,
+  getFacultyById
 };

@@ -27,6 +27,8 @@ const CommitteeTopicDetail = () => {
   const [finalRejectReason, setFinalRejectReason] = useState('');
   const [loadingOutlineAction, setLoadingOutlineAction] = useState(false);
   const [loadingFinalAction, setLoadingFinalAction] = useState(false);
+  const [evaluationFormData, setEvaluationFormData] = useState(null);
+  const [evaluationLoading, setEvaluationLoading] = useState(false);
 
   useEffect(() => {
     const loadTopic = async () => {
@@ -249,9 +251,33 @@ const evaluationData = [
     return found ? found.faculty_title : 'Chưa cập nhật';
   };
 
-  const handleOpenEvaluationModal = (student) => {
+  const handleOpenEvaluationModal = async (student) => {
     setSelectedStudentForEvaluation(student);
     setIsModalVisible(true);
+    setEvaluationLoading(true);
+    try {
+      // 1. Lấy rubric phù hợp loại đề tài
+      const rubricRes = await fetch(`/api/rubrics?rubric_topic_category=${topic.topic_category || topic.category}`);
+      const rubricArr = await rubricRes.json();
+      const rubric = rubricArr[0] || (rubricArr.data && rubricArr.data[0]);
+      // 2. Lấy thông tin khoa
+      const facultyRes = await fetch(`/api/user/faculties/${topic.faculty_id}`);
+      const facultyData = await facultyRes.json();
+      const faculty = facultyData.data;
+      // 3. Lấy các tiêu chí đánh giá
+      const evaluationsRes = await fetch(`/api/rubric-evaluations/rubric/${rubric._id}`);
+      const evaluations = await evaluationsRes.json();
+      setEvaluationFormData({
+        schoolName: 'TRƯỜNG ĐẠI HỌC SÀI GÒN',
+        facultyName: faculty.faculty_name,
+        rubricName: rubric.rubric_name,
+        evaluations: evaluations,
+      });
+    } catch (err) {
+      setEvaluationFormData(null);
+      message.error('Không thể tải phiếu đánh giá động!');
+    }
+    setEvaluationLoading(false);
   };
 
   // Xác định trạng thái đề cương và báo cáo cuối cùng
@@ -389,8 +415,8 @@ const evaluationData = [
       <Modal
         title={
           <div className="text-center">
-            <div className="font-bold">TRƯỜNG ĐẠI HỌC XXX THÀNH PHỐ HỒ CHÍ MINH</div>
-            <div>KHOA CÔNG NGHỆ THÔNG TIN</div>
+            <div className="font-bold">{evaluationFormData?.schoolName || '...'}</div>
+            <div>{evaluationFormData?.facultyName || '...'}</div>
             <div className="absolute right-4 top-4 cursor-pointer" onClick={handleCancel}>
               <CloseOutlined />
             </div>
@@ -407,7 +433,7 @@ const evaluationData = [
             <Text>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Text>
             <div>Độc lập - Tự do - Hạnh phúc</div>
           </div>
-          <Title level={4} className="mb-8">PHIẾU ĐÁNH GIÁ KHÓA LUẬN TỐT NGHIỆP</Title>
+          <Title level={4} className="mb-8">{evaluationFormData?.rubricName || 'PHIẾU ĐÁNH GIÁ'}</Title>
           <div className="text-left mb-4">
             <Text>Tên đề tài: {topic.topic_title || topic.title || '-'}</Text>
           </div>
@@ -428,12 +454,24 @@ const evaluationData = [
               </tbody>
             </table>
           </div>
+          {evaluationLoading ? (
+            <div>Đang tải phiếu đánh giá...</div>
+          ) : evaluationFormData && evaluationFormData.evaluations ? (
           <Table
-            columns={evaluationColumns}
-            dataSource={evaluationData}
+              columns={[
+                { title: 'STT', dataIndex: 'serial', key: 'serial', align: 'center', width: '5%' },
+                { title: 'NỘI DUNG', dataIndex: 'evaluation_criteria', key: 'evaluation_criteria', width: '55%' },
+                { title: 'THANG ĐIỂM', dataIndex: 'grading_scale', key: 'grading_scale', align: 'center', width: '15%' },
+                { title: 'TRỌNG SỐ', dataIndex: 'weight', key: 'weight', align: 'center', width: '10%', render: (w) => (typeof w === 'number' ? w + '%' : w) },
+                { title: 'ĐIỂM', dataIndex: 'score', key: 'score', align: 'center', width: '15%', render: (_, row) => <Input type="number" min={0} max={row.grading_scale} className="w-16 text-center mx-auto" /> },
+              ]}
+              dataSource={evaluationFormData.evaluations.map((item, idx) => ({ ...item, key: item._id }))}
             pagination={false}
             bordered
           />
+          ) : (
+            <div>Không có tiêu chí đánh giá.</div>
+          )}
         </div>
       </Modal>
 

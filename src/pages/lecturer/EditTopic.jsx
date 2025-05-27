@@ -3,6 +3,7 @@ import { Button, Spin, Alert, Input, Select, Form, Card, message, Modal } from '
 import { useNavigate, useParams } from 'react-router-dom';
 import axios from 'axios';
 import { FaSave, FaArrowLeft, FaTrash, FaPaperPlane } from 'react-icons/fa';
+import { useAuth } from '../../context/AuthContext';
 
 const { TextArea } = Input;
 const { Option } = Select;
@@ -20,6 +21,7 @@ const EditTopic = () => {
   const [isEditMode, setIsEditMode] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
+  const { user } = useAuth();
 
   useEffect(() => {
     const fetchDropdowns = async () => {
@@ -29,9 +31,9 @@ const EditTopic = () => {
           axios.get('/api/majors'),
           axios.get('/api/topics/topic-types')
         ]);
-        setSemesters(semRes.data);
-        setMajors(majorRes.data);
-        setCategories(catRes.data);
+        setSemesters(Array.isArray(semRes.data) ? semRes.data : (semRes.data?.data || []));
+        setMajors(Array.isArray(majorRes.data) ? majorRes.data : (majorRes.data?.data || []));
+        setCategories(Array.isArray(catRes.data) ? catRes.data : (catRes.data?.data || []));
       } catch {
         setSemesters([]);
         setMajors([]);
@@ -78,9 +80,32 @@ const EditTopic = () => {
     }
   }, [isEditMode, topic, form]);
 
+  useEffect(() => {
+    if (isEditMode) {
+      const fetchDropdowns = async () => {
+        try {
+          const [semRes, majorRes, catRes] = await Promise.all([
+            axios.get('/api/semesters'),
+            axios.get('/api/majors'),
+            axios.get('/api/topics/topic-types')
+          ]);
+          setSemesters(Array.isArray(semRes.data) ? semRes.data : (semRes.data?.data || []));
+          setMajors(Array.isArray(majorRes.data) ? majorRes.data : (majorRes.data?.data || []));
+          setCategories(Array.isArray(catRes.data) ? catRes.data : (catRes.data?.data || []));
+        } catch {
+          setSemesters([]);
+          setMajors([]);
+          setCategories([]);
+        }
+      };
+      fetchDropdowns();
+    }
+  }, [isEditMode]);
+
   const handleSubmit = async (values) => {
     try {
       await axios.put(`/api/topics/${id}`, values);
+      alert('Cập nhật đề tài thành công!');
       const res = await axios.get(`/api/topics/${id}`);
       const topicData = res.data && res.data.data ? res.data.data : null;
       if (!topicData) {
@@ -92,7 +117,7 @@ const EditTopic = () => {
       setTopic(topicData);
       setIsEditMode(false);
     } catch (error) {
-      console.error('Error updating topic:', error);
+      alert('Có lỗi khi cập nhật đề tài: ' + (error.response?.data?.message || error.message));
     }
   };
 
@@ -152,24 +177,29 @@ const EditTopic = () => {
   };
 
   // Helper để render an toàn các trường có thể là object hoặc string
-  const renderMajor = (major) => {
+  const getMajorName = (major) => {
     if (!major) return '';
-    if (typeof major === 'string') return major;
-    if (typeof major === 'object') return major.major_name || major.major_title || major.name || '';
-    return '';
+    if (typeof major === 'object') return major.major_title || major.title || major.name || '';
+    const found = majors.find(m => String(m._id) === String(major));
+    return found ? (found.major_title || found.title || found.name) : '';
   };
-  const renderCategory = (cat) => {
+  const getCategoryName = (cat) => {
     if (!cat) return '';
-    if (typeof cat === 'string') return cat;
-    if (typeof cat === 'object') return cat.type_name || cat.topic_category_title || cat.name || '';
-    return '';
+    if (typeof cat === 'object') return cat.topic_category_title || cat.title || cat.name || '';
+    const found = categories.find(c => String(c._id) === String(cat));
+    return found ? (found.topic_category_title || found.title || found.name) : '';
   };
-  const renderSemester = (sem) => {
+  const getSemesterName = (sem) => {
     if (!sem) return '';
-    if (typeof sem === 'string') return sem;
     if (typeof sem === 'object') return sem.semester || sem.title || '';
-    return '';
+    const found = semesters.find(s => String(s._id) === String(sem));
+    return found ? (found.semester || found.title) : '';
   };
+
+  // Lọc majors theo khoa của giảng viên
+  const filteredMajors = Array.isArray(majors) && user?.user_faculty
+    ? majors.filter(m => String(m.major_faculty) === String(user.user_faculty) || String(m.major_faculty?._id) === String(user.user_faculty))
+    : majors;
 
   if (loading) {
     return (
@@ -226,15 +256,15 @@ const EditTopic = () => {
             <div className="grid grid-cols-3 gap-6">
               <div>
                 <div className="text-sm text-gray-500 mb-1">Chuyên ngành</div>
-                <div className="text-base bg-gray-50 rounded px-3 py-1 border border-gray-200 min-h-[40px] flex items-center">{renderMajor(topic?.topic_major)}</div>
+                <div className="text-base bg-gray-50 rounded px-3 py-1 border border-gray-200 min-h-[40px] flex items-center">{getMajorName(topic?.topic_major)}</div>
               </div>
               <div>
                 <div className="text-sm text-gray-500 mb-1">Loại đề tài</div>
-                <div className="text-base bg-gray-50 rounded px-3 py-1 border border-gray-200 min-h-[40px] flex items-center">{renderCategory(topic?.topic_category)}</div>
+                <div className="text-base bg-gray-50 rounded px-3 py-1 border border-gray-200 min-h-[40px] flex items-center">{getCategoryName(topic?.topic_category)}</div>
               </div>
               <div>
                 <div className="text-sm text-gray-500 mb-1">Học kỳ</div>
-                <div className="text-base bg-gray-50 rounded px-3 py-1 border border-gray-200 min-h-[40px] flex items-center">{renderSemester(topic?.topic_registration_period)}</div>
+                <div className="text-base bg-gray-50 rounded px-3 py-1 border border-gray-200 min-h-[40px] flex items-center">{getSemesterName(topic?.topic_registration_period)}</div>
               </div>
             </div>
             <div>
@@ -354,7 +384,7 @@ const EditTopic = () => {
               rules={[{ required: true, message: 'Vui lòng chọn học kỳ' }]}
           >
               <Select placeholder="Chọn học kỳ" className="rounded-md">
-                {semesters.map(s => (
+                {Array.isArray(semesters) && semesters.map(s => (
                   <Option key={s._id} value={s._id}>{s.semester}</Option>
                 ))}
               </Select>
@@ -368,8 +398,8 @@ const EditTopic = () => {
                 placeholder="Chọn chuyên ngành"
                 className="rounded-md"
               >
-                {majors.map(m => (
-                  <Option key={m._id} value={m._id}>{m.major_title || m.name}</Option>
+                {Array.isArray(filteredMajors) && filteredMajors.map(m => (
+                  <Option key={m._id} value={m._id}>{m.major_title || m.title || m.name}</Option>
                 ))}
               </Select>
             </Form.Item>
@@ -382,7 +412,7 @@ const EditTopic = () => {
                 placeholder="Chọn loại đề tài"
                 className="rounded-md"
               >
-                {categories.map(c => (
+                {Array.isArray(categories) && categories.map(c => (
                   <Option key={c._id} value={c._id}>{c.topic_category_title || c.name}</Option>
                 ))}
               </Select>

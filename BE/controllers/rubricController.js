@@ -40,7 +40,11 @@ const validateRubricData = (data) => {
  */
 exports.getAllRubrics = async (req, res) => {
   try {
-    const rubrics = await Rubric.find()
+    const filter = {};
+    if (req.query.rubric_topic_category) {
+      filter.rubric_topic_category = req.query.rubric_topic_category;
+    }
+    const rubrics = await Rubric.find(filter)
       .populate('rubric_evaluations')
       .sort({ createdAt: -1 });
     return res.status(200).json(rubrics);

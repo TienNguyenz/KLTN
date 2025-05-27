@@ -512,15 +512,33 @@ const ThesisList = () => {
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-1">Đề cương xin hướng dẫn:</label>
+              {selectedThesis?.topic_advisor_request && typeof selectedThesis.topic_advisor_request === 'string' && (selectedThesis.topic_advisor_request.startsWith('http') || selectedThesis.topic_advisor_request.startsWith('/uploads')) ? (
+                <a href={selectedThesis.topic_advisor_request} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Xem file</a>
+              ) : selectedThesis?.topic_advisor_request === 'Đã chấp nhận' ? (
+                <span className="text-green-600">Đã chấp nhận</span>
+              ) : (
               <div className="text-red-500">✗ Chưa có file</div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-1">Đề cương:</label>
+              {selectedThesis?.topic_defense_request && typeof selectedThesis.topic_defense_request === 'string' && (selectedThesis.topic_defense_request.startsWith('http') || selectedThesis.topic_defense_request.startsWith('/uploads')) ? (
+                <a href={selectedThesis.topic_defense_request} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Xem file</a>
+              ) : selectedThesis?.topic_defense_request === 'Đã chấp nhận' ? (
+                <span className="text-green-600">Đã chấp nhận</span>
+              ) : (
               <div className="text-red-500">✗ Chưa có file</div>
+              )}
             </div>
             <div>
               <label className="block text-sm font-medium text-gray-500 mb-1">Báo cáo tổng kết:</label>
+              {selectedThesis?.topic_final_report_file && typeof selectedThesis.topic_final_report_file === 'string' && (selectedThesis.topic_final_report_file.startsWith('http') || selectedThesis.topic_final_report_file.startsWith('/uploads')) ? (
+                <a href={selectedThesis.topic_final_report_file} target="_blank" rel="noopener noreferrer" className="text-blue-600 hover:underline">Xem file</a>
+              ) : selectedThesis?.topic_final_report_file === 'Đã chấp nhận' ? (
+                <span className="text-green-600">Đã chấp nhận</span>
+              ) : (
               <div className="text-red-500">✗ Chưa có file</div>
+              )}
             </div>
           </div>
           <div className="mb-6">

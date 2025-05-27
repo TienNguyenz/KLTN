@@ -27,6 +27,8 @@ const TopicDetail = () => {
   const [finalRejectReason, setFinalRejectReason] = useState('');
   const [loadingOutlineAction, setLoadingOutlineAction] = useState(false);
   const [loadingFinalAction, setLoadingFinalAction] = useState(false);
+  const [evaluationFormData, setEvaluationFormData] = useState(null);
+  const [evaluationLoading, setEvaluationLoading] = useState(false);
 
   useEffect(() => {
     const loadTopic = async () => {
@@ -99,197 +101,31 @@ const TopicDetail = () => {
     setIsModalVisible(false);
   };
 
-  const evaluationColumns = [
-    {
-      title: 'STT',
-      dataIndex: 'stt',
-      key: 'stt',
-      width: '5%',
-      align: 'center',
-    },
-    {
-      title: 'NỘI DUNG',
-      dataIndex: 'content',
-      key: 'content',
-      width: '55%',
-    },
-    {
-      title: 'THANG ĐIỂM',
-      dataIndex: 'maxScore',
-      key: 'maxScore',
-      width: '15%',
-      align: 'center',
-    },
-    {
-      title: 'TRỌNG SỐ',
-      dataIndex: 'weight',
-      key: 'weight',
-      width: '10%',
-      align: 'center',
-    },
-    {
-      title: 'ĐIỂM',
-      dataIndex: 'score',
-      key: 'score',
-      width: '15%',
-      align: 'center',
-      render: (score) => (
-        <Input 
-          type="number" 
-          defaultValue={score} 
-          min={0} 
-          max={10}
-          className="w-16 text-center mx-auto"
-        />
-      ),
-    },
-  ];
-
-  const evaluationData = [
-    {
-      key: '1',
-      stt: 1,
-      content: 'Ý tưởng và Khả năng áp dụng thực tế của ứng dụng',
-      maxScore: 10,
-      weight: '10%',
-      score: 10,
-    },
-    {
-      key: '2',
-      stt: 2,
-      content: 'Độ tận tâm/phức tạp của công việc',
-      maxScore: 10,
-      weight: '10%',
-      score: 9,
-    },
-    {
-      key: '3',
-      stt: 3,
-      content: 'Mức độ hoàn chỉnh',
-      maxScore: 10,
-      weight: '10%',
-      score: 8,
-    },
-    {
-      key: '4',
-      stt: 4,
-      content: 'Tính năng của ứng dụng',
-      maxScore: 10,
-      weight: '10%',
-      score: 0,
-    },
-    {
-      key: '5',
-      stt: 5,
-      content: 'Giao diện của ứng dụng',
-      maxScore: 10,
-      weight: '10%',
-      score: 0,
-    },
-    {
-      key: '6',
-      stt: 6,
-      content: 'Độ khó của đề tài',
-      maxScore: 10,
-      weight: '10%',
-      score: 0,
-    },
-    {
-      key: '7',
-      stt: 7,
-      content: 'Tài liệu hướng dẫn sử dụng/cài đặt',
-      maxScore: 10,
-      weight: '10%',
-      score: 0,
-    },
-    {
-      key: '8',
-      stt: 8,
-      content: 'Trình bày báo cáo',
-      maxScore: 10,
-      weight: '10%',
-      score: 0,
-    },
-    {
-      key: '9',
-      stt: 9,
-      content: 'Trả lời câu hỏi',
-      maxScore: 10,
-      weight: '10%',
-      score: 0,
-    },
-    {
-      key: '10',
-      stt: 10,
-      content: 'Điểm thưởng',
-      maxScore: 10,
-      weight: '10%',
-      score: 0,
-    },
-  ];
-
-  // Hàm xem chi tiết sinh viên
-  const handleViewStudentDetail = async (student) => {
-    setIsStudentDetailModalOpen(true);
-    setStudentDetailLoading(true);
-    try {
-      if (facultiesLoading) {
-        await new Promise(resolve => {
-          const checkFaculties = setInterval(() => {
-            if (!facultiesLoading) {
-              clearInterval(checkFaculties);
-              resolve();
-            }
-          }, 100);
-        });
-      }
-      const response = await axios.get(`http://localhost:5000/api/database/collections/users?user_id=${student.user_id}`);
-      const user = response.data.data[0];
-      if (user) {
-        if (user.user_avatar) {
-          if (user.user_avatar.startsWith('/uploads')) {
-            user.user_avatar = `http://localhost:5000${user.user_avatar}`;
-          } else if (!user.user_avatar.startsWith('http')) {
-            user.user_avatar = `http://localhost:5000/uploads/${user.user_avatar}`;
-          }
-        }
-        setSelectedStudentDetail(user);
-      } else {
-        setSelectedStudentDetail(student);
-      }
-    } catch (error) {
-      setSelectedStudentDetail(student);
-    } finally {
-      setStudentDetailLoading(false);
-    }
-  };
-
-  const extractObjectId = (obj) => {
-    if (!obj) return '';
-    if (typeof obj === 'string') return obj;
-    if (typeof obj === 'object') {
-      if (obj.$oid) return obj.$oid;
-      if (obj._id) return obj._id;
-      if (obj.id) return obj.id;
-    }
-    return '';
-  };
-
-  const getFacultyTitle = (user_faculty, faculties) => {
-    if (!user_faculty || !Array.isArray(faculties) || faculties.length === 0) return 'Chưa cập nhật';
-    if (typeof user_faculty === 'object' && user_faculty.faculty_title) {
-      return user_faculty.faculty_title;
-    }
-    if (!user_faculty || user_faculty === '') return 'Chưa cập nhật';
-    const idStr = extractObjectId(user_faculty);
-    if (!idStr) return 'Chưa cập nhật';
-    const found = faculties.find(f => extractObjectId(f._id) === idStr);
-    return found ? found.faculty_title : 'Chưa cập nhật';
-  };
-
-  const handleOpenEvaluationModal = (student) => {
+  const handleOpenEvaluationModal = async (student) => {
     setSelectedStudentForEvaluation(student);
     setIsModalVisible(true);
+    setEvaluationLoading(true);
+    try {
+      // 1. Lấy rubric phù hợp loại đề tài
+      const rubricRes = await axios.get(`/api/rubrics?rubric_topic_category=${topic.topic_category}`);
+      const rubric = rubricRes.data[0];
+      // 2. Lấy thông tin khoa
+      const facultyRes = await axios.get(`/api/user/faculties/${topic.faculty_id}`);
+      const faculty = facultyRes.data.data;
+      // 3. Lấy các tiêu chí đánh giá
+      const evaluationsRes = await axios.get(`/api/rubric-evaluations/rubric/${rubric._id}`);
+      const evaluations = evaluationsRes.data;
+      setEvaluationFormData({
+        schoolName: 'TRƯỜNG ĐẠI HỌC SÀI GÒN',
+        facultyName: faculty.faculty_name,
+        rubricName: rubric.rubric_name,
+        evaluations: evaluations,
+      });
+    } catch (err) {
+      setEvaluationFormData(null);
+      message.error('Không thể tải phiếu đánh giá động!');
+    }
+    setEvaluationLoading(false);
   };
 
   // Xác định trạng thái đề cương và báo cáo cuối cùng
@@ -555,8 +391,8 @@ const TopicDetail = () => {
       <Modal
         title={
           <div className="text-center">
-            <div className="font-bold">TRƯỜNG ĐẠI HỌC XXX THÀNH PHỐ HỒ CHÍ MINH</div>
-            <div>KHOA CÔNG NGHỆ THÔNG TIN</div>
+            <div className="font-bold">{evaluationFormData?.schoolName || '...'}</div>
+            <div>{evaluationFormData?.facultyName || '...'}</div>
             <div className="absolute right-4 top-4 cursor-pointer" onClick={handleCancel}>
               <CloseOutlined />
             </div>
@@ -573,7 +409,7 @@ const TopicDetail = () => {
             <Text>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Text>
             <div>Độc lập - Tự do - Hạnh phúc</div>
           </div>
-          <Title level={4} className="mb-8">PHIẾU ĐÁNH GIÁ KHÓA LUẬN TỐT NGHIỆP</Title>
+          <Title level={4} className="mb-8">{evaluationFormData?.rubricName || 'PHIẾU ĐÁNH GIÁ'}</Title>
           <div className="text-left mb-4">
             <Text>Tên đề tài: {topic.topic_title || '-'}</Text>
           </div>
@@ -594,12 +430,24 @@ const TopicDetail = () => {
               </tbody>
             </table>
           </div>
+          {evaluationLoading ? (
+            <div>Đang tải phiếu đánh giá...</div>
+          ) : evaluationFormData && evaluationFormData.evaluations ? (
           <Table
-            columns={evaluationColumns}
-            dataSource={evaluationData}
+              columns={[
+                { title: 'STT', dataIndex: 'serial', key: 'serial', align: 'center', width: '5%' },
+                { title: 'NỘI DUNG', dataIndex: 'evaluation_criteria', key: 'evaluation_criteria', width: '55%' },
+                { title: 'THANG ĐIỂM', dataIndex: 'grading_scale', key: 'grading_scale', align: 'center', width: '15%' },
+                { title: 'TRỌNG SỐ', dataIndex: 'weight', key: 'weight', align: 'center', width: '10%', render: (w) => (typeof w === 'number' ? w + '%' : w) },
+                { title: 'ĐIỂM', dataIndex: 'score', key: 'score', align: 'center', width: '15%', render: (_, row) => <Input type="number" min={0} max={row.grading_scale} className="w-16 text-center mx-auto" /> },
+              ]}
+              dataSource={evaluationFormData.evaluations.map((item, idx) => ({ ...item, key: item._id }))}
             pagination={false}
             bordered
           />
+          ) : (
+            <div>Không có tiêu chí đánh giá.</div>
+          )}
         </div>
       </Modal>
 
