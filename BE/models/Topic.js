@@ -65,6 +65,10 @@ const topicSchema = new mongoose.Schema({
         type: String,
         trim: true
     },
+    topic_final_report_file: {
+        type: String,
+        trim: true
+    },
     topic_outline_file_original_name: {
         type: String,
         trim: true

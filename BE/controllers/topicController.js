@@ -71,13 +71,13 @@ exports.getCommitteeTopics = async (req, res) => {
     const topics = await Topic.find({
       topic_assembly: { $in: assemblyIds.map(id => new mongoose.Types.ObjectId(id)) }
     })
-    .populate('topic_category')
-    .populate('topic_major')
-    .populate('topic_creator')
-    .populate('topic_instructor')
-    .populate('topic_reviewer')
-    .populate('topic_group_student')
-    .populate('topic_assembly')
+    .populate('topic_category', 'topic_category_title')
+    .populate('topic_major', 'major_title')
+    .populate('topic_creator', 'user_name user_id')
+    .populate('topic_instructor', 'user_name user_id')
+    .populate('topic_reviewer', 'user_name user_id')
+    .populate('topic_group_student', 'user_name user_id')
+    .populate('topic_assembly', 'assembly_name')
     .sort({ createdAt: -1 });
 
     // Format dữ liệu trả về
@@ -95,6 +95,9 @@ exports.getCommitteeTopics = async (req, res) => {
         studentId: student.user_id
       })) || [],
       instructor: topic.topic_instructor?.user_name || 'N/A',
+      instructorId: topic.topic_instructor?.user_id || '',
+      reviewer: topic.topic_reviewer?.user_name || 'N/A',
+      reviewerId: topic.topic_reviewer?.user_id || '',
       teacherStatus: topic.topic_teacher_status,
       leaderStatus: topic.topic_leader_status,
       isBlocked: topic.topic_block,
@@ -102,8 +105,9 @@ exports.getCommitteeTopics = async (req, res) => {
       updatedAt: topic.updatedAt,
       finalReport: topic.topic_final_report,
       finalReportName: topic.topic_final_report_original_name,
-      reviewer: topic.topic_reviewer?.user_name || 'N/A',
-      assembly: topic.topic_assembly?.assembly_name || 'N/A'
+      assembly: topic.topic_assembly?.assembly_name || 'N/A',
+      assemblyId: topic.topic_assembly?._id || '',
+      status: topic.status || '',
     }));
 
     res.json(formattedTopics);
@@ -200,7 +204,7 @@ exports.getCommitteeTopicById = async (req, res) => {
       { path: 'topic_creator', select: 'user_name user_id' },
       { path: 'topic_major', select: 'major_title' },
       { path: 'topic_category', select: 'topic_category_title' },
-      { path: 'topic_group_student', select: 'user_name user_id' },
+      { path: 'topic_group_student', select: 'user_name user_id email user_avatar user_date_of_birth user_CCCD user_phone user_permanent_address user_temporary_address user_faculty user_major user_status user_average_grade user_transcript' },
       { path: 'topic_assembly', select: 'assembly_name' }
     ]);
     
@@ -228,6 +232,18 @@ exports.getCommitteeTopicById = async (req, res) => {
         id: student._id,
         studentName: student.user_name || '',
         studentId: student.user_id || '',
+        email: student.email || '',
+        user_avatar: student.user_avatar || '',
+        user_date_of_birth: student.user_date_of_birth || '',
+        user_CCCD: student.user_CCCD || '',
+        user_phone: student.user_phone || '',
+        user_permanent_address: student.user_permanent_address || '',
+        user_temporary_address: student.user_temporary_address || '',
+        user_faculty: student.user_faculty || '',
+        user_major: student.user_major || '',
+        user_status: student.user_status || '',
+        user_average_grade: student.user_average_grade || '',
+        user_transcript: student.user_transcript || '',
       })),
       topic_assembly: topic.topic_assembly?.assembly_name || '',
       topic_room: topic.topic_room || '',
@@ -236,6 +252,7 @@ exports.getCommitteeTopicById = async (req, res) => {
       topic_date: topic.topic_date || '',
       topic_advisor_request: topic.topic_advisor_request || '',
       topic_final_report: topic.topic_final_report || '',
+      topic_final_report_file: topic.topic_final_report_file || '',
       topic_defense_request: topic.topic_defense_request || '',
       rubric_instructor: topic.rubric_instructor || '',
       rubric_reviewer: topic.rubric_reviewer || '',

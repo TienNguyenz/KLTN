@@ -15,8 +15,18 @@ const fs = require('fs');
 const libre = require('libreoffice-convert');
 const topicController = require('../controllers/topicController');
 const { auth } = require('../middleware/auth');
+const { v4: uuidv4 } = require('uuid');
 
-const upload = multer({ dest: 'uploads/' });
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    const ext = path.extname(file.originalname);
+    cb(null, uuidv4() + ext);
+  }
+});
+const upload = multer({ storage: storage });
 
 // console.log('Route file loaded'); // Xóa dòng log này
 
@@ -57,7 +67,7 @@ router.get('/', async (req, res) => {
     const topics = await Topic.find({
       status: 'active'
     })
-      .populate('topic_instructor', 'user_name user_id email')
+      .populate('topic_instructor', 'user_name user_id')
       .populate('topic_major', 'major_title')
       .populate('topic_category', 'topic_category_title')
       .populate('topic_registration_period', 'semester title')
@@ -873,23 +883,38 @@ router.post('/:id/upload-outline', upload.single('file'), async (req, res) => {
   }
 });
 
-// Upload final report (convert docx to pdf)
-router.post('/:id/upload-final', upload.single('file'), async (req, res) => {
-  console.log(`topic.js: Hit POST /${req.params.id}/upload-final`);
+// Upload defense request (convert docx to pdf, lưu vào topic_defense_request)
+router.post('/:id/upload-defense-request', upload.single('file'), async (req, res) => {
+  console.log(`topic.js: Hit POST /${req.params.id}/upload-defense-request`);
   try {
     const topicId = req.params.id;
     const file = req.file;
     if (!file) return res.status(400).json({ message: 'No file uploaded' });
     // Xóa file cũ nếu có
     const topicOld = await Topic.findById(topicId);
-    if (topicOld && topicOld.topic_final_report) {
+    if (topicOld && topicOld.topic_defense_request && topicOld.topic_defense_request.startsWith('http')) {
       try {
-        const oldPath = topicOld.topic_final_report.replace(/^https?:\/\/[^/]+\//, '');
+        const oldPath = topicOld.topic_defense_request.replace(/^https?:\/\/[^/]+\//, '');
         if (oldPath.startsWith('uploads/')) {
           fs.unlinkSync(oldPath);
         }
-      } catch { /* ignore */ } // Đổi thành catch không có biến
+      } catch { /* ignore */ }
     }
+    const ext = path.extname(file.originalname).toLowerCase();
+    if (ext === '.pdf') {
+      // Nếu là PDF thì lưu luôn
+      const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${file.filename}`;
+      const topic = await Topic.findByIdAndUpdate(
+        topicId,
+        {
+          topic_defense_request: fileUrl,
+          topic_defense_request_original_name: file.originalname
+        },
+        { new: true }
+      );
+      return res.json({ message: 'Upload PDF thành công', file: fileUrl, originalName: file.originalname, topic });
+    }
+    // Nếu là doc/docx thì convert
     const docxBuf = fs.readFileSync(file.path);
     libre.convert(docxBuf, '.pdf', undefined, async (err, done) => {
       if (err) {
@@ -903,12 +928,74 @@ router.post('/:id/upload-final', upload.single('file'), async (req, res) => {
       const topic = await Topic.findByIdAndUpdate(
         topicId,
         { 
-          topic_final_report: fileUrl,
+          topic_defense_request: fileUrl,
+          topic_defense_request_original_name: file.originalname.replace(/\.[^/.]+$/, '') + '.pdf'
+        },
+        { new: true }
+      );
+      res.json({ message: 'Upload and convert successful', file: fileUrl, originalName: file.originalname.replace(/\.[^/.]+$/, '') + '.pdf', topic });
+    });
+  } catch (error) {
+    res.status(500).json({ message: 'Server error', error });
+  }
+});
+
+// Upload final report (convert docx to pdf, lưu vào topic_final_report và topic_final_report_file)
+router.post('/:id/upload-final', upload.single('file'), async (req, res) => {
+  console.log(`topic.js: Hit POST /${req.params.id}/upload-final`);
+  try {
+    const topicId = req.params.id;
+    const file = req.file;
+    if (!file) return res.status(400).json({ message: 'No file uploaded' });
+    // Xóa file cũ nếu có (chỉ xóa file cũ ở topic_final_report_file)
+    const topicOld = await Topic.findById(topicId);
+    if (topicOld && topicOld.topic_final_report_file && topicOld.topic_final_report_file.startsWith('http')) {
+      try {
+        const oldPath = topicOld.topic_final_report_file.replace(/^https?:\/\/[^/]+\//, '');
+        if (oldPath.startsWith('uploads/')) {
+          fs.unlinkSync(oldPath);
+        }
+      } catch { /* ignore */ }
+    }
+    const ext = path.extname(file.originalname).toLowerCase();
+    let fileUrl = '';
+    let originalName = '';
+    if (ext === '.pdf') {
+      fileUrl = `${req.protocol}://${req.get('host')}/uploads/${file.filename}`;
+      originalName = file.originalname;
+      await Topic.findByIdAndUpdate(
+        topicId,
+        {
+          topic_final_report: fileUrl, // vẫn cập nhật như cũ
+          topic_final_report_file: fileUrl, // luôn lưu link file
           topic_final_report_original_name: file.originalname
         },
         { new: true }
       );
-      res.json({ message: 'Upload and convert successful', file: fileUrl, originalName: file.originalname, topic });
+      return res.json({ message: 'Upload PDF thành công', file: fileUrl, originalName: file.originalname });
+    }
+    // Nếu là doc/docx thì convert
+    const docxBuf = fs.readFileSync(file.path);
+    libre.convert(docxBuf, '.pdf', undefined, async (err, done) => {
+      if (err) {
+        fs.unlinkSync(file.path);
+        return res.status(500).json({ message: 'Convert to PDF failed', error: err });
+      }
+      const pdfPath = path.join('uploads', `${file.filename}.pdf`);
+      fs.writeFileSync(pdfPath, done);
+      fs.unlinkSync(file.path);
+      fileUrl = `${req.protocol}://${req.get('host')}/uploads/${file.filename}.pdf`;
+      originalName = file.originalname.replace(/\.[^/.]+$/, '') + '.pdf';
+      await Topic.findByIdAndUpdate(
+        topicId,
+        {
+          topic_final_report: fileUrl, // vẫn cập nhật như cũ
+          topic_final_report_file: fileUrl, // luôn lưu link file
+          topic_final_report_original_name: originalName
+        },
+        { new: true }
+      );
+      res.json({ message: 'Upload and convert successful', file: fileUrl, originalName, topicId });
     });
   } catch (error) {
     res.status(500).json({ message: 'Server error', error });
@@ -1297,6 +1384,32 @@ router.post('/:id/reject-delete', auth, async (req, res) => {
     res.json({ success: true, message: 'Đã từ chối yêu cầu xóa.' });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Lỗi khi từ chối xóa đề tài', error: err.message });
+  }
+});
+
+// Duyệt hoặc từ chối đề cương
+router.put('/:id/approve-outline', async (req, res) => {
+  try {
+    const topic = await Topic.findById(req.params.id);
+    if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+    topic.topic_defense_request = req.body.status; // 'Đã chấp nhận' hoặc 'Từ chối: <lý do>'
+    await topic.save();
+    res.json({ message: 'Cập nhật trạng thái đề cương thành công', topic });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi khi cập nhật trạng thái đề cương', error: err.message });
+  }
+});
+
+// Duyệt hoặc từ chối báo cáo cuối cùng
+router.put('/:id/approve-final', async (req, res) => {
+  try {
+    const topic = await Topic.findById(req.params.id);
+    if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+    topic.topic_final_report = req.body.status; // 'Đã chấp nhận' hoặc 'Từ chối: <lý do>'
+    await topic.save();
+    res.json({ message: 'Cập nhật trạng thái báo cáo cuối cùng thành công', topic });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi khi cập nhật trạng thái báo cáo cuối cùng', error: err.message });
   }
 });
 

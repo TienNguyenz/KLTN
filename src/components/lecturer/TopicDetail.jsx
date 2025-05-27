@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Typography, Card, Row, Col, Button, Space, Modal, Table, Input, message } from 'antd';
-import { FileTextOutlined, EditOutlined, CloseOutlined, ArrowLeftOutlined, EyeOutlined, UserOutlined } from '@ant-design/icons';
+import { FileTextOutlined, EditOutlined, CloseOutlined, ArrowLeftOutlined, EyeOutlined, UserOutlined, CheckOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import axios from 'axios';
 
@@ -21,6 +21,12 @@ const TopicDetail = () => {
   const [isStudentDetailModalOpen, setIsStudentDetailModalOpen] = useState(false);
   const [studentDetailLoading, setStudentDetailLoading] = useState(false);
   const [selectedStudentForEvaluation, setSelectedStudentForEvaluation] = useState(null);
+  const [outlineRejectModal, setOutlineRejectModal] = useState(false);
+  const [finalRejectModal, setFinalRejectModal] = useState(false);
+  const [outlineRejectReason, setOutlineRejectReason] = useState('');
+  const [finalRejectReason, setFinalRejectReason] = useState('');
+  const [loadingOutlineAction, setLoadingOutlineAction] = useState(false);
+  const [loadingFinalAction, setLoadingFinalAction] = useState(false);
 
   useEffect(() => {
     const loadTopic = async () => {
@@ -286,6 +292,79 @@ const TopicDetail = () => {
     setIsModalVisible(true);
   };
 
+  // Xác định trạng thái đề cương và báo cáo cuối cùng
+  const isOutlineApproved = topic.topic_defense_request === 'Đã chấp nhận';
+  const isOutlineRejected = topic.topic_defense_request?.startsWith('Từ chối:');
+  const isOutlinePending = topic.topic_defense_request && !isOutlineApproved && !isOutlineRejected && topic.topic_defense_request.startsWith('http');
+  const isFinalApproved = topic.topic_final_report === 'Đã chấp nhận';
+  const isFinalRejected = topic.topic_final_report?.startsWith('Từ chối:');
+  const isFinalPending = topic.topic_final_report && !isFinalApproved && !isFinalRejected && topic.topic_final_report.startsWith('http');
+
+  // Hàm duyệt/từ chối đề cương
+  const handleApproveOutline = async () => {
+    setLoadingOutlineAction(true);
+    try {
+      if (!window.confirm('Bạn đã tải file về chưa? Sau khi duyệt sẽ không còn xem lại file này!')) {
+        setLoadingOutlineAction(false);
+        return;
+      }
+      await axios.put(`/api/topics/${topic._id}/approve-outline`, { status: 'Đã chấp nhận' });
+      alert('Đã duyệt đề cương!');
+      window.location.reload();
+    } catch (err) {
+      alert('Lỗi khi duyệt đề cương!');
+    }
+    setLoadingOutlineAction(false);
+  };
+  const handleRejectOutline = async () => {
+    setLoadingOutlineAction(true);
+    try {
+      if (!window.confirm('Bạn đã tải file về chưa? Sau khi từ chối sẽ không còn xem lại file này!')) {
+        setLoadingOutlineAction(false);
+        return;
+      }
+      await axios.put(`/api/topics/${topic._id}/approve-outline`, { status: `Từ chối: ${outlineRejectReason}` });
+      alert('Đã từ chối đề cương!');
+      setOutlineRejectModal(false);
+      window.location.reload();
+    } catch (err) {
+      alert('Lỗi khi từ chối đề cương!');
+    }
+    setLoadingOutlineAction(false);
+  };
+  // Hàm duyệt/từ chối báo cáo cuối cùng
+  const handleApproveFinal = async () => {
+    setLoadingFinalAction(true);
+    try {
+      if (!window.confirm('Bạn đã tải file về chưa? Sau khi duyệt sẽ không còn xem lại file này!')) {
+        setLoadingFinalAction(false);
+        return;
+      }
+      await axios.put(`/api/topics/${topic._id}/approve-final`, { status: 'Đã chấp nhận' });
+      alert('Đã duyệt báo cáo cuối cùng!');
+      window.location.reload();
+    } catch (err) {
+      alert('Lỗi khi duyệt báo cáo cuối cùng!');
+    }
+    setLoadingFinalAction(false);
+  };
+  const handleRejectFinal = async () => {
+    setLoadingFinalAction(true);
+    try {
+      if (!window.confirm('Bạn đã tải file về chưa? Sau khi từ chối sẽ không còn xem lại file này!')) {
+        setLoadingFinalAction(false);
+        return;
+      }
+      await axios.put(`/api/topics/${topic._id}/approve-final`, { status: `Từ chối: ${finalRejectReason}` });
+      alert('Đã từ chối báo cáo cuối cùng!');
+      setFinalRejectModal(false);
+      window.location.reload();
+    } catch (err) {
+      alert('Lỗi khi từ chối báo cáo cuối cùng!');
+    }
+    setLoadingFinalAction(false);
+  };
+
   if (!topic) {
     return <div className="p-6">Không tìm thấy thông tin đề tài</div>;
   }
@@ -334,9 +413,29 @@ const TopicDetail = () => {
           {[{
             label: "Đề cương",
             file: topic.topic_defense_request,
+            isApproved: isOutlineApproved,
+            isRejected: isOutlineRejected,
+            isPending: isOutlinePending,
+            onApprove: handleApproveOutline,
+            onReject: () => setOutlineRejectModal(true),
+            loading: loadingOutlineAction,
+            rejectModal: outlineRejectModal,
+            setRejectModal: setOutlineRejectModal,
+            rejectReason: outlineRejectReason,
+            setRejectReason: setOutlineRejectReason
           }, {
             label: "Báo cáo cuối cùng",
             file: topic.topic_final_report,
+            isApproved: isFinalApproved,
+            isRejected: isFinalRejected,
+            isPending: isFinalPending,
+            onApprove: handleApproveFinal,
+            onReject: () => setFinalRejectModal(true),
+            loading: loadingFinalAction,
+            rejectModal: finalRejectModal,
+            setRejectModal: setFinalRejectModal,
+            rejectReason: finalRejectReason,
+            setRejectReason: setFinalRejectReason
           }].map((doc) => (
             <Col key={doc.label} xs={24} sm={12} md={8} lg={6}>
               <Card
@@ -353,7 +452,8 @@ const TopicDetail = () => {
               >
                 <FileTextOutlined className="text-4xl mb-2 text-[#008bc3]" />
                 <div className="font-semibold text-lg mb-2">{doc.label}</div>
-                {doc.file && doc.file !== 'Chưa gửi' ? (
+                {doc.file && doc.file !== 'Chưa gửi' && !doc.isApproved && !doc.isRejected ? (
+                  <>
                   <a
                     href={doc.file}
                     target="_blank"
@@ -363,11 +463,38 @@ const TopicDetail = () => {
                     <span>Xem tài liệu</span>
                     <svg width="18" height="18" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24"><path d="M4 17v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/><polyline points="7 11 12 16 17 11"/><line x1="12" y1="4" x2="12" y2="16"/></svg>
                   </a>
+                    {doc.isPending && (
+                      <Space className="mt-2">
+                        <Button type="primary" icon={<CheckOutlined />} loading={doc.loading} onClick={doc.onApprove}>Duyệt</Button>
+                        <Button danger icon={<ExclamationCircleOutlined />} onClick={doc.onReject}>Từ chối</Button>
+                      </Space>
+                    )}
+                    {/* Modal nhập lý do từ chối */}
+                    <Modal
+                      title={`Từ chối ${doc.label}`}
+                      open={doc.rejectModal}
+                      onOk={doc.label === 'Đề cương' ? handleRejectOutline : handleRejectFinal}
+                      onCancel={() => doc.setRejectModal(false)}
+                      okText="Xác nhận từ chối"
+                      cancelText="Hủy"
+                      confirmLoading={doc.loading}
+                    >
+                      <Input.TextArea
+                        rows={3}
+                        value={doc.rejectReason}
+                        onChange={e => doc.setRejectReason(e.target.value)}
+                        placeholder="Nhập lý do từ chối..."
+                      />
+                    </Modal>
+                  </>
                 ) : (
-                  <div className="text-gray-400 flex flex-col items-center">
-                    <svg width="20" height="20" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24" className="mb-1"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12" y2="16"/></svg>
-                    <span>Chưa nộp</span>
-                  </div>
+                  <>
+                    {doc.isApproved && <div className="text-green-600 mt-2">Đã duyệt</div>}
+                    {doc.isRejected && <div className="text-red-600 mt-2">Bị từ chối: {doc.file.replace('Từ chối:', '')}</div>}
+                    {!doc.file || doc.file === 'Chưa gửi'
+                      ? <div className="text-gray-400 flex flex-col items-center">Chưa nộp</div>
+                      : null}
+                  </>
                 )}
               </Card>
             </Col>
