@@ -41,7 +41,13 @@ const validateRubricData = (data) => {
 exports.getAllRubrics = async (req, res) => {
   try {
     const filter = {};
-    if (req.query.rubric_topic_category) {
+    if (
+      req.query.rubric_topic_category &&
+      req.query.rubric_topic_category !== 'null' &&
+      req.query.rubric_topic_category !== null &&
+      req.query.rubric_topic_category !== undefined &&
+      req.query.rubric_topic_category !== ''
+    ) {
       filter.rubric_topic_category = req.query.rubric_topic_category;
     }
     const rubrics = await Rubric.find(filter)

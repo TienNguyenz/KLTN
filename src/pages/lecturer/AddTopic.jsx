@@ -205,20 +205,20 @@ const AddTopic = () => {
         </div>
 
         {/* Row 2: Topic Type */}
-        <div>
-          <label htmlFor="topicType" className="block text-sm font-medium text-gray-700 mb-1">Loại đề tài</label>
-          <select 
-            id="topicType"
-            value={topicType}
-            onChange={(e) => setTopicType(e.target.value)}
-            required
-            className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
-          >
-            <option value="">Vui lòng chọn</option>
-            {Array.isArray(topicTypes) && topicTypes.map(t => (
-              <option key={t._id} value={t._id}>{t.topic_category_title}</option>
-            ))}
-          </select>
+          <div>
+            <label htmlFor="topicType" className="block text-sm font-medium text-gray-700 mb-1">Loại đề tài</label>
+            <select 
+              id="topicType"
+              value={topicType}
+              onChange={(e) => setTopicType(e.target.value)}
+              required
+              className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
+            >
+              <option value="">Vui lòng chọn</option>
+              {Array.isArray(topicTypes) && topicTypes.map(t => (
+                <option key={t._id} value={t._id}>{t.topic_category_title}</option>
+              ))}
+            </select>
         </div>
 
         {/* Row 3: Topic Name */}

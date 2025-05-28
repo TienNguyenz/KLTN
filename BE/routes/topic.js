@@ -28,7 +28,6 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
-// console.log('Route file loaded'); // Xóa dòng log này
 
 // Lấy danh sách loại đề tài
 router.get('/topic-types', async (req, res) => {
@@ -64,11 +63,22 @@ router.get('/committee/:id', (req, res, next) => {
 // Lấy tất cả đề tài đã duyệt và đang quản lý
 router.get('/', async (req, res) => {
   try {
-    const topics = await Topic.find({
-      status: 'active'
-    })
+    const { facultyId } = req.query;
+    let majorIds = [];
+    if (facultyId) {
+      // Lấy tất cả major thuộc facultyId
+      const majors = await Major.find({ major_faculty: facultyId }, '_id');
+      majorIds = majors.map(m => m._id);
+    }
+    const topicQuery = {
+      status: { $in: ['active', 'pending'] }
+    };
+    if (facultyId && majorIds.length > 0) {
+      topicQuery.topic_major = { $in: majorIds };
+    }
+    const topics = await Topic.find(topicQuery)
       .populate('topic_instructor', 'user_name user_id')
-      .populate('topic_major', 'major_title')
+      .populate('topic_major', 'major_title major_faculty')
       .populate('topic_category', 'topic_category_title')
       .populate('topic_registration_period', 'semester title')
       .populate('topic_group_student', 'user_name user_id');
@@ -440,19 +450,19 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
     let notificationContent = '';
     if (creatorRole === 'sinhvien') {
       notificationContent = `Sinh viên đã đề xuất đề tài mới: "${topic_title}". Vui lòng kiểm tra và duyệt đề tài trong mục "Đề tài sinh viên đề xuất"!`;
-      try {
-        const notification = await UserNotification.create({
-          user_notification_title: 'Đề xuất đề tài mới',
+    try {
+      const notification = await UserNotification.create({
+        user_notification_title: 'Đề xuất đề tài mới',
           user_notification_sender: topic_creator,
           user_notification_recipient: topic_instructor,
           user_notification_content: notificationContent,
-          user_notification_type: 2,
-          user_notification_isRead: false,
-          user_notification_topic: 'topic',
-        });
-        console.log('Notification created successfully:', notification);
-      } catch (error) {
-        console.error('Error creating notification:', error);
+        user_notification_type: 2,
+        user_notification_isRead: false,
+        user_notification_topic: 'topic',
+      });
+      console.log('Notification created successfully:', notification);
+    } catch (error) {
+      console.error('Error creating notification:', error);
       }
     }
 

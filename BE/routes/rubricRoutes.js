@@ -4,6 +4,7 @@ const express = require('express');
 const router = express.Router();
 const rubricController = require('../controllers/rubricController');
 const rubricEvaluationController = require('../controllers/rubricEvaluationController');
+const scoreboardController = require('../controllers/scoreboardController');
 
 // Rubric routes
 router.get('/rubrics', rubricController.getAllRubrics);
@@ -19,5 +20,9 @@ router.get('/evaluations/:id', rubricEvaluationController.getEvaluationById);
 router.post('/evaluations', rubricEvaluationController.createEvaluation);
 router.put('/evaluations/:id', rubricEvaluationController.updateEvaluation);
 router.delete('/evaluations/:id', rubricEvaluationController.deleteEvaluation);
+
+// Scoreboard routes
+router.post('/scoreboards', scoreboardController.createScoreboard);
+router.get('/scoreboards', scoreboardController.getScoreboards);
 
 module.exports = router; 

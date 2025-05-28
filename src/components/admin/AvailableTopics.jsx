@@ -1,14 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { Table, Button, message } from 'antd';
 import axios from 'axios';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import { Menu } from 'antd';
 import { FaBook } from 'react-icons/fa';
 
 const AvailableTopics = () => {
   const [topics, setTopics] = useState([]);
   const [loading, setLoading] = useState(false);
-  const navigate = useNavigate();
 
   useEffect(() => {
     setLoading(true);
@@ -31,22 +30,18 @@ const AvailableTopics = () => {
                 topic_category: categoryRes.data.data || categoryRes.data,
                 topic_major: majorRes.data.data || majorRes.data
               };
-            } catch (error) {
-              console.error('Error fetching details:', error);
+            } catch {
               return topic;
             }
           })
         );
 
         const filtered = topicsWithDetails.filter(
-          t =>
-            Array.isArray(t.topic_group_student)
-              ? t.topic_group_student.filter(Boolean).length === 0
-              : !t.topic_group_student || t.topic_group_student.length === 0
+          t => Array.isArray(t.topic_group_student) && t.topic_group_student.length === 0 && t.status === 'pending'
         );
         
         setTopics(filtered);
-      } catch (error) {
+      } catch {
         message.error('Không thể tải danh sách đề tài!');
       } finally {
         setLoading(false);

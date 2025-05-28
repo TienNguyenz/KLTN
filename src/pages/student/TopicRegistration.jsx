@@ -50,9 +50,17 @@ const TopicRegistration = () => {
     const fetchStudents = async () => {
       try {
         const response = await axios.get(`/api/students?facultyId=${facultyId}`);
-        setStudents(response.data);
+        // Đảm bảo students là mảng
+        if (Array.isArray(response.data)) {
+          setStudents(response.data);
+        } else if (response.data && Array.isArray(response.data.data)) {
+          setStudents(response.data.data);
+        } else {
+          setStudents([]);
+        }
       } catch (error) {
         console.error('Error fetching students:', error);
+        setStudents([]);
       }
     };
 

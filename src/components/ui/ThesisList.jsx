@@ -56,6 +56,9 @@ const ThesisList = () => {
         if (thesis.topic_teacher_status !== 'approved' || thesis.topic_leader_status !== 'approved') {
           return false;
         }
+        if (!Array.isArray(thesis.topic_group_student) || thesis.topic_group_student.length === 0) {
+          return false;
+        }
         if (searchText) {
           const searchLower = searchText.toLowerCase();
           if (!thesis.topic_title?.toLowerCase().includes(searchLower)) {

@@ -1,6 +1,7 @@
 /* eslint-disable no-undef */
 const RubricEvaluation = require('../models/RubricEvaluation');
 const Rubric = require('../models/Rubric');
+const mongoose = require('mongoose');
 
 // Constants
 const ERROR_MESSAGES = {
@@ -70,8 +71,8 @@ exports.getEvaluationsByRubricId = async (req, res) => {
     if (!rubric) {
       return res.status(404).json({ message: ERROR_MESSAGES.RUBRIC_NOT_FOUND });
     }
-
-    const evaluations = await RubricEvaluation.find({ rubric_id: req.params.rubricId })
+    // So sánh rubric_id dưới dạng ObjectId
+    const evaluations = await RubricEvaluation.find({ rubric_id: new mongoose.Types.ObjectId(req.params.rubricId) })
       .sort({ createdAt: -1 });
     return res.status(200).json(evaluations);
   } catch (error) {

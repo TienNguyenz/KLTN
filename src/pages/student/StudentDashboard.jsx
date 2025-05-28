@@ -5,13 +5,17 @@ import { FaTimesCircle, FaBook, FaUserGraduate, FaUsers, FaTag, FaInfoCircle, Fa
 import StudentHeader from '../../components/student/StudentHeader';
 import axios from 'axios';
 import RegisteredTopicDetails from './RegisteredTopicDetails';
+import { Modal, Tabs, Table, Button } from 'antd';
 
 // Component con để hiển thị chi tiết đề tài hoặc thông báo chưa đăng ký
 const TopicDetails = () => {
   const { user } = useAuth();
   const [registeredTopic, setRegisteredTopic] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isViewGradesOpen, setIsViewGradesOpen] = useState(false);
   const navigate = useNavigate();
+  // Thêm state kiểm tra sinh viên đã đăng ký đề tài chưa
+  const [hasRegistered, setHasRegistered] = useState(false);
 
   useEffect(() => {
     if (!user?.user_id) {
@@ -22,8 +26,10 @@ const TopicDetails = () => {
       try {
         const response = await axios.get(`/api/topics/student/${user.user_id}`);
         setRegisteredTopic(response.data);
+        setHasRegistered(!!(response.data && response.data.topic_title));
       } catch {
         setRegisteredTopic(null);
+        setHasRegistered(false);
       } finally {
         setIsLoading(false);
       }
@@ -32,7 +38,7 @@ const TopicDetails = () => {
   }, [user?.user_id]);
 
   const handleCancelRegistration = () => alert('Chức năng hủy đăng ký đang được phát triển!');
-  const handleViewGrades = () => alert('Xem điểm. Chức năng đang phát triển!');
+  const handleViewGrades = () => setIsViewGradesOpen(true);
   const handleViewCommittee = () => alert('Xem thông tin hội đồng. Chức năng đang phát triển!');
 
   if (isLoading) return <div className="p-8 text-center">Đang tải thông tin đề tài...</div>;
@@ -64,12 +70,20 @@ const TopicDetails = () => {
             </div>
           </div>
         ) : (
-          <RegisteredTopicDetails
-            topic={registeredTopic}
-            onCancel={handleCancelRegistration}
-            onViewGrades={handleViewGrades}
-            onViewCommittee={handleViewCommittee}
-          />
+          <>
+            <RegisteredTopicDetails
+              topic={registeredTopic}
+              onCancel={handleCancelRegistration}
+              onViewGrades={handleViewGrades}
+              onViewCommittee={handleViewCommittee}
+            />
+            <ViewGradesModal
+              open={isViewGradesOpen}
+              onClose={() => setIsViewGradesOpen(false)}
+              topic={registeredTopic}
+              user={user}
+            />
+          </>
         )
       ) : (
         <div className="bg-white p-6 rounded-lg shadow-md text-center">
@@ -89,57 +103,50 @@ const TopicDetails = () => {
 
 // Component Danh sách Đề tài
 const TopicsList = () => {
+  const { user } = useAuth();
   const [topics, setTopics] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
+  const [hasRegistered, setHasRegistered] = useState(false);
 
   useEffect(() => {
     const fetchTopics = async () => {
       try {
-    setIsLoading(true);
-        // Thêm timeout để đảm bảo backend đã sẵn sàng
+        setIsLoading(true);
+        // Lấy facultyId của sinh viên
+        const facultyId = user?.user_faculty;
+        // Gọi API truyền facultyId để chỉ lấy đề tài thuộc khoa
         const response = await axios.get('/api/topics', {
-          timeout: 5000,
-          headers: {
-            'Accept': 'application/json'
-          }
+          params: { facultyId }
         });
-        
-        console.log('Response status:', response.status);
-        console.log('Response headers:', response.headers);
-        console.log('Topics data:', response.data);
-
-        if (Array.isArray(response.data)) {
-          setTopics(response.data);
+        if (Array.isArray(response.data.data)) {
+          setTopics(response.data.data);
         } else if (response.data && Array.isArray(response.data.topics)) {
-          // Trong trường hợp API trả về dạng { topics: [...] }
           setTopics(response.data.topics);
         } else {
-          console.error('Expected array of topics but got:', response.data);
           setTopics([]);
         }
-      } catch (error) {
-        console.error('Error fetching topics:', error.message);
-        if (error.response) {
-          // Server trả về response với status code nằm ngoài range 2xx
-          console.error('Error response:', error.response.data);
-          console.error('Error status:', error.response.status);
-        } else if (error.request) {
-          // Request được gửi nhưng không nhận được response
-          console.error('No response received:', error.request);
-        } else {
-          // Có lỗi khi setting up request
-          console.error('Error setting up request:', error.message);
-        }
+      } catch {
         setTopics([]);
       } finally {
-      setIsLoading(false);
+        setIsLoading(false);
       }
     };
-
     fetchTopics();
-  }, []);
+  }, [user?.user_faculty]);
+
+  useEffect(() => {
+    const fetchRegisteredTopic = async () => {
+      try {
+        const response = await axios.get(`/api/topics/student/${user?.user_id}`);
+        setHasRegistered(!!(response.data && response.data.topic_title));
+      } catch {
+        setHasRegistered(false);
+      }
+    };
+    if (user?.user_id) fetchRegisteredTopic();
+  }, [user?.user_id]);
 
   const handleRegisterClick = (topicId, isBlocked) => {
     if (isBlocked) {
@@ -150,13 +157,16 @@ const TopicsList = () => {
   };
 
   const filteredTopics = topics.filter(topic => {
+    // Chỉ lấy đề tài chưa có SV và đang ở trạng thái pending
+    if (!Array.isArray(topic.topic_group_student) || topic.topic_group_student.length > 0) return false;
+    if (topic.status !== 'pending') return false;
     const searchString = searchTerm.toLowerCase();
     return (
       topic.topic_title?.toLowerCase().includes(searchString) ||
       topic.topic_instructor?.toString().toLowerCase().includes(searchString) ||
       topic.topic_major?.toString().toLowerCase().includes(searchString) ||
       topic.topic_category?.toString().toLowerCase().includes(searchString)
-  );
+    );
   });
 
   return (
@@ -225,9 +235,9 @@ const TopicsList = () => {
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                          <button 
                         onClick={() => handleRegisterClick(topic._id, topic.topic_block)}
-                        className={`text-blue-600 hover:text-blue-800 focus:outline-none ${topic.topic_block ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        title={topic.topic_block ? 'Đề tài đã bị khóa' : 'Ghi danh'}
-                        disabled={topic.topic_block}
+                        className={`text-blue-600 hover:text-blue-800 focus:outline-none ${topic.topic_block || hasRegistered ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title={topic.topic_block ? 'Đề tài đã bị khóa' : hasRegistered ? 'Bạn đã đăng ký đề tài khác' : 'Ghi danh'}
+                        disabled={topic.topic_block || hasRegistered}
                          >
                            <FaPencilAlt />
                          </button>
@@ -413,10 +423,15 @@ const Proposals = () => {
       `;
       document.body.appendChild(convertModal);
 
-      const response = await fetch('/api/topics/upload-advisor-request', {
-        method: 'POST',
-        body: formDataFile
-      });
+      const userId = user?._id || user?.id;
+      if (!user || !userId || !topic || !topic._id) {
+        console.log('Không đủ điều kiện gọi API điểm cá nhân');
+        setPersonalScore(null);
+        setLoading(false);
+        return;
+      }
+      console.log('GỌI API điểm cá nhân:', `/api/scoreboards?student_id=${userId}&topic_id=${topic._id}`);
+      const res = await axios.get(`/api/scoreboards?student_id=${userId}&topic_id=${topic._id}`);
       const data = await response.json();
       setConvertedPdfUrl(data.file);
       setConvertedPdfName(data.originalName || 'advisor_request.pdf');
@@ -846,6 +861,162 @@ const StudentLayout = () => {
          </main>
       </div>
     </div>
+  );
+};
+
+const ViewGradesModal = ({ open, onClose, topic, user }) => {
+  const [activeTab, setActiveTab] = useState('personal');
+  const [personalScore, setPersonalScore] = useState(null);
+  const [groupScores, setGroupScores] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [groupStudentMap, setGroupStudentMap] = useState({});
+  const [groupStudentIdToUserId, setGroupStudentIdToUserId] = useState({});
+  const [criteriaMap, setCriteriaMap] = useState({}); // Map evaluation_id -> evaluation_criteria
+
+  // Lấy điểm cá nhân
+  const fetchPersonalScore = async () => {
+    setLoading(true);
+    const userId = user?._id || user?.id;
+    if (!user || !userId || !topic || !topic._id) {
+      setPersonalScore(null);
+      setLoading(false);
+      return;
+    }
+    const res = await axios.get(`/api/scoreboards?student_id=${userId}&topic_id=${topic._id}`);
+    let score = res.data[0];
+    if (!score && groupScores.length > 0) {
+      score = groupScores.find(s =>
+        (groupStudentIdToUserId[s.student_id?.toString()] && groupStudentIdToUserId[s.student_id?.toString()] === user.user_id) ||
+        (s.student_id?.toString() === userId?.toString())
+      );
+    }
+    setPersonalScore(score || null);
+    // Nếu có rubric_id, fetch rubric evaluations để lấy tên tiêu chí
+    if (score && score.rubric_id) {
+      try {
+        const rubricRes = await axios.get(`/api/evaluations/rubric/${score.rubric_id}`);
+        const map = {};
+        rubricRes.data.forEach(ev => {
+          map[ev._id?.toString()] = ev.evaluation_criteria;
+        });
+        setCriteriaMap(map);
+      } catch (err) {}
+    } else {
+      setCriteriaMap({});
+    }
+    setLoading(false);
+  };
+
+  // Lấy điểm nhóm
+  const fetchGroupScores = async () => {
+    setLoading(true);
+    const res = await axios.get(`/api/scoreboards?topic_id=${topic._id}`);
+    setGroupScores(res.data);
+    const map = {};
+    const idToUserId = {};
+    if (topic.topic_group_student) {
+      topic.topic_group_student.forEach(s => {
+        map[s._id?.toString()] = s.user_name || s.name || s.user_id;
+        idToUserId[s._id?.toString()] = s.user_id;
+      });
+    }
+    setGroupStudentMap(map);
+    setGroupStudentIdToUserId(idToUserId);
+    setLoading(false);
+  };
+
+  // Khi mở modal, nếu tab là personal thì fetch điểm cá nhân, nếu tab là group thì fetch groupScores
+  useEffect(() => {
+    if (open) {
+      if (activeTab === 'personal') {
+        fetchPersonalScore();
+      } else if (activeTab === 'group' && groupScores.length === 0) {
+        fetchGroupScores();
+      }
+    }
+    // eslint-disable-next-line
+  }, [open, activeTab]);
+
+  // Khi chuyển tab
+  const handleTabChange = (key) => {
+    setActiveTab(key);
+    if (key === 'personal') {
+      fetchPersonalScore();
+    }
+    if (key === 'group' && groupScores.length === 0) {
+      fetchGroupScores();
+    }
+  };
+
+  // Tính trung bình nhóm
+  const groupAvg = groupScores.length
+    ? (groupScores.reduce((sum, s) => sum + (s.total_score || 0), 0) / groupScores.length).toFixed(2)
+    : 0;
+
+  // Xếp loại nhóm
+  const groupGrade = groupAvg >= 8 ? 'A' : groupAvg >= 6.5 ? 'B' : groupAvg >= 5 ? 'C' : 'D';
+
+  return (
+    <Modal open={open} onCancel={onClose} footer={null} width={900} title="Xem điểm">
+      <Tabs activeKey={activeTab} onChange={handleTabChange}>
+        <Tabs.TabPane tab="Điểm cá nhân" key="personal">
+          {personalScore ? (
+            <div>
+              <h3 className="font-semibold text-lg mb-2">Phiếu đánh giá cá nhân</h3>
+              <div className="mb-2"><b>Tổng điểm:</b> <span className="text-blue-600">{personalScore.total_score}</span> <span className="text-green-600">({personalScore.student_grades})</span></div>
+              <table className="w-full mb-2 border rounded-lg shadow">
+                <thead>
+                  <tr className="bg-blue-50">
+                    <th className="border px-2 py-1">STT</th>
+                    <th className="border px-2 py-1">Tiêu chí</th>
+                    <th className="border px-2 py-1">Điểm</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {personalScore.rubric_student_evaluations && personalScore.rubric_student_evaluations.map((ev, idx) => (
+                    <tr key={ev.evaluation_id} className="hover:bg-blue-50">
+                      <td className="border px-2 py-1 text-center">{idx + 1}</td>
+                      <td className="border px-2 py-1">
+                        {criteriaMap[ev.evaluation_id?.toString()] || ev.evaluation_criteria || ev.evaluation_id}
+                      </td>
+                      <td className="border px-2 py-1 text-center">{ev.score}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          ) : (
+            <div className="text-gray-500 italic">Chưa có điểm.</div>
+          )}
+        </Tabs.TabPane>
+        <Tabs.TabPane tab="Điểm nhóm" key="group">
+          <Table
+            dataSource={groupScores.map((s, idx) => ({
+              key: idx,
+              name: groupStudentMap[s.student_id] || s.student_id,
+              mssv: groupStudentIdToUserId[s.student_id] || s.student_id, // Hiển thị đúng MSSV
+              total: s.total_score,
+              grade: s.student_grades
+            }))}
+            columns={[
+              { title: 'Tên sinh viên', dataIndex: 'name' },
+              { title: 'MSSV', dataIndex: 'mssv' },
+              { title: 'Tổng điểm', dataIndex: 'total' },
+              { title: 'Xếp loại', dataIndex: 'grade' }
+            ]}
+            pagination={false}
+            loading={loading}
+            summary={() => (
+              <Table.Summary.Row>
+                <Table.Summary.Cell index={0} colSpan={2}><b>Trung bình nhóm</b></Table.Summary.Cell>
+                <Table.Summary.Cell index={2}><b>{groupAvg}</b></Table.Summary.Cell>
+                <Table.Summary.Cell index={3}><b>{groupGrade}</b></Table.Summary.Cell>
+              </Table.Summary.Row>
+            )}
+          />
+        </Tabs.TabPane>
+      </Tabs>
+    </Modal>
   );
 };
 
