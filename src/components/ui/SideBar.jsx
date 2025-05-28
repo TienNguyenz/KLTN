@@ -28,7 +28,7 @@ const Sidebar = ({ setSelected }) => {
   };
 
   return (
-    <div className="fixed top-16 left-0 w-64 h-[calc(100vh-4rem)] bg-gray-400 shadow-md p-4">
+    <div className="fixed top-16 left-0 w-64 h-[calc(100vh-4rem)] bg-gray-400 shadow-md p-4 overflow-y-auto">
       {/* Logo & Tên hệ thống */}
       <div className="flex justify-center mb-4">
         <img src={Logo} alt="Logo" className="w-16 h-16 rounded-full" />

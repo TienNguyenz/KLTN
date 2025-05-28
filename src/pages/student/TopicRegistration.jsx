@@ -52,7 +52,7 @@ const TopicRegistration = () => {
         const response = await axios.get(`/api/students?facultyId=${facultyId}`);
         // Đảm bảo students là mảng
         if (Array.isArray(response.data)) {
-          setStudents(response.data);
+        setStudents(response.data);
         } else if (response.data && Array.isArray(response.data.data)) {
           setStudents(response.data.data);
         } else {

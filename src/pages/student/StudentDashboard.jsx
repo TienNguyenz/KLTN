@@ -113,7 +113,7 @@ const TopicsList = () => {
   useEffect(() => {
     const fetchTopics = async () => {
       try {
-        setIsLoading(true);
+    setIsLoading(true);
         // Lấy facultyId của sinh viên
         const facultyId = user?.user_faculty;
         // Gọi API truyền facultyId để chỉ lấy đề tài thuộc khoa
@@ -130,7 +130,7 @@ const TopicsList = () => {
       } catch {
         setTopics([]);
       } finally {
-        setIsLoading(false);
+      setIsLoading(false);
       }
     };
     fetchTopics();
@@ -166,7 +166,7 @@ const TopicsList = () => {
       topic.topic_instructor?.toString().toLowerCase().includes(searchString) ||
       topic.topic_major?.toString().toLowerCase().includes(searchString) ||
       topic.topic_category?.toString().toLowerCase().includes(searchString)
-    );
+  );
   });
 
   return (

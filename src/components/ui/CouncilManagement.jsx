@@ -56,6 +56,8 @@ const CouncilManagement = () => {
   const [assignTopics, setAssignTopics] = useState([]);
   const [selectedTopics, setSelectedTopics] = useState([]);
   const [assignCouncil, setAssignCouncil] = useState(null);
+  const [topicDetails, setTopicDetails] = useState([]);
+  const [isAssignDetailsOpen, setIsAssignDetailsOpen] = useState(false);
 
   useEffect(() => {
     fetchInitialData();
@@ -369,29 +371,88 @@ const CouncilManagement = () => {
       : [...prev, topicId]
     );
   };
-  const handleConfirmAssign = async () => {
-    if (!assignCouncil || selectedTopics.length === 0) return;
+  const handleOpenAssignDetails = () => {
+    // Tạo mảng chi tiết cho từng đề tài đã chọn
+    setTopicDetails(selectedTopics.map(topicId => ({
+      topicId,
+      room: '',
+      date: '',
+      timeStart: '',
+      timeEnd: ''
+    })));
+    setIsAssignDetailsOpen(true); // mở modal nhập chi tiết
+  };
+  const handleConfirmAssignDetails = async () => {
+    // Validate tất cả ngày
+    for (const detail of topicDetails) {
+      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(detail.date)) {
+        alert('Ngày phải đúng định dạng dd/mm/yyyy!');
+        return;
+      }
+    }
+    // Validate trùng phòng/ngày/thời gian
     try {
-      // Gọi API cập nhật từng đề tài, set topic_assembly = assignCouncil._id
-      await Promise.all(selectedTopics.map(topicId => {
-        const topic = assignTopics.find(t => t._id === topicId || t._id?.$oid === topicId);
-        let realId = topic?._id;
-        if (typeof realId === 'object' && realId !== null && realId.$oid) {
-          realId = realId.$oid;
+      // Lấy tất cả đề tài đã gán
+      const res = await axios.get('http://localhost:5000/api/database/collections/Topic');
+      const allTopics = Array.isArray(res.data.data) ? res.data.data : [];
+      // Duyệt từng đề tài chuẩn bị gán
+      for (const detail of topicDetails) {
+        // Chuyển dd/mm/yyyy thành yyyy-mm-dd
+        let dateStr = detail.date;
+        if (dateStr && dateStr.includes('/')) {
+          const [dd, mm, yyyy] = dateStr.split('/');
+          dateStr = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
         }
-        console.log('PUT Topic realId:', realId, 'topic:', topic);
-        return axios.put(`http://localhost:5000/api/database/collections/Topic/${realId}`, {
-          topic_assembly: assignCouncil._id
+        // Lọc các đề tài đã gán cùng phòng, cùng ngày (trừ chính đề tài đang sửa)
+        const sameRoomDate = allTopics.filter(t =>
+          t.topic_room === detail.room &&
+          t.topic_date === dateStr &&
+          t._id !== detail.topicId // tránh so với chính nó
+        );
+        // Kiểm tra overlap thời gian
+        for (const t of sameRoomDate) {
+          // Nếu không có time thì bỏ qua
+          if (!t.topic_time_start || !t.topic_time_end || !detail.timeStart || !detail.timeEnd) continue;
+          // So sánh dạng HH:mm
+          const s1 = detail.timeStart;
+          const e1 = detail.timeEnd;
+          const s2 = t.topic_time_start;
+          const e2 = t.topic_time_end;
+          // Nếu overlap thì báo lỗi
+          if (!(e1 <= s2 || s1 >= e2)) {
+            alert(`Phòng ${detail.room} ngày ${detail.date} đã có hội đồng khác hoặc đề tài khác chấm trong khung giờ này!`);
+            return;
+          }
+        }
+      }
+      // Nếu qua hết thì cho phép lưu
+      await Promise.all(topicDetails.map(detail => {
+        let dateStr = detail.date;
+        if (dateStr && dateStr.includes('/')) {
+          const [dd, mm, yyyy] = dateStr.split('/');
+          dateStr = `${yyyy}-${mm.padStart(2, '0')}-${dd.padStart(2, '0')}`;
+        }
+        return axios.put(`/api/topics/${detail.topicId}`, {
+          topic_assembly: assignCouncil._id,
+          topic_room: detail.room,
+          topic_time_start: detail.timeStart,
+          topic_time_end: detail.timeEnd,
+          topic_date: dateStr
         });
       }));
-      setIsAssignDialogOpen(false);
-      setSelectedTopics([]);
-      setAssignCouncil(null);
-      alert('Gán đề tài cho hội đồng thành công!');
-      fetchCouncils();
+      alert('Gán đề tài thành công!');
+      // Đóng modal, reload, v.v.
     } catch {
-      alert('Có lỗi khi gán đề tài cho hội đồng!');
+      alert('Có lỗi khi gán đề tài!');
     }
+  };
+
+  const updateDetail = (idx, field, value) => {
+    setTopicDetails(prev => {
+      const updated = [...prev];
+      updated[idx] = { ...updated[idx], [field]: value };
+      return updated;
+    });
   };
 
   return (
@@ -801,9 +862,115 @@ const CouncilManagement = () => {
                 <Button
                   variant="contained"
                   color="primary"
-                  onClick={handleConfirmAssign}
+                  onClick={handleOpenAssignDetails}
                   disabled={selectedTopics.length === 0}
                   sx={{ minWidth: 200, fontWeight: 700, fontSize: 18, borderRadius: 2, boxShadow: 2, py: 1.5 }}
+                >
+                  XÁC NHẬN
+                </Button>
+              </Box>
+            </Box>
+          </Box>
+        </DialogContent>
+      </Dialog>
+
+      {/* Modal nhập chi tiết cho từng đề tài */}
+      <Dialog open={isAssignDetailsOpen} onClose={() => setIsAssignDetailsOpen(false)} maxWidth="md" fullWidth>
+        <DialogTitle sx={{ fontWeight: 700, fontSize: 22, textAlign: 'left', pb: 0 }}>Nhập chi tiết cho từng đề tài</DialogTitle>
+        <DialogContent sx={{ p: 0 }}>
+          <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, minHeight: 420, background: '#fafbfc', borderRadius: 3, boxShadow: 3, overflow: 'hidden', m: 2 }}>
+            {/* Bảng đề tài bên phải */}
+            <Box sx={{ flex: 2, pl: { md: 4 }, width: '100%', py: 4, pr: 4 }}>
+              <Typography variant="subtitle1" sx={{ fontWeight: 700, mb: 2, fontSize: 18 }}>
+                Đề tài
+              </Typography>
+              <TableContainer sx={{ background: '#fff', borderRadius: 2, boxShadow: 1, maxWidth: '100%', overflowX: 'auto' }}>
+                <Table size="medium" sx={{ tableLayout: 'fixed', width: '100%' }}>
+                  <TableHead>
+                    <TableRow>
+                      <TableCell padding="checkbox" sx={{ width: 40, textAlign: 'center', fontWeight: 700, fontSize: 16, background: '#f5f7fa' }}></TableCell>
+                      <TableCell sx={{ fontWeight: 700, fontSize: 16, textAlign: 'center', background: '#f5f7fa' }}>Tên đề tài</TableCell>
+                      <TableCell sx={{ fontWeight: 700, fontSize: 16, textAlign: 'center', background: '#f5f7fa' }}>Phòng</TableCell>
+                      <TableCell sx={{ fontWeight: 700, fontSize: 16, textAlign: 'center', background: '#f5f7fa' }}>Ngày</TableCell>
+                      <TableCell sx={{ fontWeight: 700, fontSize: 16, textAlign: 'center', background: '#f5f7fa' }}>Giờ bắt đầu</TableCell>
+                      <TableCell sx={{ fontWeight: 700, fontSize: 16, textAlign: 'center', background: '#f5f7fa' }}>Giờ kết thúc</TableCell>
+                    </TableRow>
+                  </TableHead>
+                  <TableBody>
+                    {topicDetails.map((detail, idx) => (
+                      <TableRow key={detail.topicId} sx={{ '&:hover': { background: '#f0f7ff' }, height: 56 }}>
+                        <TableCell padding="checkbox" sx={{ textAlign: 'center' }}>
+                          <Checkbox
+                            checked={selectedTopics.includes(detail.topicId)}
+                            onChange={() => handleToggleTopic(detail.topicId)}
+                            sx={{ p: 0 }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ fontWeight: 600, fontSize: 15, py: 1, px: 2, textAlign: 'center', whiteSpace: 'normal', wordBreak: 'break-word', minWidth: 120 }}>{
+                          (() => {
+                            const topic = assignTopics.find(t => (t._id === detail.topicId || t._id?.$oid === detail.topicId));
+                            return topic ? topic.topic_title : detail.topicId;
+                          })()
+                        }</TableCell>
+                        <TableCell sx={{ py: 1, px: 2, textAlign: 'center', minWidth: 100 }}>
+                          <TextField
+                            value={detail.room}
+                            onChange={e => updateDetail(idx, 'room', e.target.value)}
+                            placeholder="Nhập phòng"
+                            size="small"
+                            variant="outlined"
+                            sx={{ minWidth: 90, borderRadius: 2 }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ py: 1, px: 2, textAlign: 'center', minWidth: 220 }}>
+                          <TextField
+                            type="text"
+                            value={detail.date}
+                            onChange={e => updateDetail(idx, 'date', e.target.value)}
+                            placeholder="dd/mm/yyyy"
+                            size="small"
+                            variant="outlined"
+                            sx={{ minWidth: 1, borderRadius: 2 }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ py: 1, px: 2, textAlign: 'center', minWidth: 140 }}>
+                          <TextField
+                            type="time"
+                            value={detail.timeStart}
+                            onChange={e => updateDetail(idx, 'timeStart', e.target.value)}
+                            InputLabelProps={{ shrink: true }}
+                            inputProps={{ step: 300 }}
+                            placeholder="Giờ bắt đầu"
+                            size="small"
+                            variant="outlined"
+                            sx={{ minWidth: 120, borderRadius: 2 }}
+                          />
+                        </TableCell>
+                        <TableCell sx={{ py: 1, px: 2, textAlign: 'center', minWidth: 140 }}>
+                          <TextField
+                            type="time"
+                            value={detail.timeEnd}
+                            onChange={e => updateDetail(idx, 'timeEnd', e.target.value)}
+                            InputLabelProps={{ shrink: true }}
+                            inputProps={{ step: 300 }}
+                            placeholder="Giờ kết thúc"
+                            size="small"
+                            variant="outlined"
+                            sx={{ minWidth: 120, borderRadius: 2 }}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </TableContainer>
+              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
+                <Button
+                  variant="contained"
+                  color="primary"
+                  onClick={handleConfirmAssignDetails}
+                  disabled={topicDetails.length === 0}
+                  sx={{ minWidth: 220, fontWeight: 700, fontSize: 20, borderRadius: 3, boxShadow: 2, py: 1.8, letterSpacing: 1 }}
                 >
                   XÁC NHẬN
                 </Button>
