@@ -20,11 +20,12 @@ const TopicRegistration = () => {
     member3: null,
     member4: null
   });
-  const [guidanceRequest, setGuidanceRequest] = useState({
-    reason: '',
-    plan: '',
-    attachment: null
-  });
+  const [studentsWithTopic, setStudentsWithTopic] = useState([]);
+  const [guidanceFile, setGuidanceFile] = useState(null);
+  const [convertedPdfUrl, setConvertedPdfUrl] = useState('');
+  const [convertedPdfName, setConvertedPdfName] = useState('');
+  const [isUploading, setIsUploading] = useState(false);
+  const [docFile, setDocFile] = useState(null);
 
   useEffect(() => {
     const fetchTopic = async () => {
@@ -64,8 +65,22 @@ const TopicRegistration = () => {
       }
     };
 
+    const fetchStudentsWithTopic = async () => {
+      try {
+        const res = await axios.get('/api/topics');
+        const allTopics = res.data.data || res.data || [];
+        // Chỉ lấy đề tài chưa bị từ chối
+        const validTopics = allTopics.filter(t => t.status !== 'rejected' && t.topic_teacher_status !== 'rejected');
+        const registered = validTopics.flatMap(t => Array.isArray(t.topic_group_student) ? t.topic_group_student : []);
+        setStudentsWithTopic(registered.map(s => s.user_id));
+      } catch {
+        setStudentsWithTopic([]);
+      }
+    };
+
     fetchTopic();
     if (facultyId) fetchStudents();
+    fetchStudentsWithTopic();
   }, [topicId, user?.user_id, facultyId]);
 
   const handleMemberChange = (selectedOption, memberType) => {
@@ -87,6 +102,82 @@ const TopicRegistration = () => {
     }));
   };
 
+  const handleGuidanceFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setConvertedPdfUrl('');
+    setConvertedPdfName('');
+    setDocFile(null);
+    setGuidanceFile(null);
+    if (file.type === 'application/msword' || file.type === 'application/vnd.openxmlformats-officedocument.wordprocessingml.document') {
+      setDocFile(file);
+      alert('File DOC/DOCX sẽ được chuyển sang PDF trước khi upload. Bấm "Tải lên" để chuyển đổi.');
+      return;
+    }
+    if (file.type === 'application/pdf') {
+      setGuidanceFile(file);
+    } else {
+      alert('Chỉ hỗ trợ file PDF, DOC, DOCX.');
+    }
+  };
+
+  const handleUploadAdvisorRequest = async () => {
+    setIsUploading(true);
+    try {
+      // Hiện modal thông báo đang convert
+      const convertModal = document.createElement('div');
+      convertModal.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50';
+      convertModal.innerHTML = `
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+          <div class="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto mb-4"></div>
+          <p class="text-lg font-semibold text-gray-800">Đang chuyển đổi Word sang PDF...</p>
+        </div>
+      `;
+      document.body.appendChild(convertModal);
+      const formDataFile = new FormData();
+      formDataFile.append('file', docFile);
+      const res = await axios.post('/api/topics/upload-advisor-request', formDataFile, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setConvertedPdfUrl(res.data.file);
+      setConvertedPdfName(res.data.originalName || 'advisor_request.pdf');
+      setDocFile(null);
+      setGuidanceFile(null);
+      document.body.removeChild(convertModal);
+      // Hiện modal thông báo thành công
+      const successModal = document.createElement('div');
+      successModal.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50';
+      successModal.innerHTML = `
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+          <div class="text-green-500 text-5xl mb-4">✓</div>
+          <p class="text-lg font-semibold text-gray-800">Tải file và chuyển đổi thành công!</p>
+          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Đóng</button>
+        </div>
+      `;
+      document.body.appendChild(successModal);
+      successModal.querySelector('button').onclick = () => {
+        document.body.removeChild(successModal);
+      };
+    } catch {
+      const convertModal = document.querySelector('.fixed.inset-0');
+      if (convertModal) document.body.removeChild(convertModal);
+      const errorModal = document.createElement('div');
+      errorModal.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50';
+      errorModal.innerHTML = `
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+          <div class="text-red-500 text-5xl mb-4">✕</div>
+          <p class="text-lg font-semibold text-gray-800">Lỗi khi upload file đơn xin hướng dẫn!</p>
+          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Đóng</button>
+        </div>
+      `;
+      document.body.appendChild(errorModal);
+      errorModal.querySelector('button').onclick = () => {
+        document.body.removeChild(errorModal);
+      };
+    }
+    setIsUploading(false);
+  };
+
   const handleRegisterSubmit = async (e) => {
     e.preventDefault();
     try {
@@ -99,23 +190,24 @@ const TopicRegistration = () => {
         alert('Không xác định được ID của trưởng nhóm.');
         return;
       }
-
+      if (!convertedPdfUrl && !guidanceFile) {
+        alert('Vui lòng tải lên file đơn xin hướng dẫn (PDF, DOC, DOCX) và chuyển đổi thành công trước khi gửi!');
+        return;
+      }
       const formData = new FormData();
       formData.append('studentId', leaderId);
-      formData.append('reason', guidanceRequest.reason);
-      formData.append('plan', guidanceRequest.plan);
-      if (guidanceRequest.attachment) {
-        formData.append('attachment', guidanceRequest.attachment);
+      if (convertedPdfUrl) {
+        formData.append('advisor_request', convertedPdfUrl);
+      } else if (guidanceFile) {
+        formData.append('advisor_request', guidanceFile);
       }
-
       for (let i = 2; i <= topic.topic_max_members; i++) {
         const memberId = selectedMembers[`member${i}`]?.value;
         if (memberId) {
           formData.append(`member${i}Id`, memberId);
         }
       }
-
-      await axios.post(`/api/topics/${topicId}/register`, formData, {
+      await axios.post(`/api/topics/${topicId}/register-v2`, formData, {
         headers: {
           'Content-Type': 'multipart/form-data'
         }
@@ -134,16 +226,6 @@ const TopicRegistration = () => {
     }
   };
 
-  const handleFileChange = (e) => {
-    const file = e.target.files[0];
-    if (file) {
-      setGuidanceRequest(prev => ({
-        ...prev,
-        attachment: file
-      }));
-    }
-  };
-
   if (isLoading) {
     return <div className="p-8 text-center">Đang tải thông tin đề tài...</div>;
   }
@@ -158,9 +240,8 @@ const TopicRegistration = () => {
 
   const studentOptions = students
     .filter(student => {
-      // Không hiển thị trưởng nhóm (user hiện tại) trong dropdown
       if (student._id === user._id || student.user_id === user?.user_id) return false;
-      // ...các filter khác
+      if (studentsWithTopic.includes(student.user_id)) return false;
       const isSelected = Object.values(selectedMembers).some(member => 
         member && (
           member.value === student._id || 
@@ -290,38 +371,12 @@ const TopicRegistration = () => {
             <div className="space-y-4">
               <div>
                 <label className="block text-sm font-medium text-gray-600 mb-2">
-                  Lý do xin hướng dẫn
-                </label>
-                <textarea
-                  value={guidanceRequest.reason}
-                  onChange={(e) => setGuidanceRequest(prev => ({ ...prev, reason: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  rows="4"
-                  placeholder="Nhập lý do xin hướng dẫn..."
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-2">
-                  Kế hoạch thực hiện đề tài
-                </label>
-                <textarea
-                  value={guidanceRequest.plan}
-                  onChange={(e) => setGuidanceRequest(prev => ({ ...prev, plan: e.target.value }))}
-                  className="w-full p-2 border border-gray-300 rounded-md"
-                  rows="4"
-                  placeholder="Nhập kế hoạch thực hiện đề tài..."
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-2">
-                  File đính kèm (nếu có)
+                  File đính kèm 
                 </label>
                 <div className="flex items-center space-x-2">
                   <input
                     type="file"
-                    onChange={handleFileChange}
+                    onChange={handleGuidanceFileChange}
                     className="hidden"
                     id="file-upload"
                     accept=".pdf,.doc,.docx"
@@ -333,10 +388,21 @@ const TopicRegistration = () => {
                     <FaFileUpload className="mr-2 h-5 w-5 text-gray-400" />
                     Chọn file
                   </label>
-                  {guidanceRequest.attachment && (
-                    <span className="text-sm text-gray-500">
-                      {guidanceRequest.attachment.name}
-                    </span>
+                  {guidanceFile && !convertedPdfUrl && (
+                    <span className="text-green-700 text-sm">{guidanceFile.name}</span>
+                  )}
+                  {docFile && !convertedPdfUrl && (
+                    <button
+                      type="button"
+                      className={`px-4 py-2 rounded text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
+                      disabled={isUploading}
+                      onClick={handleUploadAdvisorRequest}
+                    >
+                      {isUploading ? 'Đang tải...' : 'Tải lên'}
+                    </button>
+                  )}
+                  {convertedPdfUrl && (
+                    <span className="text-green-700 text-sm">{convertedPdfName}</span>
                   )}
                 </div>
                 <p className="mt-1 text-sm text-gray-500">

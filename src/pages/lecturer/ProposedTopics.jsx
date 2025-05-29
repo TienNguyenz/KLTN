@@ -4,6 +4,7 @@ import { FaEye, FaCheck, FaTimes } from 'react-icons/fa';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
 import { Modal, Input, message } from 'antd';
+import ProposedTopicDetail from './ProposedTopicDetail';
 
 const ProposedTopics = () => {
   const navigate = useNavigate();

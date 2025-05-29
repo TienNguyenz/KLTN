@@ -410,8 +410,6 @@ const Proposals = () => {
   const handleUploadAdvisorRequest = async () => {
     setIsUploading(true);
     try {
-      const formDataFile = new FormData();
-      formDataFile.append('file', docFile || guidanceFile);
       // Hiện modal thông báo đang convert
       const convertModal = document.createElement('div');
       convertModal.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50';
@@ -423,18 +421,13 @@ const Proposals = () => {
       `;
       document.body.appendChild(convertModal);
 
-      const userId = user?._id || user?.id;
-      if (!user || !userId || !topic || !topic._id) {
-        console.log('Không đủ điều kiện gọi API điểm cá nhân');
-        setPersonalScore(null);
-        setLoading(false);
-        return;
-      }
-      console.log('GỌI API điểm cá nhân:', `/api/scoreboards?student_id=${userId}&topic_id=${topic._id}`);
-      const res = await axios.get(`/api/scoreboards?student_id=${userId}&topic_id=${topic._id}`);
-      const data = await response.json();
-      setConvertedPdfUrl(data.file);
-      setConvertedPdfName(data.originalName || 'advisor_request.pdf');
+      const formDataFile = new FormData();
+      formDataFile.append('file', docFile || guidanceFile);
+      const res = await axios.post('/api/topics/upload-advisor-request', formDataFile, {
+        headers: { 'Content-Type': 'multipart/form-data' }
+      });
+      setConvertedPdfUrl(res.data.file);
+      setConvertedPdfName(res.data.originalName || 'advisor_request.pdf');
       setDocFile(null);
       setGuidanceFile(null);
 
@@ -458,7 +451,28 @@ const Proposals = () => {
         document.body.removeChild(successModal);
       };
     } catch {
-      alert('Lỗi khi upload file đơn xin hướng dẫn!');
+      // Xóa modal đang convert nếu có lỗi
+      const convertModal = document.querySelector('.fixed.inset-0');
+      if (convertModal) {
+        document.body.removeChild(convertModal);
+      }
+
+      // Hiện modal thông báo lỗi
+      const errorModal = document.createElement('div');
+      errorModal.className = 'fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50';
+      errorModal.innerHTML = `
+        <div class="bg-white p-6 rounded-lg shadow-lg text-center">
+          <div class="text-red-500 text-5xl mb-4">✕</div>
+          <p class="text-lg font-semibold text-gray-800">Lỗi khi upload file đơn xin hướng dẫn!</p>
+          <button class="mt-4 px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600">Đóng</button>
+        </div>
+      `;
+      document.body.appendChild(errorModal);
+
+      // Xóa modal lỗi khi click nút đóng
+      errorModal.querySelector('button').onclick = () => {
+        document.body.removeChild(errorModal);
+      };
     }
     setIsUploading(false);
   };
@@ -489,8 +503,8 @@ const Proposals = () => {
       // Kiểm tra số lượng thành viên
       if (members.length < 2) {
         alert('Vui lòng chọn ít nhất 1 thành viên khác');
-       return;
-    }
+        return;
+      }
 
       let creatorId = user._id;
       if (!creatorId) {
@@ -519,28 +533,30 @@ const Proposals = () => {
         isSuccess = res.data && res.data.topic;
       } else {
         // Đề xuất mới hoàn toàn
-        const response = await axios.post('http://localhost:5000/api/topics/propose', proposalData, {
+        const response = await axios.post('/api/topics/propose', proposalData, {
           headers: { 'Content-Type': 'application/json' }
         });
         isSuccess = response.data;
       }
       if (isSuccess) {
-          alert('Đề xuất đã được gửi thành công!');
-          // Reset form
-          setFormData({
-            ...formData,
+        alert('Đề xuất đã được gửi thành công!');
+        // Reset form
+        setFormData({
+          ...formData,
           topic_title: '',
           topic_instructor: '',
           topic_major: '',
           topic_category: '',
           topic_description: '',
-            student2Id: '',
-            student3Id: '',
-            student4Id: ''
-          });
-          setGuidanceFile(null);
-          navigate('/student'); // Chuyển về trang chủ sinh viên
-        }
+          student2Id: '',
+          student3Id: '',
+          student4Id: ''
+        });
+        setGuidanceFile(null);
+        setConvertedPdfUrl('');
+        setConvertedPdfName('');
+        navigate('/student'); // Chuyển về trang chủ sinh viên
+      }
     } catch (err) {
       if (err.response) {
         const data = err.response.data;

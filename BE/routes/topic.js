@@ -160,7 +160,7 @@ router.get('/:id', async (req, res) => {
 });
 
 // Đăng ký đề tài
-router.post('/:id/register', async (req, res) => {
+router.post('/:id/register', upload.single('advisor_request'), async (req, res) => {
   console.log(`topic.js: Hit POST /${req.params.id}/register`);
   try {
     console.log('Registration request:', {
@@ -267,8 +267,20 @@ router.post('/:id/register', async (req, res) => {
       });
     }
 
+    // Xử lý file advisor_request nếu có
+    let advisorRequestUrl = topic.topic_advisor_request;
+    if (req.file) {
+      advisorRequestUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    } else if (req.body.advisor_request) {
+      advisorRequestUrl = req.body.advisor_request;
+    }
+
     // Cập nhật topic
     topic.topic_group_student = memberIds;
+    topic.topic_teacher_status = 'pending';
+    topic.topic_leader_status = 'pending';
+    topic.status = 'pending';
+    topic.topic_advisor_request = advisorRequestUrl;
     if (memberIds.length >= topic.topic_max_members) {
       topic.topic_block = true;
     }
@@ -307,7 +319,7 @@ router.post('/:id/register', async (req, res) => {
 });
 
 // Đề xuất đề tài mới
-router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
+router.post('/propose', async (req, res) => {
   console.log('topic.js: Hit POST /propose');
   try {
     const {
@@ -318,7 +330,8 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
       topic_description,
       topic_max_members,
       topic_group_student,
-      topic_creator
+      topic_creator,
+      topic_advisor_request
     } = req.body;
 
     console.log('Received proposal data:', req.body);
@@ -327,9 +340,9 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
     const safe_group_student = Array.isArray(topic_group_student) ? topic_group_student : [];
 
     // Kiểm tra các trường bắt buộc
-    if (!topic_title || !topic_instructor || !topic_major || !topic_category || !topic_description || !topic_max_members || !topic_creator) {
+    if (!topic_title || !topic_instructor || !topic_major || !topic_category || !topic_description || !topic_max_members || !topic_creator || !topic_advisor_request) {
       return res.status(400).json({ 
-        message: 'Vui lòng điền đầy đủ thông tin đề tài.',
+        message: 'Vui lòng điền đầy đủ thông tin đề tài và tải lên file đơn xin hướng dẫn.',
         missingFields: {
           topic_title: !topic_title,
           topic_instructor: !topic_instructor,
@@ -337,88 +350,29 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
           topic_category: !topic_category,
           topic_description: !topic_description,
           topic_max_members: !topic_max_members,
-          topic_creator: !topic_creator
+          topic_creator: !topic_creator,
+          topic_advisor_request: !topic_advisor_request
         }
       });
-    }
-
-    // Nếu có thành viên thì kiểm tra, còn không thì bỏ qua toàn bộ block kiểm tra thành viên
-    if (safe_group_student.length > 0) {
-    // Kiểm tra xem các thành viên đã có đề tài chưa
-    const existingTopics = await Topic.find({
-        'topic_group_student': { $in: safe_group_student },
-        status: { $ne: 'rejected' },
-        topic_teacher_status: { $ne: 'rejected' }
-    }).populate('topic_group_student', 'user_name user_id');
-
-    if (existingTopics.length > 0) {
-      const registeredMembers = existingTopics
-        .map(t => t.topic_group_student)
-        .flat()
-          .filter(member => safe_group_student.includes(member._id.toString()));
-
-      const memberDetails = registeredMembers.map(m => ({
-        name: m.user_name,
-        id: m.user_id,
-        topic: existingTopics.find(t => 
-          t.topic_group_student.some(s => s._id.toString() === m._id.toString())
-        )?.topic_title
-      }));
-
-      return res.status(400).json({
-        message: 'Một hoặc nhiều thành viên đã đăng ký đề tài khác',
-        registeredMembers: memberDetails.map(m => 
-          `${m.name} (${m.id}) - Đã đăng ký đề tài: ${m.topic}`
-        )
-      });
-    }
-
-    // Validate group members
-      if (safe_group_student.length > topic_max_members) {
-      return res.status(400).json({ 
-        message: `Số lượng thành viên vượt quá giới hạn cho phép (tối đa ${topic_max_members} người).` 
-      });
-    }
-
-    // Check for duplicate members
-      const uniqueMembers = [...new Set(safe_group_student)];
-      if (uniqueMembers.length !== safe_group_student.length) {
-      return res.status(400).json({ message: 'Không được chọn trùng thành viên.' });
-    }
-
-      // Check if members exist and are students
-      for (const memberId of safe_group_student) {
-        const member = await User.findById(memberId);
-        if (!member) {
-          return res.status(400).json({ message: `Không tìm thấy thông tin thành viên với ID ${memberId}` });
-        }
-        if (member.role !== 'sinhvien') {
-          return res.status(400).json({ message: `Thành viên ${member.user_name} không phải là sinh viên` });
-        }
-      }
     }
 
     // Kiểm tra instructor, major, topic type như cũ
-      const instructor = await User.findById(topic_instructor);
-      if (!instructor) {
-        return res.status(400).json({ message: 'Không tìm thấy thông tin giảng viên hướng dẫn.' });
-      }
-      if (instructor.role !== 'giangvien') {
-        return res.status(400).json({ message: 'Người được chọn không phải là giảng viên.' });
-      }
-      const major = await Major.findById(topic_major);
-      if (!major) {
-        return res.status(400).json({ message: 'Không tìm thấy thông tin chuyên ngành.' });
-      }
-      const topicType = await TopicType.findById(topic_category);
-      if (!topicType) {
-        return res.status(400).json({ message: 'Không tìm thấy thông tin loại đề tài.' });
-      }
+    const instructor = await User.findById(topic_instructor);
+    if (!instructor) {
+      return res.status(400).json({ message: 'Không tìm thấy thông tin giảng viên hướng dẫn.' });
+    }
+    if (instructor.role !== 'giangvien') {
+      return res.status(400).json({ message: 'Người được chọn không phải là giảng viên.' });
+    }
+    const major = await Major.findById(topic_major);
+    if (!major) {
+      return res.status(400).json({ message: 'Không tìm thấy thông tin chuyên ngành.' });
+    }
+    const topicType = await TopicType.findById(topic_category);
+    if (!topicType) {
+      return res.status(400).json({ message: 'Không tìm thấy thông tin loại đề tài.' });
+    }
 
-
-      const fileUrl = req.file
-    ? `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`
-    : '';
     // Tạo đề tài mới
     const newTopic = new Topic({
       topic_title,
@@ -433,7 +387,7 @@ router.post('/propose', upload.single('guidanceFile'), async (req, res) => {
       topic_leader_status: 'pending',
       topic_block: false,
       status: 'pending',
-      topic_advisor_request: fileUrl
+      topic_advisor_request
     });
 
     await newTopic.save();
@@ -516,11 +470,24 @@ router.post('/topic-types', async (req, res) => {
 // Lấy danh sách đề xuất của giảng viên
 router.get('/instructor/:instructorId/proposals', async (req, res) => {
   try {
+    // Lấy cả đề tài sinh viên đề xuất (luồng cũ) và đề tài sinh viên đăng ký đề tài có sẵn (luồng mới)
     const topics = await Topic.find({
       topic_instructor: req.params.instructorId,
-      topic_teacher_status: 'pending',
-      topic_leader_status: 'pending',
-      status: { $ne: 'rejected' }
+      status: 'pending',
+      $or: [
+        // Luồng cũ: đề xuất đề tài
+        {
+          topic_teacher_status: { $in: ['pending', 'waiting'] },
+          topic_leader_status: { $in: ['pending', 'approved'] },
+          topic_creator: { $exists: true, $ne: null }
+        },
+        // Luồng mới: đăng ký đề tài có sẵn
+        {
+          topic_teacher_status: 'waiting',
+          topic_leader_status: 'approved',
+          topic_group_student: { $exists: true, $not: { $size: 0 } }
+        }
+      ]
     })
     .populate('topic_group_student', 'user_name user_id')
     .populate('topic_major', 'major_title')
@@ -528,9 +495,7 @@ router.get('/instructor/:instructorId/proposals', async (req, res) => {
     .populate('topic_creator', 'role')
     .sort({ createdAt: -1 });
 
-    // Lọc lại chỉ lấy đề tài do sinh viên đề xuất
-    const proposals = topics.filter(t => t.topic_creator?.role === 'sinhvien');
-    res.json(proposals);
+    res.json(topics);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -1444,6 +1409,134 @@ router.put('/:id', async (req, res) => {
     res.json({ message: 'Cập nhật đề tài thành công', topic });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi khi cập nhật đề tài', error: err.message });
+  }
+});
+
+// Ghi danh đề tài (luồng mới)
+router.post('/:id/register-v2', upload.single('advisor_request'), async (req, res) => {
+  try {
+    console.log('Body:', req.body);
+    console.log('File:', req.file);
+    const topic = await Topic.findById(req.params.id);
+    if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+    if (topic.topic_block) return res.status(400).json({ message: 'Đề tài đã bị khóa' });
+    const { studentId, ...otherMembers } = req.body;
+    if (!studentId) return res.status(400).json({ message: 'Thiếu thông tin người đăng ký' });
+    const leader = await User.findById(studentId);
+    if (!leader) return res.status(400).json({ message: 'Không tìm thấy thông tin người đăng ký' });
+    // Thu thập tất cả thành viên
+    const memberIds = [studentId];
+    for (let i = 2; i <= topic.topic_max_members; i++) {
+      const memberId = otherMembers[`member${i}Id`];
+      if (memberId) {
+        const member = await User.findById(memberId);
+        if (!member) return res.status(400).json({ message: `Không tìm thấy thành viên ${i}` });
+        if (member.role !== 'sinhvien') return res.status(400).json({ message: `Thành viên ${i} không phải là sinh viên` });
+        memberIds.push(memberId);
+      }
+    }
+    // Kiểm tra số lượng thành viên
+    if (memberIds.length > topic.topic_max_members) {
+      return res.status(400).json({ message: `Số lượng thành viên vượt quá giới hạn cho phép (tối đa ${topic.topic_max_members} người)` });
+    }
+    // Kiểm tra trùng thành viên
+    const uniqueMembers = [...new Set(memberIds)];
+    if (uniqueMembers.length !== memberIds.length) {
+      return res.status(400).json({ message: 'Không được chọn trùng thành viên' });
+    }
+    // Kiểm tra đăng ký trùng
+    const existingRegistrations = await Topic.find({ 'topic_group_student': { $in: memberIds } });
+    if (existingRegistrations.length > 0) {
+      return res.status(400).json({ message: 'Một hoặc nhiều thành viên đã đăng ký đề tài khác' });
+    }
+
+    // Xử lý file advisor_request
+    let advisorRequestUrl = topic.topic_advisor_request;
+    if (req.file) {
+      // Nếu có file upload mới
+      advisorRequestUrl = `${req.protocol}://${req.get('host')}/uploads/${req.file.filename}`;
+    } else if (req.body.advisor_request) {
+      // Nếu có URL file từ trước
+      advisorRequestUrl = req.body.advisor_request;
+    }
+
+    // Cập nhật topic
+    topic.topic_group_student = memberIds;
+    topic.topic_teacher_status = 'waiting';
+    topic.topic_leader_status = 'approved';
+    topic.status = 'pending';
+    topic.topic_advisor_request = advisorRequestUrl;
+    if (memberIds.length >= topic.topic_max_members) {
+      topic.topic_block = true;
+    }
+
+    await topic.save();
+    await topic.populate('topic_group_student', 'user_name user_id');
+
+    // Gửi thông báo cho giảng viên
+    await UserNotification.create({
+      user_notification_title: 'Nhóm sinh viên đăng ký đề tài',
+      user_notification_sender: studentId,
+      user_notification_recipient: topic.topic_instructor,
+      user_notification_content: `Nhóm sinh viên vừa đăng ký đề tài "${topic.topic_title}". Vui lòng kiểm tra!`,
+      user_notification_type: 2,
+      user_notification_isRead: false,
+      user_notification_topic: 'topic',
+    });
+
+    res.json({ message: 'Đăng ký thành công (luồng mới)', topic });
+  } catch (err) {
+    console.error('Registration error:', err);
+    res.status(500).json({ message: 'Có lỗi xảy ra khi đăng ký đề tài (luồng mới)', error: err.message });
+  }
+});
+
+// Giảng viên duyệt đề tài (luồng mới)
+router.put('/:id/approve-by-lecturer-v2', async (req, res) => {
+  try {
+    const topic = await Topic.findById(req.params.id);
+    if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+    topic.topic_teacher_status = 'approve';
+    topic.topic_leader_status = 'waiting';
+    topic.status = 'pending';
+    await topic.save();
+    res.json({ message: 'Giảng viên đã duyệt đề tài (luồng mới)', topic });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi khi giảng viên duyệt đề tài (luồng mới)', error: err.message });
+  }
+});
+
+// Admin duyệt đề tài (luồng mới)
+router.put('/:id/approve-by-admin-v2', async (req, res) => {
+  try {
+    const topic = await Topic.findById(req.params.id);
+    if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+    topic.topic_teacher_status = 'approved';
+    topic.topic_leader_status = 'approved';
+    topic.status = 'active';
+    await topic.save();
+    res.json({ message: 'Admin đã duyệt đề tài (luồng mới)', topic });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi khi admin duyệt đề tài (luồng mới)', error: err.message });
+  }
+});
+
+// Lấy danh sách đề tài chờ admin duyệt
+router.get('/admin/pending-topics', async (req, res) => {
+  try {
+    const topics = await Topic.find({
+      topic_teacher_status: 'approve',
+      topic_leader_status: { $in: ['pending', 'waiting'] },
+      status: 'pending'
+    })
+    .populate('topic_instructor', 'user_name')
+    .populate('topic_major', 'major_title')
+    .populate('topic_category', 'topic_category_title')
+    .populate('topic_group_student', 'user_name user_id')
+    .sort({ createdAt: -1 });
+    res.json(topics);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
 });
 

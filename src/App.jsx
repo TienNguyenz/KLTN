@@ -33,6 +33,7 @@ import CommitteeTopics from './components/lecturer/CommitteeTopics';
 import CommitteeTopicDetail from './components/lecturer/CommitteeTopicDetail';
 import LecturerDashboard from "./components/lecturer/LecturerDashboard";
 import LecturerProfile from "./components/lecturer/LecturerProfile";
+import ProposedTopicDetail from './pages/lecturer/ProposedTopicDetail';
 
 // Import admin components
 import AdminLayout from './components/admin/AdminLayout';
@@ -109,7 +110,7 @@ const AppLayout = () => {
           <Route path="topics/:id/edit" element={<EditTopic />} />
           <Route path="topics/:id" element={<TopicDetail />} />
           <Route path="proposed-topics" element={<ProposedTopics />} />
-          <Route path="proposed-topics/:id" element={<TopicDetail />} />
+          <Route path="proposed-topics/:id" element={<ProposedTopicDetail />} />
           <Route path="supervised-topics" element={<SupervisedTopics />} />
           <Route path="supervised-topics/:id" element={<TopicDetail />} />
           <Route path="review-topics" element={<ReviewTopics />} />

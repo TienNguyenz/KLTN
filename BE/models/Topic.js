@@ -49,12 +49,12 @@ const topicSchema = new mongoose.Schema({
     },
     topic_teacher_status: {
         type: String,
-        enum: ['pending', 'approved', 'rejected'],
+        enum: ['pending', 'waiting', 'approved', 'rejected'],
         default: 'pending'
     },
     topic_leader_status: {
         type: String,
-        enum: ['pending', 'approved', 'rejected'],
+        enum: ['pending', 'waiting', 'approved', 'rejected'],
         default: 'pending'
     },
     topic_advisor_request: {

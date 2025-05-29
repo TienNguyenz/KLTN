@@ -12,6 +12,10 @@ const TopicManagement = () => {
   const [topics, setTopics] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const PAGE_SIZE = 5;
+  const [currentPage, setCurrentPage] = useState(1);
+  const totalPages = Math.ceil(topics.length / PAGE_SIZE) || 1;
+  const paginatedTopics = topics.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Map trạng thái sang tiếng Việt và màu sắc
   const statusConfig = {
@@ -55,6 +59,10 @@ const TopicManagement = () => {
 
   const handleEditTopic = (topicId) => {
       navigate(`/lecturer/topics/${topicId}/edit`);
+  };
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
   };
 
   const filteredTopics = topics.filter(topic => 
@@ -106,7 +114,7 @@ const TopicManagement = () => {
               {isLoading ? (
                 <tr><td colSpan="6" className="p-4 text-center text-gray-500">Đang tải...</td></tr>
               ) : filteredTopics.length > 0 ? (
-                filteredTopics.map((topic) => (
+                paginatedTopics.map((topic) => (
                   <tr key={topic._id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-normal font-medium text-gray-900">{topic.topic_title}</td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600">{topic.topic_instructor?.user_name}</td>
@@ -137,12 +145,74 @@ const TopicManagement = () => {
         {/* Pagination & Total */}
         <div className="mt-6 flex items-center justify-between text-xs text-gray-600">
            <div>Tổng cộng {filteredTopics.length} đề tài</div>
-           {/* Pagination Placeholder (giống TopicsList) */}
            <div className="flex items-center space-x-1">
-              {/* ... nút phân trang ... */} 
-              <span className="px-2 py-1 bg-blue-500 text-white rounded">1</span> 
-              {/* ... */} 
-               <select className="ml-2 border rounded p-1 text-xs"><option>5</option></select>
+             <button
+               className={`px-2 py-1 rounded ${currentPage === 1 ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+               onClick={() => handlePageChange(currentPage - 1)}
+               disabled={currentPage === 1}
+             >
+               &lt;
+             </button>
+             {/* Hiển thị phân trang tối ưu */}
+             {totalPages <= 7 ? (
+               Array.from({ length: totalPages }, (_, i) => (
+                 <button
+                   key={i + 1}
+                   className={`px-2 py-1 rounded ${currentPage === i + 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-blue-100'}`}
+                   onClick={() => handlePageChange(i + 1)}
+                 >
+                   {i + 1}
+                 </button>
+               ))
+             ) : (
+               <>
+                 <button
+                   className={`px-2 py-1 rounded ${currentPage === 1 ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-blue-100'}`}
+                   onClick={() => handlePageChange(1)}
+                 >1</button>
+                 {currentPage > 4 && <span className="px-2">...</span>}
+                 {currentPage > 3 && (
+                   <button
+                     className="px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-blue-100"
+                     onClick={() => handlePageChange(currentPage - 2)}
+                   >{currentPage - 2}</button>
+                 )}
+                 {currentPage > 2 && (
+                   <button
+                     className="px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-blue-100"
+                     onClick={() => handlePageChange(currentPage - 1)}
+                   >{currentPage - 1}</button>
+                 )}
+                 <button
+                   className="px-2 py-1 rounded bg-blue-500 text-white"
+                   disabled
+                 >{currentPage}</button>
+                 {currentPage < totalPages - 1 && (
+                   <button
+                     className="px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-blue-100"
+                     onClick={() => handlePageChange(currentPage + 1)}
+                   >{currentPage + 1}</button>
+                 )}
+                 {currentPage < totalPages - 2 && (
+                   <button
+                     className="px-2 py-1 rounded bg-gray-200 text-gray-700 hover:bg-blue-100"
+                     onClick={() => handlePageChange(currentPage + 2)}
+                   >{currentPage + 2}</button>
+                 )}
+                 {currentPage < totalPages - 3 && <span className="px-2">...</span>}
+                 <button
+                   className={`px-2 py-1 rounded ${currentPage === totalPages ? 'bg-blue-500 text-white' : 'bg-gray-200 text-gray-700 hover:bg-blue-100'}`}
+                   onClick={() => handlePageChange(totalPages)}
+                 >{totalPages}</button>
+               </>
+             )}
+             <button
+               className={`px-2 py-1 rounded ${currentPage === totalPages ? 'bg-gray-200 text-gray-400 cursor-not-allowed' : 'bg-blue-500 text-white hover:bg-blue-600'}`}
+               onClick={() => handlePageChange(currentPage + 1)}
+               disabled={currentPage === totalPages}
+             >
+               &gt;
+             </button>
            </div>
         </div>
       </div>
