@@ -14,8 +14,91 @@ const TopicManagement = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const PAGE_SIZE = 5;
   const [currentPage, setCurrentPage] = useState(1);
-  const totalPages = Math.ceil(topics.length / PAGE_SIZE) || 1;
-  const paginatedTopics = topics.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
+  
+  const [majors, setMajors] = useState([]); // State lưu danh sách chuyên ngành
+  const [selectedMajor, setSelectedMajor] = useState(''); // State lưu chuyên ngành được chọn
+
+  useEffect(() => {
+    console.log('user:', user); // Log user để kiểm tra
+    const fetchTopics = async () => {
+    setIsLoading(true);
+      try {
+        if (!user?.id) return;
+        // Gọi API mới lấy tất cả đề tài của giảng viên
+        const res = await axios.get(`/api/topics/instructor/${user.id}/all`);
+        console.log('API response topics:', res.data); // Thêm log để debug response topics
+        setTopics(res.data);
+      } catch (error) {
+        console.error('Error fetching topics:', error);
+        setTopics([]);
+      } finally {
+      setIsLoading(false);
+      }
+    };
+
+    const fetchMajorsByFaculty = async () => {
+      try {
+        if (!user?.user_faculty) return; // Chỉ fetch nếu có facultyId của user
+        const res = await axios.get(`/api/majors?facultyId=${user.user_faculty}`);
+        // Đảm bảo data trả về là mảng
+        console.log('API response majors:', res.data); // Thêm log để debug response majors
+        if (Array.isArray(res.data.data)) {
+           setMajors(res.data.data);
+        } else if (Array.isArray(res.data)) {
+           setMajors(res.data);
+        } else {
+          setMajors([]);
+        }
+      } catch (error) {
+        console.error('Error fetching majors:', error);
+        setMajors([]);
+      }
+    };
+
+    if (user?.id) fetchTopics();
+    if (user?.user_faculty) fetchMajorsByFaculty(); // Fetch majors khi có user và facultyId
+  }, [user?.id, user?.user_faculty]); // Dependency includes user.user_faculty
+
+  const handleAddTopic = () => {
+      navigate('/lecturer/topics/add'); 
+  };
+
+  const handleEditTopic = (topicId) => {
+      navigate(`/lecturer/topics/${topicId}/edit`);
+  };
+
+  const handlePageChange = (page) => {
+    if (page >= 1 && page <= totalPages) setCurrentPage(page);
+  };
+
+  const filteredTopics = topics.filter(topic => {
+    const lowerSearchTerm = searchTerm.toLowerCase();
+    // Tìm kiếm trong tên đề tài, tên giảng viên, ID, và toàn bộ object (để bắt mã/thời gian)
+    const topicDataString = JSON.stringify(topic).toLowerCase();
+    
+    // Log để kiểm tra giá trị topic_major và selectedMajor
+    console.log('Filtering topic:', topic.topic_title);
+    console.log('topic.topic_major:', topic.topic_major);
+    console.log('selectedMajor:', selectedMajor);
+    console.log('topic.topic_major?._id:', topic.topic_major?._id);
+
+    // Lọc theo chuyên ngành nếu có selectedMajor
+    // So sánh bằng cách chuyển cả hai về string để đảm bảo đúng kiểu dữ liệu
+    if (selectedMajor && topic.topic_major && topic.topic_major !== selectedMajor) {
+      console.log('Topic filtered out by major:', topic.topic_title, ' - Major ID:', topic.topic_major);
+      return false;
+    }
+
+    return (
+      topic.topic_title?.toLowerCase().includes(lowerSearchTerm) ||
+      topic.topic_instructor?.user_name?.toLowerCase().includes(lowerSearchTerm) ||
+      topic._id?.toLowerCase().includes(lowerSearchTerm) ||
+      topicDataString.includes(lowerSearchTerm)
+    );
+  });
+
+  const totalPages = Math.ceil(filteredTopics.length / PAGE_SIZE) || 1;
+  const paginatedTopics = filteredTopics.slice((currentPage - 1) * PAGE_SIZE, currentPage * PAGE_SIZE);
 
   // Map trạng thái sang tiếng Việt và màu sắc
   const statusConfig = {
@@ -30,45 +113,12 @@ const TopicManagement = () => {
     rejected: {
       text: 'Từ chối',
       color: 'bg-red-100 text-red-800'
+    },
+    waiting: {
+      text: 'Có sinh viên đăng ký',
+      color: 'bg-blue-100 text-blue-800'
     }
   };
-
-  useEffect(() => {
-    console.log('user:', user); // Log user để kiểm tra
-    const fetchTopics = async () => {
-    setIsLoading(true);
-      try {
-        if (!user?.id) return;
-        // Gọi API mới lấy tất cả đề tài của giảng viên
-        const res = await axios.get(`/api/topics/instructor/${user.id}/all`);
-        console.log('API response:', res.data); // Thêm log để debug
-        setTopics(res.data);
-      } catch (error) {
-        console.error('Error fetching topics:', error);
-        setTopics([]);
-      } finally {
-      setIsLoading(false);
-      }
-    };
-    if (user?.id) fetchTopics();
-  }, [user?.id]);
-
-  const handleAddTopic = () => {
-      navigate('/lecturer/topics/add'); 
-  };
-
-  const handleEditTopic = (topicId) => {
-      navigate(`/lecturer/topics/${topicId}/edit`);
-  };
-
-  const handlePageChange = (page) => {
-    if (page >= 1 && page <= totalPages) setCurrentPage(page);
-  };
-
-  const filteredTopics = topics.filter(topic => 
-    topic.topic_title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    topic.topic_instructor?.user_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
 
   return (
     <div className="p-6 md:p-8 bg-gray-100 min-h-full">
@@ -86,15 +136,36 @@ const TopicManagement = () => {
 
       {/* Table Card */}
       <div className="bg-white p-6 rounded-lg shadow-md">
-        <div className="mb-4 relative w-full max-w-sm">
-          <input
-            type="text"
-            placeholder="Tìm kiếm đề tài..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-          />
-          <FaSearch className="absolute left-3 top-2.5 text-gray-400" />
+        <div className="mb-4 flex flex-wrap gap-4 items-center">
+          <div className="relative w-full max-w-sm flex-1">
+            <input
+              type="text"
+              placeholder="Tìm kiếm đề tài..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="w-full pl-10 pr-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+            <FaSearch className="absolute left-3 top-2.5 text-gray-400" />
+          </div>
+
+          {/* Dropdown lọc chuyên ngành */}
+          <div className="relative w-full max-w-xs">
+             <select
+               value={selectedMajor}
+               onChange={(e) => setSelectedMajor(e.target.value)}
+               className="w-full pl-3 pr-10 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 text-sm appearance-none -webkit-appearance-none"
+             >
+               <option value="">Tất cả chuyên ngành</option>
+               {majors.map(major => (
+                 <option key={major._id} value={major._id}>
+                   {major.major_title}
+                 </option>
+               ))}
+             </select>
+             <div className="pointer-events-none absolute inset-y-0 right-0 flex items-center px-2 text-gray-700">
+                <svg className="fill-current h-4 w-4" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20"><path d="M9.293 12.95l.707.707L15.657 8l-1.414-1.414L10 10.828 5.757 6.586 4.343 8z"/></svg>
+              </div>
+           </div>
         </div>
 
         {/* Table */}

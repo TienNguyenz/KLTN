@@ -14,8 +14,6 @@ const TopicDetails = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [isViewGradesOpen, setIsViewGradesOpen] = useState(false);
   const navigate = useNavigate();
-  // Thêm state kiểm tra sinh viên đã đăng ký đề tài chưa
-  const [hasRegistered, setHasRegistered] = useState(false);
 
   useEffect(() => {
     if (!user?.user_id) {
@@ -26,10 +24,9 @@ const TopicDetails = () => {
       try {
         const response = await axios.get(`/api/topics/student/${user.user_id}`);
         setRegisteredTopic(response.data);
-        setHasRegistered(!!(response.data && response.data.topic_title));
-      } catch {
+      } catch (error) {
+        console.error('Error fetching registered topic:', error);
         setRegisteredTopic(null);
-        setHasRegistered(false);
       } finally {
         setIsLoading(false);
       }
@@ -70,6 +67,7 @@ const TopicDetails = () => {
                         await axios.post(`/api/topics/${registeredTopic._id}/reset-for-new-registration`);
                         navigate('/student/topics');
                       } catch (err) {
+                        console.error('Error resetting topic:', err);
                         alert('Có lỗi khi mở lại đề tài cho sinh viên khác đăng ký!');
                       }
                     }}
@@ -134,12 +132,11 @@ const TopicsList = () => {
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
   const navigate = useNavigate();
-  const [hasRegistered, setHasRegistered] = useState(false);
 
   useEffect(() => {
     const fetchTopics = async () => {
       try {
-    setIsLoading(true);
+        setIsLoading(true);
         // Lấy facultyId của sinh viên
         const facultyId = user?.user_faculty;
         // Gọi API truyền facultyId để chỉ lấy đề tài thuộc khoa
@@ -156,23 +153,11 @@ const TopicsList = () => {
       } catch {
         setTopics([]);
       } finally {
-      setIsLoading(false);
+        setIsLoading(false);
       }
     };
     fetchTopics();
   }, [user?.user_faculty]);
-
-  useEffect(() => {
-    const fetchRegisteredTopic = async () => {
-      try {
-        const response = await axios.get(`/api/topics/student/${user?.user_id}`);
-        setHasRegistered(!!(response.data && response.data.topic_title));
-      } catch {
-        setHasRegistered(false);
-      }
-    };
-    if (user?.user_id) fetchRegisteredTopic();
-  }, [user?.user_id]);
 
   const handleRegisterClick = (topicId, isBlocked) => {
     if (isBlocked) {
@@ -189,9 +174,10 @@ const TopicsList = () => {
     const searchString = searchTerm.toLowerCase();
     return (
       topic.topic_title?.toLowerCase().includes(searchString) ||
-      topic.topic_instructor?.toString().toLowerCase().includes(searchString) ||
-      topic.topic_major?.toString().toLowerCase().includes(searchString) ||
-      topic.topic_category?.toString().toLowerCase().includes(searchString)
+      topic.topic_instructor?.user_name?.toLowerCase().includes(searchString) ||
+      topic.topic_major?.major_title?.toLowerCase().includes(searchString) ||
+      topic.topic_category?.topic_category_title?.toLowerCase().includes(searchString) ||
+      topic.topic_category?.type_name?.toLowerCase().includes(searchString)
   );
   });
 
@@ -261,9 +247,9 @@ const TopicsList = () => {
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                          <button 
                         onClick={() => handleRegisterClick(topic._id, topic.topic_block)}
-                        className={`text-blue-600 hover:text-blue-800 focus:outline-none ${topic.topic_block || hasRegistered ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        title={topic.topic_block ? 'Đề tài đã bị khóa' : hasRegistered ? 'Bạn đã đăng ký đề tài khác' : 'Ghi danh'}
-                        disabled={topic.topic_block || hasRegistered}
+                        className={`text-blue-600 hover:text-blue-800 focus:outline-none ${topic.topic_block ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title={topic.topic_block ? 'Đề tài đã bị khóa' : 'Ghi danh'}
+                        disabled={topic.topic_block}
                          >
                            <FaPencilAlt />
                          </button>
@@ -278,7 +264,7 @@ const TopicsList = () => {
                       {topic.topic_major?.major_title || ''}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600">
-                      {topic.topic_category?.type_name || ''}
+                      {topic.topic_category?.topic_category_title || topic.topic_category?.type_name || ''}
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap text-gray-600">
                       {topic.topic_max_members}
@@ -861,18 +847,19 @@ const Proposals = () => {
 
 // Đổi tên Layout chính của Student
 const StudentLayout = () => {
-  const linkClasses = "flex items-center px-4 py-3 text-gray-300 hover:bg-gray-700 hover:text-white transition-colors duration-150";
-  const activeLinkClasses = "bg-gray-900 text-white";
+  // Sử dụng màu sắc của SGU (xanh dương đậm và trắng)
+  const linkClasses = "flex items-center px-5 py-3 text-gray-300 hover:bg-blue-700 hover:text-white transition-colors duration-200";
+  const activeLinkClasses = "bg-blue-800 text-white border-r-4 border-white"; // Màu xanh đậm hơn cho active, thêm border nổi bật
 
   return (
     <div className="flex h-screen bg-gray-100">
       {/* Sidebar */}
-      <aside className="w-64 bg-gray-800 text-gray-100 flex flex-col fixed h-full z-30">
+      <aside className="w-64 bg-[#1a2b4a] text-slate-100 flex flex-col fixed h-full z-30">
          <div className="p-4 text-center text-xl font-bold border-b border-gray-700">
-            DDT THESIS
+            HỆ THỐNG QUẢN LÝ ĐỀ TÀI NCKH SGU
          </div>
          
-        <nav className="flex-grow mt-4">
+        <nav className="flex-grow mt-4 overflow-y-auto scrollbar-thin scrollbar-thumb-blue-900 scrollbar-track-blue-950">
           <NavLink 
              to="/student"
              end
@@ -942,7 +929,10 @@ const ViewGradesModal = ({ open, onClose, topic, user }) => {
           map[ev._id?.toString()] = ev.evaluation_criteria;
         });
         setCriteriaMap(map);
-      } catch (err) {}
+      } catch (error) {
+        console.error('Error fetching rubric evaluations:', error);
+        setCriteriaMap({});
+      }
     } else {
       setCriteriaMap({});
     }

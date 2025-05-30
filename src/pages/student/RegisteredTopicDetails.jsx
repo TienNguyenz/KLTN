@@ -6,7 +6,8 @@ const RegisteredTopicDetails = ({ topic, onViewGrades }) => {
   const statusMap = {
     approved: 'Đã duyệt',
     pending: 'Chờ duyệt',
-    rejected: 'Từ chối'
+    rejected: 'Từ chối',
+    waiting: 'Chờ giảng viên duyệt'
   };
 
   // Lấy userId từ localStorage hoặc context

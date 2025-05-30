@@ -757,10 +757,14 @@ router.post('/:id/cancel-registration', async (req, res) => {
       return res.json({ message: 'Đã hủy đăng ký và xóa đề tài đề xuất thành công!' });
     }
 
-    // Nếu là đề tài có sẵn, gỡ toàn bộ sinh viên khỏi nhóm
+    // Nếu là đề tài có sẵn (không phải đề xuất của sinh viên), cập nhật trạng thái để cho phép ghi danh lại
+    // Dựa vào rejectType='register' để phân biệt luồng ghi danh
+    // Note: Logic hiện tại dựa vào creatorRole. Nếu creatorRole không phải sinhvien, tức là đề tài có sẵn.
+    // Cập nhật trạng thái theo yêu cầu mới:
     topic.topic_group_student = [];
-    topic.topic_teacher_status = 'pending';
-    topic.topic_leader_status = 'pending';
+    topic.topic_teacher_status = 'approved'; // Set về approved
+    topic.topic_leader_status = 'approved'; // Set về approved
+    topic.status = 'pending'; // Set về pending (cho phép đăng ký lại)
     topic.topic_block = false;
     await topic.save();
 
@@ -1582,20 +1586,7 @@ router.put('/:id/approve-by-lecturer-v2', async (req, res) => {
   }
 });
 
-// Admin duyệt đề tài (luồng mới)
-router.put('/:id/approve-by-admin-v2', async (req, res) => {
-  try {
-    const topic = await Topic.findById(req.params.id);
-    if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
-    topic.topic_teacher_status = 'approved';
-    topic.topic_leader_status = 'approved';
-    topic.status = 'active';
-    await topic.save();
-    res.json({ message: 'Admin đã duyệt đề tài (luồng mới)', topic });
-  } catch (err) {
-    res.status(500).json({ message: 'Lỗi khi admin duyệt đề tài (luồng mới)', error: err.message });
-  }
-});
+
 
 // Lấy danh sách đề tài chờ admin duyệt
 router.get('/admin/pending-topics', async (req, res) => {

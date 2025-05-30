@@ -59,6 +59,10 @@ const CouncilManagement = () => {
   const [topicDetails, setTopicDetails] = useState([]);
   const [isAssignDetailsOpen, setIsAssignDetailsOpen] = useState(false);
 
+  // State for pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const [topicsPerPage] = useState(10); // Number of topics per page
+
   useEffect(() => {
     fetchInitialData();
   }, []);
@@ -364,6 +368,7 @@ const CouncilManagement = () => {
     setIsAssignDialogOpen(false);
     setSelectedTopics([]);
     setAssignCouncil(null);
+    setCurrentPage(1); // Reset to first page on close
   };
   const handleToggleTopic = (topicId) => {
     setSelectedTopics(prev => prev.includes(topicId)
@@ -441,7 +446,9 @@ const CouncilManagement = () => {
         });
       }));
       alert('Gán đề tài thành công!');
-      // Đóng modal, reload, v.v.
+      setIsSuccessModalVisible(true);
+      setIsAssignDetailsOpen(false); // Close the details modal
+      setSelectedTopics([]); // Clear selected topics
     } catch {
       alert('Có lỗi khi gán đề tài!');
     }
@@ -454,6 +461,14 @@ const CouncilManagement = () => {
       return updated;
     });
   };
+
+  // Pagination logic
+  const indexOfLastTopic = currentPage * topicsPerPage;
+  const indexOfFirstTopic = indexOfLastTopic - topicsPerPage;
+  const currentTopics = assignTopics.slice(indexOfFirstTopic, indexOfLastTopic);
+  const totalPages = Math.ceil(assignTopics.length / topicsPerPage);
+
+  const paginate = (pageNumber) => setCurrentPage(pageNumber);
 
   return (
     <Box sx={{ p: 3 }}>
@@ -801,11 +816,11 @@ const CouncilManagement = () => {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {assignTopics.length === 0 ? (
+                    {currentTopics.length === 0 ? (
                       <TableRow>
                         <TableCell colSpan={6} align="center">Không tìm thấy đề tài</TableCell>
                       </TableRow>
-                    ) : assignTopics.map(topic => (
+                    ) : currentTopics.map(topic => (
                       <TableRow key={topic._id}>
                         <TableCell padding="checkbox">
                           <Checkbox
@@ -858,20 +873,39 @@ const CouncilManagement = () => {
                   </TableBody>
                 </Table>
               </TableContainer>
-              <Box sx={{ display: 'flex', justifyContent: 'center', mt: 4 }}>
-                <Button
-                  variant="contained"
-                  color="primary"
-                  onClick={handleOpenAssignDetails}
-                  disabled={selectedTopics.length === 0}
-                  sx={{ minWidth: 200, fontWeight: 700, fontSize: 18, borderRadius: 2, boxShadow: 2, py: 1.5 }}
-                >
-                  XÁC NHẬN
-                </Button>
-              </Box>
             </Box>
           </Box>
         </DialogContent>
+        {/* Pagination Controls */}
+        {assignTopics.length > topicsPerPage && (
+          <Box sx={{ display: 'flex', justifyContent: 'center', pt: 2, pb: 1 }}>
+            <Button
+              onClick={() => paginate(currentPage - 1)}
+              disabled={currentPage === 1}
+              sx={{ mr: 1 }}
+            >Trước</Button>
+            {/* Simple page number display - can be enhanced with Mui Pagination component */}
+            <Typography variant="body2" sx={{ mx: 1, display: 'flex', alignItems: 'center' }}>
+              Trang {currentPage} / {totalPages}
+            </Typography>
+            <Button
+              onClick={() => paginate(currentPage + 1)}
+              disabled={currentPage === totalPages}
+              sx={{ ml: 1 }}
+            >Sau</Button>
+          </Box>
+        )}
+        <DialogActions sx={{ justifyContent: 'center', pb: 3 }}>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handleOpenAssignDetails}
+            disabled={selectedTopics.length === 0}
+            sx={{ minWidth: 200, fontWeight: 700, fontSize: 18, borderRadius: 2, boxShadow: 2, py: 1.5 }}
+          >
+            XÁC NHẬN
+          </Button>
+        </DialogActions>
       </Dialog>
 
       {/* Modal nhập chi tiết cho từng đề tài */}
