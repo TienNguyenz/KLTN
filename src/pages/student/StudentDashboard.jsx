@@ -131,15 +131,14 @@ const TopicsList = () => {
   const [topics, setTopics] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
+  const [isBlocked, setIsBlocked] = useState(false);
   const navigate = useNavigate();
 
   useEffect(() => {
     const fetchTopics = async () => {
       try {
         setIsLoading(true);
-        // Lấy facultyId của sinh viên
         const facultyId = user?.user_faculty;
-        // Gọi API truyền facultyId để chỉ lấy đề tài thuộc khoa
         const response = await axios.get('/api/topics', {
           params: { facultyId }
         });
@@ -157,14 +156,28 @@ const TopicsList = () => {
       }
     };
     fetchTopics();
-  }, [user?.user_faculty]);
+    // Kiểm tra trạng thái đề tài của sinh viên
+    if (user?.user_id) {
+      axios.get(`/api/topics/student/${user.user_id}`)
+        .then(res => {
+          const topic = res.data;
+          if (
+            topic &&
+            (["pending", "waiting", "active"].includes(topic.status) ||
+             ["pending", "waiting", "approved"].includes(topic.topic_teacher_status))
+          ) {
+            setIsBlocked(true);
+          }
+        })
+        .catch(() => setIsBlocked(false));
+    }
+  }, [user?.user_faculty, user?.user_id]);
 
-  const handleRegisterClick = (topicId, isBlocked) => {
-    if (isBlocked) {
-      alert('Đề tài này đã bị khóa và không thể đăng ký.');
+  const handleRegisterClick = (topicId, isBlockedTopic) => {
+    if (isBlocked || isBlockedTopic) {
       return;
     }
-     navigate(`/student/topics/${topicId}/register`); 
+    navigate(`/student/topics/${topicId}/register`);
   };
 
   const filteredTopics = topics.filter(topic => {
@@ -247,9 +260,9 @@ const TopicsList = () => {
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                          <button 
                         onClick={() => handleRegisterClick(topic._id, topic.topic_block)}
-                        className={`text-blue-600 hover:text-blue-800 focus:outline-none ${topic.topic_block ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        title={topic.topic_block ? 'Đề tài đã bị khóa' : 'Ghi danh'}
-                        disabled={topic.topic_block}
+                        className={`text-blue-600 hover:text-blue-800 focus:outline-none ${topic.topic_block || isBlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title={topic.topic_block ? 'Đề tài đã bị khóa' : isBlocked ? 'Bạn đã có đề tài đang thực hiện hoặc chờ duyệt' : 'Ghi danh'}
+                        disabled={topic.topic_block || isBlocked}
                          >
                            <FaPencilAlt />
                          </button>
@@ -339,6 +352,7 @@ const Proposals = () => {
   const [convertedPdfName, setConvertedPdfName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [docFile, setDocFile] = useState(null);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   // States cho dữ liệu từ MongoDB
   const [instructors, setInstructors] = useState([]);
@@ -387,6 +401,21 @@ const Proposals = () => {
         topic_major: getId(resubmitTopic?.topic_major),
         topic_category: getId(resubmitTopic?.topic_category),
       }));
+    }
+    // Kiểm tra trạng thái đề tài của sinh viên
+    if (user?.user_id) {
+      axios.get(`/api/topics/student/${user.user_id}`)
+        .then(res => {
+          const topic = res.data;
+          if (
+            topic &&
+            (["pending", "waiting", "active"].includes(topic.status) ||
+             ["pending", "waiting", "approved"].includes(topic.topic_teacher_status))
+          ) {
+            setIsBlocked(true);
+          }
+        })
+        .catch(() => setIsBlocked(false));
     }
     // eslint-disable-next-line
   }, [instructors, majors, topicTypes]);
@@ -834,10 +863,11 @@ const Proposals = () => {
         <div className="flex justify-end pt-4">
             <button
               type="submit"
-              className="inline-flex items-center justify-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#008bc3] hover:bg-[#0073a8] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#008bc3] transition-colors"
+              className={`inline-flex items-center justify-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#008bc3] hover:bg-[#0073a8] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#008bc3] transition-colors ${isBlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={isBlocked}
             >
               <FaPaperPlane className="-ml-1 mr-2 h-5 w-5" />
-              Gửi Đề Xuất
+              {isBlocked ? 'Bạn đã có đề tài đang thực hiện hoặc chờ duyệt' : 'Gửi Đề Xuất'}
             </button>
         </div>
       </form>

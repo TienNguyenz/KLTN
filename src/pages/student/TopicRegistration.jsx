@@ -26,6 +26,7 @@ const TopicRegistration = () => {
   const [convertedPdfName, setConvertedPdfName] = useState('');
   const [isUploading, setIsUploading] = useState(false);
   const [docFile, setDocFile] = useState(null);
+  const [isBlocked, setIsBlocked] = useState(false);
 
   useEffect(() => {
     const fetchTopic = async () => {
@@ -118,6 +119,20 @@ const TopicRegistration = () => {
         setStudentsWithTopic([]);
       }
     };
+
+    if (!user?.user_id) return;
+    axios.get(`/api/topics/student/${user.user_id}`)
+      .then(res => {
+        const topic = res.data;
+        if (
+          topic &&
+          (["pending", "waiting", "active"].includes(topic.status) ||
+           ["pending", "waiting", "approved"].includes(topic.topic_teacher_status))
+        ) {
+          setIsBlocked(true);
+        }
+      })
+      .catch(() => setIsBlocked(false));
 
     fetchTopic();
     if (facultyId) fetchStudents();
@@ -462,12 +477,12 @@ const TopicRegistration = () => {
               <button
                 type="submit"
               className={`inline-flex items-center justify-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white transition-colors ${
-                topic.topic_block && !isOldMember ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                topic.topic_block && !isOldMember || isBlocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
               }`}
-              disabled={topic.topic_block && !isOldMember}
+              disabled={topic.topic_block && !isOldMember || isBlocked}
               >
                 <FaCheckCircle className="-ml-1 mr-2 h-5 w-5" />
-                {topic.topic_block && !isOldMember ? 'Đề tài đã bị khóa' : 'Xác nhận đăng ký'}
+                {(topic.topic_block && !isOldMember) ? 'Đề tài đã bị khóa' : isBlocked ? 'Bạn đã có đề tài đang thực hiện hoặc chờ duyệt' : 'Xác nhận đăng ký'}
               </button>
           </div>
           {topic.topic_block && !isOldMember && (

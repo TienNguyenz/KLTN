@@ -195,12 +195,12 @@ router.post('/:id/register', upload.single('advisor_request'), async (req, res) 
 
     // Kiểm tra xem sinh viên đã có đề tài chưa
     const existingTopic = await Topic.findOne({
-      'topic_group_student': studentId
-    }).populate('topic_group_student', 'user_name user_id');
-
+      'topic_group_student': studentId,
+      status: { $in: ['pending', 'waiting', 'active'] }
+    });
     if (existingTopic) {
       return res.status(400).json({ 
-        message: `Sinh viên ${leader.user_name} (${leader.user_id}) đã đăng ký đề tài "${existingTopic.topic_title}" rồi.` 
+        message: `Sinh viên ${leader.user_name} (${leader.user_id}) đã có đề tài "${existingTopic.topic_title}" ở trạng thái "${existingTopic.status}". Không thể ghi danh đề tài khác.` 
       });
     }
 
@@ -372,6 +372,22 @@ router.post('/propose', async (req, res) => {
     const topicType = await TopicType.findById(topic_category);
     if (!topicType) {
       return res.status(400).json({ message: 'Không tìm thấy thông tin loại đề tài.' });
+    }
+
+    // Kiểm tra từng thành viên trong topic_group_student đã có đề tài được duyệt chưa
+    for (const memberId of safe_group_student) {
+      const busyTopic = await Topic.findOne({
+        topic_group_student: memberId,
+        $or: [
+          { topic_teacher_status: { $in: ['approved', 'waiting', 'pending'] } },
+          { status: { $in: ['active', 'pending', 'waiting'] } }
+        ]
+      });
+      if (busyTopic) {
+        return res.status(400).json({
+          message: `Thành viên đã có đề tài "${busyTopic.topic_title}" ở trạng thái đang thực hiện hoặc chờ duyệt. Không thể đề xuất đề tài mới.`
+        });
+      }
     }
 
     // Tạo đề tài mới
