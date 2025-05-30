@@ -360,6 +360,7 @@ const Proposals = () => {
   const [topicTypes, setTopicTypes] = useState([]);
   const [students, setStudents] = useState([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [modalError, setModalError] = useState({ open: false, message: '' });
   const navigate = useNavigate();
 
   useEffect(() => {
@@ -521,7 +522,7 @@ const Proposals = () => {
   const handleSubmit = async (e) => {
     e.preventDefault();
     if (!convertedPdfUrl) {
-      alert('Vui lòng tải lên file đơn xin hướng dẫn (PDF, DOC, DOCX) và chuyển đổi thành công trước khi gửi đề xuất!');
+      setModalError({ open: true, message: 'Vui lòng tải lên file đơn xin hướng dẫn (PDF, DOC, DOCX) và chuyển đổi thành công trước khi gửi đề xuất!' });
       return;
     }
     try {
@@ -580,33 +581,35 @@ const Proposals = () => {
         isSuccess = response.data;
       }
       if (isSuccess) {
-        alert('Đề xuất đã được gửi thành công!');
-        // Reset form
-        setFormData({
-          ...formData,
-          topic_title: '',
-          topic_instructor: '',
-          topic_major: '',
-          topic_category: '',
-          topic_description: '',
-          student2Id: '',
-          student3Id: '',
-          student4Id: ''
-        });
-        setGuidanceFile(null);
-        setConvertedPdfUrl('');
-        setConvertedPdfName('');
-        navigate('/student'); // Chuyển về trang chủ sinh viên
+        setModalError({ open: true, message: 'Đề xuất đã được gửi thành công!' });
+        setTimeout(() => {
+          setModalError({ open: false, message: '' });
+          setFormData({
+            ...formData,
+            topic_title: '',
+            topic_instructor: '',
+            topic_major: '',
+            topic_category: '',
+            topic_description: '',
+            student2Id: '',
+            student3Id: '',
+            student4Id: ''
+          });
+          setGuidanceFile(null);
+          setConvertedPdfUrl('');
+          setConvertedPdfName('');
+          navigate('/student');
+        }, 1500);
       }
     } catch (err) {
       if (err.response) {
         const data = err.response.data;
         if (data.registeredMembers && Array.isArray(data.registeredMembers)) {
-          alert(data.message + ': ' + data.registeredMembers.join('\n'));
+          setModalError({ open: true, message: data.message + ': ' + data.registeredMembers.join('\n') });
         } else if (data.message) {
-          alert(data.message);
+          setModalError({ open: true, message: data.message });
         } else {
-          alert(JSON.stringify(data));
+          setModalError({ open: true, message: JSON.stringify(data) });
         }
       }
     }
@@ -871,6 +874,17 @@ const Proposals = () => {
             </button>
         </div>
       </form>
+      <Modal open={modalError.open} onCancel={() => setModalError({ open: false, message: '' })} footer={null} centered closable>
+        <div className="flex flex-col items-center justify-center p-4">
+          <div className="text-5xl mb-3 text-red-500">❗</div>
+          <div className="text-lg font-semibold text-center whitespace-pre-line mb-4" style={{lineHeight:1.5}}>{modalError.message}</div>
+          <button
+            className="px-6 py-2 bg-blue-600 text-white rounded-lg font-semibold text-base shadow hover:bg-blue-700 transition-colors"
+            style={{minWidth:100}}
+            onClick={() => setModalError({ open: false, message: '' })}
+          >Đóng</button>
+        </div>
+      </Modal>
     </div>
   );
 };

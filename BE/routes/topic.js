@@ -382,10 +382,14 @@ router.post('/propose', async (req, res) => {
           { topic_teacher_status: { $in: ['approved', 'waiting', 'pending'] } },
           { status: { $in: ['active', 'pending', 'waiting'] } }
         ]
-      });
+      }).populate('topic_group_student', 'user_name user_id');
       if (busyTopic) {
+        // Lấy thông tin thành viên
+        const member = busyTopic.topic_group_student.find(m => m._id.toString() === memberId.toString());
+        const memberName = member?.user_name || 'Không rõ';
+        const memberCode = member?.user_id || '';
         return res.status(400).json({
-          message: `Thành viên đã có đề tài "${busyTopic.topic_title}" ở trạng thái đang thực hiện hoặc chờ duyệt. Không thể đề xuất đề tài mới.`
+          message: `Thành viên ${memberName} (${memberCode}) đã có đề tài \"${busyTopic.topic_title}\" ở trạng thái đang thực hiện hoặc chờ duyệt. Không thể đề xuất đề tài mới.`
         });
       }
     }
