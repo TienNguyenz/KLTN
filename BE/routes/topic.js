@@ -340,10 +340,23 @@ router.post('/propose', async (req, res) => {
     // Đảm bảo topic_group_student luôn là mảng
     const safe_group_student = Array.isArray(topic_group_student) ? topic_group_student : [];
 
+    // Lấy ra creatorRole trước
+    const creatorUser = await User.findById(topic_creator);
+    const creatorRole = creatorUser?.role || 'sinhvien';
+
     // Kiểm tra các trường bắt buộc
-    if (!topic_title || !topic_instructor || !topic_major || !topic_category || !topic_description || !topic_max_members || !topic_creator || !topic_advisor_request) {
-      return res.status(400).json({ 
-        message: 'Vui lòng điền đầy đủ thông tin đề tài và tải lên file đơn xin hướng dẫn.',
+    if (
+      !topic_title ||
+      !topic_instructor ||
+      !topic_major ||
+      !topic_category ||
+      !topic_description ||
+      !topic_max_members ||
+      !topic_creator ||
+      (creatorRole === 'sinhvien' && !topic_advisor_request) // chỉ bắt buộc với sinh viên
+    ) {
+      return res.status(400).json({
+        message: 'Vui lòng điền đầy đủ thông tin đề tài' + (creatorRole === 'sinhvien' ? ' và tải lên file đơn xin hướng dẫn.' : '.'),
         missingFields: {
           topic_title: !topic_title,
           topic_instructor: !topic_instructor,
@@ -352,7 +365,7 @@ router.post('/propose', async (req, res) => {
           topic_description: !topic_description,
           topic_max_members: !topic_max_members,
           topic_creator: !topic_creator,
-          topic_advisor_request: !topic_advisor_request
+          topic_advisor_request: creatorRole === 'sinhvien' ? !topic_advisor_request : false
         }
       });
     }
@@ -404,7 +417,7 @@ router.post('/propose', async (req, res) => {
       topic_max_members,
       topic_group_student: Array.isArray(topic_group_student) ? topic_group_student : [],
       topic_creator,
-      topic_teacher_status: 'pending',
+      topic_teacher_status: creatorRole === 'giangvien' ? 'approved' : 'pending',
       topic_leader_status: 'pending',
       topic_block: false,
       status: 'pending',
@@ -421,8 +434,6 @@ router.post('/propose', async (req, res) => {
     });
 
     // Xác định vai trò người tạo đề tài
-    const creatorUser = await User.findById(topic_creator);
-    const creatorRole = creatorUser?.role || 'sinhvien';
     let notificationContent = '';
     if (creatorRole === 'sinhvien') {
       notificationContent = `Sinh viên đã đề xuất đề tài mới: "${topic_title}". Vui lòng kiểm tra và duyệt đề tài trong mục "Đề tài sinh viên đề xuất"!`;
