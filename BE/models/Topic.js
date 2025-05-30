@@ -130,6 +130,11 @@ const topicSchema = new mongoose.Schema({
         type: String,
         trim: true,
         default: ''
+    },
+    rejectType: {
+        type: String,
+        enum: ['register', 'proposal'],
+        default: 'proposal'
     }
 }, { timestamps: true, collection: 'Topic' });
 

@@ -34,9 +34,48 @@ const TopicRegistration = () => {
         const response = await axios.get(`/api/topics/${topicId}`);
         console.log('API /api/topics/:id response:', response.data);
         if (response.data && response.data.data) {
-          setTopic(response.data.data);
+          const fetchedTopic = response.data.data;
+          setTopic(fetchedTopic);
+          // Initialize selectedMembers if topic has existing group students
+          if (fetchedTopic.topic_group_student && fetchedTopic.topic_group_student.length > 0) {
+            const initialMembers = {};
+            // Filter out the current user (leader) and map other members
+            const otherMembers = fetchedTopic.topic_group_student.filter(
+              student => student._id !== user._id && student.user_id !== user.user_id
+            );
+            otherMembers.forEach((member, index) => {
+              // Map to member2, member3, member4 based on index (start from member2)
+              if (index < fetchedTopic.topic_max_members - 1) { // Ensure we don't exceed max members
+                 initialMembers[`member${index + 2}`] = {
+                   value: member._id,
+                   label: `${member.user_name} (${member.user_id || 'Chưa có MSSV'})`,
+                   userId: member.user_id
+                 };
+              }
+            });
+            setSelectedMembers(prev => ({ ...prev, ...initialMembers }));
+          }
         } else if (response.data) {
-          setTopic(response.data);
+          const fetchedTopic = response.data;
+          setTopic(fetchedTopic);
+          // Initialize selectedMembers if topic has existing group students
+          if (fetchedTopic.topic_group_student && fetchedTopic.topic_group_student.length > 0) {
+            const initialMembers = {};
+            // Filter out the current user (leader) and map other members
+            const otherMembers = fetchedTopic.topic_group_student.filter(
+              student => student._id !== user._id && student.user_id !== user.user_id
+            );
+            otherMembers.forEach((member, index) => {
+               if (index < fetchedTopic.topic_max_members - 1) {
+                  initialMembers[`member${index + 2}`] = {
+                    value: member._id,
+                    label: `${member.user_name} (${member.user_id || 'Chưa có MSSV'})`,
+                    userId: member.user_id
+                  };
+               }
+             });
+            setSelectedMembers(prev => ({ ...prev, ...initialMembers }));
+          }
       } else {
         setError('Không tìm thấy thông tin đề tài với ID này.');
       }
@@ -69,8 +108,10 @@ const TopicRegistration = () => {
       try {
         const res = await axios.get('/api/topics');
         const allTopics = res.data.data || res.data || [];
-        // Chỉ lấy đề tài chưa bị từ chối
-        const validTopics = allTopics.filter(t => t.status !== 'rejected' && t.topic_teacher_status !== 'rejected');
+        // Lọc chỉ lấy đề tài đang active hoặc pending, và KHÁC với đề tài hiện tại
+        const validTopics = allTopics.filter(t => 
+          (t.status === 'active' || t.status === 'pending') && t._id !== topicId
+        );
         const registered = validTopics.flatMap(t => Array.isArray(t.topic_group_student) ? t.topic_group_student : []);
         setStudentsWithTopic(registered.map(s => s.user_id));
       } catch {
@@ -259,11 +300,16 @@ const TopicRegistration = () => {
 
   // Kiểm tra xem có thể chọn thành viên thứ i hay không
   const canSelectMember = (memberIndex) => {
-    // Thành viên 2 luôn có thể chọn
-    if (memberIndex === 2) return true;
-    // Các thành viên tiếp theo chỉ có thể chọn nếu thành viên trước đó đã được chọn
-    return selectedMembers[`member${memberIndex - 1}`] !== null;
+    // Thành viên 2 luôn có thể chọn nếu không bị block hoặc là thành viên cũ
+    if (memberIndex === 2) return !topic.topic_block || isOldMember;
+    // Các thành viên tiếp theo chỉ có thể chọn nếu thành viên trước đó đã được chọn VÀ (không bị block HOẶC là thành viên cũ)
+    return selectedMembers[`member${memberIndex - 1}`] !== null && (!topic.topic_block || isOldMember);
   };
+
+  // Xác định sinh viên hiện tại có phải là thành viên cũ không
+  const isOldMember = topic.topic_group_student?.some(
+    s => s._id === user._id || s.user_id === user.user_id
+  );
 
   return (
     <div className="p-6 md:p-8 bg-gray-50 min-h-full">
@@ -416,17 +462,15 @@ const TopicRegistration = () => {
               <button
                 type="submit"
               className={`inline-flex items-center justify-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white transition-colors ${
-                topic.topic_block
-                  ? 'bg-gray-400 cursor-not-allowed'
-                  : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                topic.topic_block && !isOldMember ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
               }`}
-              disabled={topic.topic_block}
+              disabled={topic.topic_block && !isOldMember}
               >
                 <FaCheckCircle className="-ml-1 mr-2 h-5 w-5" />
-              {topic.topic_block ? 'Đề tài đã bị khóa' : 'Xác nhận đăng ký'}
+                {topic.topic_block && !isOldMember ? 'Đề tài đã bị khóa' : 'Xác nhận đăng ký'}
               </button>
           </div>
-          {topic.topic_block && (
+          {topic.topic_block && !isOldMember && (
             <p className="text-right text-sm text-red-600 mt-2">
               {topic.topic_group_student?.length >= topic.topic_max_members
                 ? 'Đề tài này đã đủ số lượng sinh viên đăng ký.'

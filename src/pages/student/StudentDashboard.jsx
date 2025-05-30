@@ -55,18 +55,44 @@ const TopicDetails = () => {
               <p className="text-red-500 mb-4">Lý do: {registeredTopic.reject_reason}</p>
             )}
             <div className="flex flex-col md:flex-row justify-center gap-4 mt-4">
-            <button
-                className="bg-[#008bc3] hover:bg-[#0073a8] text-white font-semibold py-2 px-6 rounded-full transition-colors duration-300"
-                onClick={() => navigate('/student/proposals', { state: { resubmitTopic: registeredTopic } })}
-            >
-              Đề xuất lại đề tài
-            </button>
-              <button
-                className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-full transition-colors duration-300"
-                onClick={() => navigate('/student/proposals')}
-              >
-                Đề xuất đề tài mới
-              </button>
+              {registeredTopic.rejectType === 'register' ? (
+                <>
+                  <button
+                    className="bg-[#008bc3] hover:bg-[#0073a8] text-white font-semibold py-2 px-6 rounded-full transition-colors duration-300"
+                    onClick={() => navigate(`/student/topics/${registeredTopic._id}/register`)}
+                  >
+                    Ghi danh lại đề tài
+                  </button>
+                  <button
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-full transition-colors duration-300"
+                    onClick={async () => {
+                      try {
+                        await axios.post(`/api/topics/${registeredTopic._id}/reset-for-new-registration`);
+                        navigate('/student/topics');
+                      } catch (err) {
+                        alert('Có lỗi khi mở lại đề tài cho sinh viên khác đăng ký!');
+                      }
+                    }}
+                  >
+                    Ghi danh đề tài mới
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    className="bg-[#008bc3] hover:bg-[#0073a8] text-white font-semibold py-2 px-6 rounded-full transition-colors duration-300"
+                    onClick={() => navigate('/student/proposals', { state: { resubmitTopic: registeredTopic } })}
+                  >
+                    Đề xuất lại đề tài
+                  </button>
+                  <button
+                    className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-full transition-colors duration-300"
+                    onClick={() => navigate('/student/proposals')}
+                  >
+                    Đề xuất đề tài mới
+                  </button>
+                </>
+              )}
             </div>
           </div>
         ) : (

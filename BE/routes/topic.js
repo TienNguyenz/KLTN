@@ -284,7 +284,8 @@ router.post('/:id/register', upload.single('advisor_request'), async (req, res) 
     if (memberIds.length >= topic.topic_max_members) {
       topic.topic_block = true;
     }
-
+    // Đảm bảo rejectType là register
+    topic.rejectType = 'register';
     await topic.save();
     await topic.populate('topic_group_student', 'user_name user_id');
 
@@ -387,7 +388,8 @@ router.post('/propose', async (req, res) => {
       topic_leader_status: 'pending',
       topic_block: false,
       status: 'pending',
-      topic_advisor_request
+      topic_advisor_request,
+      rejectType: 'proposal' // Đảm bảo đề xuất luôn là proposal
     });
 
     await newTopic.save();
@@ -599,6 +601,12 @@ router.put('/:id/reject-by-leader', async (req, res) => {
     topic.status = 'rejected';
     topic.topic_group_student = []; // Gỡ toàn bộ sinh viên khỏi đề tài
     topic.reject_reason = req.body.reason || '';
+    // Xác định rejectType: nếu có topic_creator và không có group_student => proposal, ngược lại là register
+    if (topic.topic_creator && (!topic.topic_group_student || topic.topic_group_student.length === 0)) {
+      topic.rejectType = 'proposal';
+    } else {
+      topic.rejectType = 'register';
+    }
     await topic.save();
 
     // Gửi thông báo cho giảng viên
@@ -615,7 +623,7 @@ router.put('/:id/reject-by-leader', async (req, res) => {
       } else {
         console.error('topic_creator không phải là ObjectId hợp lệ:', recipientId);
         // Vẫn cho phép từ chối đề tài, chỉ không gửi notification
-        return res.json({ message: 'Đã từ chối đề tài (không gửi được thông báo do topic_creator không hợp lệ)', topic });
+        return res.json({ message: 'Đã từ chối đề tài (không gửi được thông báo do topic_creator không hợp lệ)', topic, rejectType: topic.rejectType });
       }
     }
 
@@ -634,7 +642,24 @@ router.put('/:id/reject-by-leader', async (req, res) => {
       console.error('Lỗi khi tạo notification:', err);
     }
 
-    res.json({ message: 'Đã từ chối đề tài và gửi thông báo cho sinh viên', topic });
+    if (topic.rejectType === 'register' && topic.topic_group_student && topic.topic_group_student.length > 0) {
+      // Gửi thông báo cho từng sinh viên trong nhóm
+      const notifications = topic.topic_group_student.map(studentId => ({
+        user_notification_title: 'Đề tài ghi danh bị từ chối',
+        user_notification_sender: req.user?._id,
+        user_notification_recipient: studentId,
+        user_notification_content: `Đề tài "${topic.topic_title}" bạn ghi danh đã bị từ chối. Lý do: ${req.body.reason || 'Không có lý do cụ thể.'}`,
+        user_notification_type: 2,
+        user_notification_isRead: false,
+        user_notification_topic: 'topic',
+      }));
+      await UserNotification.insertMany(notifications);
+    } else if (topic.rejectType === 'proposal') {
+      // Luồng đề xuất: giữ nguyên như cũ (gửi cho topic_creator)
+      // ... (đã có sẵn)
+    }
+
+    res.json({ message: 'Đã từ chối đề tài và gửi thông báo cho sinh viên', topic, rejectType: topic.rejectType });
   } catch (err) {
     console.error('Lỗi khi từ chối đề tài:', err);
     res.status(500).json({ message: 'Lỗi khi từ chối đề tài', error: err.message });
@@ -1110,10 +1135,13 @@ router.put('/:id/reject-by-lecturer', auth, async (req, res) => {
     topic.topic_teacher_status = 'rejected';
     topic.status = 'rejected';
     topic.reject_reason = reason || '';
+    // Xác định rejectType: nếu có topic_creator và không có group_student => proposal, ngược lại là register
+    if (topic.topic_creator && (!topic.topic_group_student || topic.topic_group_student.length === 0)) {
+      topic.rejectType = 'proposal';
+    } else {
+      topic.rejectType = 'register';
+    }
     await topic.save();
-
-    // Log giá trị trước khi tạo notification
-    // console.log('Tạo notification cho sinh viên:', { sender: req.user?._id, recipient: topic.topic_creator, topicId: topic._id, reason });
 
     // Gửi notification cho sinh viên
     let recipientId = topic.topic_creator;
@@ -1128,7 +1156,7 @@ router.put('/:id/reject-by-lecturer', auth, async (req, res) => {
       } else {
         console.error('topic_creator không phải là ObjectId hợp lệ:', recipientId);
         // Vẫn cho phép từ chối đề tài, chỉ không gửi notification
-        return res.json({ message: 'Đã từ chối đề tài (không gửi được thông báo do topic_creator không hợp lệ)', topic });
+        return res.json({ message: 'Đã từ chối đề tài (không gửi được thông báo do topic_creator không hợp lệ)', topic, rejectType: topic.rejectType });
       }
     }
 
@@ -1147,7 +1175,24 @@ router.put('/:id/reject-by-lecturer', auth, async (req, res) => {
       console.error('Lỗi khi tạo notification:', err);
     }
 
-    res.json({ message: 'Đã từ chối đề tài và gửi thông báo cho sinh viên', topic });
+    if (topic.rejectType === 'register' && topic.topic_group_student && topic.topic_group_student.length > 0) {
+      // Gửi thông báo cho từng sinh viên trong nhóm
+      const notifications = topic.topic_group_student.map(studentId => ({
+        user_notification_title: 'Đề tài ghi danh bị từ chối',
+        user_notification_sender: req.user?._id,
+        user_notification_recipient: studentId,
+        user_notification_content: `Đề tài "${topic.topic_title}" bạn ghi danh đã bị từ chối. Lý do: ${reason || 'Không có lý do cụ thể.'}`,
+        user_notification_type: 2,
+        user_notification_isRead: false,
+        user_notification_topic: 'topic',
+      }));
+      await UserNotification.insertMany(notifications);
+    } else if (topic.rejectType === 'proposal') {
+      // Luồng đề xuất: giữ nguyên như cũ (gửi cho topic_creator)
+      // ... (đã có sẵn)
+    }
+
+    res.json({ message: 'Đã từ chối đề tài và gửi thông báo cho sinh viên', topic, rejectType: topic.rejectType });
   } catch (err) {
     console.error('Lỗi khi từ chối đề tài:', err);
     res.status(500).json({ message: 'Lỗi khi từ chối đề tài', error: err.message });
@@ -1363,7 +1408,7 @@ router.post('/:id/reject-delete', auth, async (req, res) => {
       user_notification_topic: 'topic',
     });
 
-    res.json({ success: true, message: 'Đã từ chối yêu cầu xóa.' });
+    res.json({ success: true, message: 'Đã từ chối đề tài và gửi thông báo cho sinh viên', topic, rejectType: topic.rejectType });
   } catch (err) {
     res.status(500).json({ success: false, message: 'Lỗi khi từ chối xóa đề tài', error: err.message });
   }
@@ -1419,11 +1464,20 @@ router.post('/:id/register-v2', upload.single('advisor_request'), async (req, re
     console.log('File:', req.file);
     const topic = await Topic.findById(req.params.id);
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
-    if (topic.topic_block) return res.status(400).json({ message: 'Đề tài đã bị khóa' });
+
     const { studentId, ...otherMembers } = req.body;
     if (!studentId) return res.status(400).json({ message: 'Thiếu thông tin người đăng ký' });
     const leader = await User.findById(studentId);
     if (!leader) return res.status(400).json({ message: 'Không tìm thấy thông tin người đăng ký' });
+
+    // Kiểm tra nếu đề tài bị block, trừ khi người đăng ký là thành viên cũ
+    const isOldMember = topic.topic_group_student?.some(
+      memberId => memberId.toString() === studentId.toString()
+    );
+    if (topic.topic_block && !isOldMember) {
+      return res.status(400).json({ message: 'Đề tài đã bị khóa' });
+    }
+
     // Thu thập tất cả thành viên
     const memberIds = [studentId];
     for (let i = 2; i <= topic.topic_max_members; i++) {
@@ -1445,9 +1499,30 @@ router.post('/:id/register-v2', upload.single('advisor_request'), async (req, re
       return res.status(400).json({ message: 'Không được chọn trùng thành viên' });
     }
     // Kiểm tra đăng ký trùng
-    const existingRegistrations = await Topic.find({ 'topic_group_student': { $in: memberIds } });
+    const existingRegistrations = await Topic.find({
+      _id: { $ne: req.params.id }, // Loại trừ đề tài hiện tại
+      'topic_group_student': { $in: memberIds }
+    });
     if (existingRegistrations.length > 0) {
-      return res.status(400).json({ message: 'Một hoặc nhiều thành viên đã đăng ký đề tài khác' });
+      const registeredMembers = existingRegistrations
+        .map(t => t.topic_group_student)
+        .flat()
+        .filter(member => memberIds.includes(member._id.toString()));
+
+      const memberDetails = registeredMembers.map(m => ({
+        name: m.user_name,
+        id: m.user_id,
+        topic: existingRegistrations.find(t => 
+          t.topic_group_student.some(s => s._id.toString() === m._id.toString())
+        )?.topic_title
+      }));
+
+      return res.status(400).json({
+        message: 'Một hoặc nhiều thành viên đã đăng ký đề tài khác',
+        registeredMembers: memberDetails.map(m => 
+          `${m.name} (${m.id}) - Đã đăng ký đề tài: ${m.topic}`
+        )
+      });
     }
 
     // Xử lý file advisor_request
@@ -1469,7 +1544,8 @@ router.post('/:id/register-v2', upload.single('advisor_request'), async (req, re
     if (memberIds.length >= topic.topic_max_members) {
       topic.topic_block = true;
     }
-
+    // Đảm bảo rejectType là register
+    topic.rejectType = 'register';
     await topic.save();
     await topic.populate('topic_group_student', 'user_name user_id');
 
@@ -1540,4 +1616,21 @@ router.get('/admin/pending-topics', async (req, res) => {
   }
 });
 
-module.exports = router; 
+// API reset đề tài về trạng thái cho phép ghi danh lại
+router.post('/:id/reset-for-new-registration', async (req, res) => {
+  try {
+    const topic = await Topic.findById(req.params.id);
+    if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+    topic.topic_group_student = [];
+    topic.topic_teacher_status = 'approved';
+    topic.topic_leader_status = 'approved';
+    topic.status = 'pending';
+    topic.topic_block = false;
+    await topic.save();
+    res.json({ message: 'Đề tài đã được reset, có thể ghi danh lại.' });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi khi reset đề tài', error: err.message });
+  }
+});
+
+module.exports = router;
