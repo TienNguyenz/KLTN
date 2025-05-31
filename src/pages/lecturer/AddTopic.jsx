@@ -157,12 +157,12 @@ const AddTopic = () => {
         topic_group_student: selectedStudents.map(s => s._id),
         topic_creator: lecturerId,
         topic_registration_period: semester,
-        topic_teacher_status: "approved"
       };
 
-      await axios.post('/api/topics/propose', payload);
-      alert('Đã tạo đề tài thành công! Đề tài sẽ hiển thị khi được admin duyệt.');
-      navigate('/lecturer/topics');
+      const res = await axios.post('/api/topics/propose', payload);
+      if (res.data.topic && res.data.topic._id) {
+        navigate(`/lecturer/topics/${res.data.topic._id}/edit`);
+      }
     } catch (error) {
       if (error.response && error.response.data && error.response.data.message) {
         alert(error.response.data.message);

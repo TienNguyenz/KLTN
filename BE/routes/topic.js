@@ -417,10 +417,10 @@ router.post('/propose', async (req, res) => {
       topic_max_members,
       topic_group_student: Array.isArray(topic_group_student) ? topic_group_student : [],
       topic_creator,
-      topic_teacher_status: creatorRole === 'giangvien' ? 'approved' : 'pending',
+      topic_teacher_status: creatorRole === 'giangvien' ? 'draft' : 'pending', // Giảng viên tạo thì là draft
       topic_leader_status: 'pending',
       topic_block: false,
-      status: 'pending',
+      status: creatorRole === 'giangvien' ? 'draft' : 'pending', // Giảng viên tạo thì là draft
       topic_advisor_request,
       rejectType: 'proposal' // Đảm bảo đề xuất luôn là proposal
     });
@@ -1652,6 +1652,41 @@ router.post('/:id/reset-for-new-registration', async (req, res) => {
     res.json({ message: 'Đề tài đã được reset, có thể ghi danh lại.' });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi khi reset đề tài', error: err.message });
+  }
+});
+
+// Giảng viên gửi đăng ký đề tài (từ draft sang chờ admin duyệt)
+router.put('/:id/submit-by-lecturer', async (req, res) => {
+  try {
+    const topic = await Topic.findById(req.params.id);
+    if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+    if (topic.status !== 'draft') {
+      return res.status(400).json({ message: 'Chỉ có thể gửi đăng ký từ trạng thái nháp' });
+    }
+    topic.status = 'waiting_admin'; // chuyển sang chờ admin duyệt
+    topic.topic_teacher_status = 'approved'; // giảng viên đã duyệt
+    await topic.save();
+    res.json({ message: 'Đã gửi đăng ký đề tài lên admin', topic });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi khi gửi đăng ký đề tài', error: err.message });
+  }
+});
+
+// Admin duyệt đề tài
+router.put('/:id/approve-by-admin', async (req, res) => {
+  try {
+    const topic = await Topic.findById(req.params.id);
+    if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+    if (topic.status !== 'waiting_admin') {
+      return res.status(400).json({ message: 'Chỉ có thể duyệt đề tài đang chờ admin duyệt' });
+    }
+    topic.status = 'pending'; // Cho phép sinh viên đăng ký
+    topic.topic_teacher_status = 'approved';
+    topic.topic_leader_status = 'approved';
+    await topic.save();
+    res.json({ message: 'Admin đã duyệt đề tài thành công', topic });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi khi admin duyệt đề tài', error: err.message });
   }
 });
 

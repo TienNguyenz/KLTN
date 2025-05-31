@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Table, Button, Space, Tag, Input, Select, Modal, Form, message, Tooltip, Badge } from 'antd';
 import { SearchOutlined, PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined, EyeOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import axios from 'axios';
@@ -10,11 +10,13 @@ const { confirm } = Modal;
 const TopicManagement = () => {
   const [searchText, setSearchText] = useState('');
   const [filterMajor, setFilterMajor] = useState('all');
-  const [filterStatus, setFilterStatus] = useState('all');
+  const [filterStatus, setFilterStatus] = useState('pending');
   const [isModalVisible, setIsModalVisible] = useState(false);
   const [editingTopic, setEditingTopic] = useState(null);
   const [form] = Form.useForm();
   const navigate = useNavigate();
+  const [data, setData] = useState([]);
+  const [loading, setLoading] = useState(false);
 
   // Mock data cho các chuyên ngành và trạng thái
   const majors = [
@@ -25,11 +27,11 @@ const TopicManagement = () => {
   ];
 
   const statuses = [
-    { value: 'PENDING', label: 'Chờ duyệt', color: 'gold' },
-    { value: 'APPROVED', label: 'Đã duyệt', color: 'green' },
-    { value: 'REJECTED', label: 'Từ chối', color: 'red' },
-    { value: 'IN_PROGRESS', label: 'Đang thực hiện', color: 'blue' },
-    { value: 'COMPLETED', label: 'Đã hoàn thành', color: 'purple' },
+    { value: 'pending', label: 'Chờ duyệt', color: 'gold' },
+    { value: 'waiting', label: 'Chờ sinh viên đăng ký', color: 'blue' },
+    { value: 'active', label: 'Đang thực hiện', color: 'green' },
+    { value: 'completed', label: 'Đã hoàn thành', color: 'purple' },
+    { value: 'rejected', label: 'Từ chối', color: 'red' },
   ];
 
   const columns = [
@@ -99,7 +101,7 @@ const TopicManagement = () => {
               onClick={() => handleViewDetails(record)}
             />
           </Tooltip>
-          {record.status === 'PENDING' && (
+          {record.status === 'waiting_admin' && (
             <>
               <Tooltip title="Duyệt">
                 <Button 
@@ -139,41 +141,21 @@ const TopicManagement = () => {
     },
   ];
 
-  const data = [
-    {
-      key: '1',
-      code: 'DT001',
-      topic_title: 'Nghiên cứu ứng dụng AI trong y tế',
-      topic_instructor: 'Nguyễn Văn A',
-      topic_instructor_code: 'GV001',
-      topic_major: 'CNTT',
-      topic_category: 'Nghiên cứu',
-      topic_max_members: 2,
-      status: 'PENDING',
-    },
-    {
-      key: '2',
-      code: 'DT002',
-      topic_title: 'Phát triển ứng dụng web với React',
-      topic_instructor: 'Trần Thị B',
-      topic_instructor_code: 'GV002',
-      topic_major: 'KTPM',
-      topic_category: 'Ứng dụng',
-      topic_max_members: 3,
-      status: 'APPROVED',
-    },
-    {
-      key: '3',
-      code: 'DT003',
-      topic_title: 'Xây dựng hệ thống IoT Smart Home',
-      topic_instructor: 'Lê Văn C',
-      topic_instructor_code: 'GV003',
-      topic_major: 'MMT',
-      topic_category: 'Ứng dụng',
-      topic_max_members: 2,
-      status: 'IN_PROGRESS',
-    },
-  ];
+  const fetchTopics = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get('http://localhost:5000/api/topics');
+      setData(res.data);
+    } catch (err) {
+      message.error('Lỗi khi tải danh sách đề tài');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchTopics();
+  }, []);
 
   const handleViewDetails = (record) => {
     Modal.info({
@@ -213,7 +195,7 @@ const TopicManagement = () => {
               {record.description || 'Chưa có mô tả chi tiết.'}
             </div>
           </div>
-          {record.status === 'IN_PROGRESS' && (
+          {record.status === 'active' && (
             <div>
               <div className="font-medium text-gray-500 mb-2">Sinh viên thực hiện</div>
               <Table
@@ -243,8 +225,14 @@ const TopicManagement = () => {
       content: `Bạn có chắc chắn muốn duyệt đề tài "${record.topic_title}"?`,
       okText: 'Duyệt',
       cancelText: 'Hủy',
-      onOk() {
-        message.success('Đã duyệt đề tài thành công!');
+      async onOk() {
+        try {
+          await axios.put(`http://localhost:5000/api/topics/${record._id}/approve-by-admin`);
+          message.success('Đã duyệt đề tài thành công!');
+          fetchTopics();
+        } catch (err) {
+          message.error('Lỗi khi duyệt đề tài!');
+        }
       },
     });
   };
@@ -317,8 +305,8 @@ const TopicManagement = () => {
         <div>
           <h1 className="text-2xl font-bold">Quản Lý Đề Tài</h1>
           <div className="text-gray-500 text-sm mt-1">
-            Tổng số: {data.length} đề tài | Chờ duyệt: {data.filter(item => item.status === 'PENDING').length} | 
-            Đang thực hiện: {data.filter(item => item.status === 'IN_PROGRESS').length}
+            Tổng số: {data.length} đề tài | Chờ duyệt: {data.filter(item => item.status === 'pending').length} | 
+            Đang thực hiện: {data.filter(item => item.status === 'active').length}
           </div>
         </div>
         <Button type="primary" icon={<PlusOutlined />} className="bg-blue-600">
@@ -363,7 +351,8 @@ const TopicManagement = () => {
 
         <Table
           columns={columns}
-          dataSource={data}
+          dataSource={filterStatus === 'all' ? data : data.filter(item => item.status === filterStatus)}
+          loading={loading}
           pagination={{
             total: data.length,
             pageSize: 10,

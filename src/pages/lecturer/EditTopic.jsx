@@ -161,8 +161,8 @@ const EditTopic = () => {
 
   const handleSubmitRegister = async () => {
     try {
-      await axios.put(`/api/topics/${id}/submit`);
-      alert('Đã gửi đề tài lên admin chờ duyệt!');
+      await axios.put(`/api/topics/${id}/submit-by-lecturer`);
+      alert('Đã gửi đề tài tới chờ admin duyệt!');
       // Reload lại dữ liệu đề tài để cập nhật trạng thái
       const res = await axios.get(`/api/topics/${id}`);
       const topicData = res.data && res.data.data ? res.data.data : null;
