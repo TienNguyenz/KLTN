@@ -3,12 +3,18 @@ import { Typography, Card, Row, Col, Button, Space, Modal, Table, Input, message
 import { FileTextOutlined, EditOutlined, CloseOutlined, ArrowLeftOutlined, EyeOutlined, UserOutlined, CheckOutlined, ExclamationCircleOutlined } from '@ant-design/icons';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getCommitteeTopicById } from '../../services/topicService';
+import axios from 'axios';
+import SGULogo from '../../images/SGU-LOGO.png';
+
+// Thêm baseURL cho axios
+axios.defaults.baseURL = 'http://localhost:5000';
 
 const { Title, Text, Paragraph } = Typography;
 
 const CommitteeTopicDetail = () => {
   const { id } = useParams();
   const navigate = useNavigate();
+  const user = JSON.parse(localStorage.getItem('user'));
   const [topic, setTopic] = useState(null);
   const [loading, setLoading] = useState(true);
   const [isModalVisible, setIsModalVisible] = useState(false);
@@ -28,6 +34,11 @@ const CommitteeTopicDetail = () => {
   const [loadingOutlineAction, setLoadingOutlineAction] = useState(false);
   const [loadingFinalAction, setLoadingFinalAction] = useState(false);
   const [evaluationFormData, setEvaluationFormData] = useState(null);
+  const [scores, setScores] = useState({});
+  const [totalScore, setTotalScore] = useState(0);
+  const [grading, setGrading] = useState('');
+  const [alreadyScored, setAlreadyScored] = useState(false);
+  const [submittingScore, setSubmittingScore] = useState(false);
   const [evaluationLoading, setEvaluationLoading] = useState(false);
 
   useEffect(() => {
@@ -66,6 +77,7 @@ const CommitteeTopicDetail = () => {
         const response = await fetch('http://localhost:5000/api/database/collections/faculties');
         const data = await response.json();
         setFaculties(data.data || []);
+        console.log('DEBUG faculties:', data.data || []);
       } catch {
         setFaculties([]);
       } finally {
@@ -75,18 +87,32 @@ const CommitteeTopicDetail = () => {
     loadFaculties();
   }, []);
 
+  useEffect(() => {
+    if (evaluationFormData?.evaluations) {
+      let sum = 0;
+      evaluationFormData.evaluations.forEach(ev => {
+        const score = Number(scores[ev._id] || 0);
+        sum += score * ev.weight;
+      });
+      setTotalScore(sum);
+      if (sum >= 8) setGrading('A');
+      else if (sum >= 6.5) setGrading('B');
+      else if (sum >= 5) setGrading('C');
+      else setGrading('D');
+    }
+  }, [scores, evaluationFormData]);
+
   const isDataReady = majors.length > 0 && categories.length > 0 && lecturers.length > 0 && !!topic;
 
   if (loading || !isDataReady) {
     return <div className="p-6">Đang tải dữ liệu phụ trợ...</div>;
   }
 
-  const getMajorName = (major) => {
-    if (!major) return '-';
-    if (typeof major === 'object') return major.major_title || major.title || '-';
-    if (typeof major === 'string' && major.length > 0 && major.length < 24) return major;
-    const found = majors.find(m => String(m._id) === String(major));
-    return found ? found.major_title : '-';
+  const getMajorTitle = (student) => {
+    const majorId = student.user_major || student.major || student.userMajor;
+    if (!majorId) return '-';
+    const found = majors.find(m => String(m._id) === String(majorId));
+    return found ? (found.major_title || found.title) : majorId;
   };
 
   const getCategoryName = (id) => {
@@ -102,69 +128,14 @@ const CommitteeTopicDetail = () => {
     setIsModalVisible(false);
 };
 
-const evaluationColumns = [
-  {
-    title: 'STT',
-    dataIndex: 'stt',
-    key: 'stt',
-    width: '5%',
-    align: 'center',
-  },
-  {
-    title: 'NỘI DUNG',
-    dataIndex: 'content',
-    key: 'content',
-    width: '55%',
-  },
-  {
-    title: 'THANG ĐIỂM',
-    dataIndex: 'maxScore',
-    key: 'maxScore',
-    width: '15%',
-    align: 'center',
-  },
-  {
-    title: 'TRỌNG SỐ',
-    dataIndex: 'weight',
-    key: 'weight',
-    width: '10%',
-    align: 'center',
-  },
-  {
-    title: 'ĐIỂM',
-    dataIndex: 'score',
-    key: 'score',
-    width: '15%',
-    align: 'center',
-    render: (score) => (
-      <Input 
-        type="number" 
-        defaultValue={score} 
-        min={0} 
-        max={10}
-        className="w-16 text-center mx-auto"
-      />
-    ),
-  },
-];
-
-const evaluationData = [
-  {
-      key: '1', stt: 1, content: 'Ý tưởng và Khả năng áp dụng thực tế của ứng dụng', maxScore: 10, weight: '10%', score: 10,
-    },
-    { key: '2', stt: 2, content: 'Độ tận tâm/phức tạp của công việc', maxScore: 10, weight: '10%', score: 9 },
-    { key: '3', stt: 3, content: 'Mức độ hoàn chỉnh', maxScore: 10, weight: '10%', score: 8 },
-    { key: '4', stt: 4, content: 'Tính năng của ứng dụng', maxScore: 10, weight: '10%', score: 0 },
-    { key: '5', stt: 5, content: 'Giao diện của ứng dụng', maxScore: 10, weight: '10%', score: 0 },
-    { key: '6', stt: 6, content: 'Độ khó của đề tài', maxScore: 10, weight: '10%', score: 0 },
-    { key: '7', stt: 7, content: 'Tài liệu hướng dẫn sử dụng/cài đặt', maxScore: 10, weight: '10%', score: 0 },
-    { key: '8', stt: 8, content: 'Trình bày báo cáo', maxScore: 10, weight: '10%', score: 0 },
-    { key: '9', stt: 9, content: 'Trả lời câu hỏi', maxScore: 10, weight: '10%', score: 0 },
-    { key: '10', stt: 10, content: 'Điểm thưởng', maxScore: 10, weight: '10%', score: 0 },
-  ];
-
-  // Hàm xem chi tiết sinh viên
   const handleViewStudentDetail = async (student) => {
+    // Nếu student không có user_faculty, thử lấy từ topic hoặc nhóm
+    if (!student.user_faculty && topic && topic.groups) {
+      const groupStudent = topic.groups.find(s => s.id === student.id || s.user_id === student.user_id);
+      if (groupStudent && groupStudent.user_faculty) {
+        student.user_faculty = groupStudent.user_faculty;
+      }
+    }
     console.log('DEBUG student object:', student);
     setIsStudentDetailModalOpen(true);
     setStudentDetailLoading(true);
@@ -196,6 +167,7 @@ const evaluationData = [
         setSelectedStudentDetail({
           user_name: student.user_name || student.studentName || '-',
           user_id: student.user_id || student.studentId || '-',
+          user_faculty: student.user_faculty || '-',
           email: student.email || '-',
           user_phone: student.user_phone || '-',
           user_date_of_birth: student.user_date_of_birth || '-',
@@ -212,6 +184,7 @@ const evaluationData = [
       setSelectedStudentDetail({
         user_name: student.user_name || student.studentName || '-',
         user_id: student.user_id || student.studentId || '-',
+        user_faculty: student.user_faculty || '-',
         email: student.email || '-',
         user_phone: student.user_phone || '-',
         user_date_of_birth: student.user_date_of_birth || '-',
@@ -239,45 +212,129 @@ const evaluationData = [
     return '';
   };
 
-  const getFacultyTitle = (user_faculty, faculties) => {
-    if (!user_faculty || !Array.isArray(faculties) || faculties.length === 0) return 'Chưa cập nhật';
-    if (typeof user_faculty === 'object' && user_faculty.faculty_title) {
-      return user_faculty.faculty_title;
+  const getFacultyTitle = (student, faculties) => {
+    const facultyId = student.user_faculty || student.faculty || student.faculty_id;
+    if (!facultyId || !Array.isArray(faculties) || faculties.length === 0) return 'Chưa cập nhật';
+    const idStr = typeof facultyId === 'object' ? (facultyId.$oid || facultyId._id || facultyId.id) : facultyId;
+    const found = faculties.find(f => String(f._id) === String(idStr));
+    console.log('DEBUG facultyId:', facultyId, 'idStr:', idStr, 'found:', found);
+    return found ? (found.faculty_title || found.faculty_name || found.title || found.name) : 'Chưa cập nhật';
+  };
+
+  const getCategoryId = () => {
+    if (topic.categoryId) return topic.categoryId;
+    if (topic.topic_category && typeof topic.topic_category === 'object' && topic.topic_category._id) {
+      return topic.topic_category._id;
     }
-    if (!user_faculty || user_faculty === '') return 'Chưa cập nhật';
-    const idStr = extractObjectId(user_faculty);
-    if (!idStr) return 'Chưa cập nhật';
-    const found = faculties.find(f => extractObjectId(f._id) === idStr);
-    return found ? found.faculty_title : 'Chưa cập nhật';
+    // Nếu chỉ có tên, map từ categories
+    if (topic.type && categories.length > 0) {
+      const found = categories.find(c => c.topic_category_title === topic.type || c.title === topic.type);
+      if (found) return found._id;
+    }
+    return null;
   };
 
   const handleOpenEvaluationModal = async (student) => {
     setSelectedStudentForEvaluation(student);
     setIsModalVisible(true);
     setEvaluationLoading(true);
+    setScores({});
+    setTotalScore(0);
+    setGrading('');
     try {
-      // 1. Lấy rubric phù hợp loại đề tài
-      const rubricRes = await fetch(`/api/rubrics?rubric_topic_category=${topic.topic_category || topic.category}`);
-      const rubricArr = await rubricRes.json();
-      const rubric = rubricArr[0] || (rubricArr.data && rubricArr.data[0]);
-      // 2. Lấy thông tin khoa
-      const facultyRes = await fetch(`/api/user/faculties/${topic.faculty_id}`);
-      const facultyData = await facultyRes.json();
-      const faculty = facultyData.data;
-      // 3. Lấy các tiêu chí đánh giá
-      const evaluationsRes = await fetch(`/api/rubric-evaluations/rubric/${rubric._id}`);
-      const evaluations = await evaluationsRes.json();
+      // Lấy đúng ObjectId loại đề tài
+      const categoryId = getCategoryId();
+      console.log('DEBUG getCategoryId:', categoryId);
+      const rubricRes = await axios.get(`/api/rubrics?rubric_topic_category=${categoryId}`);
+      console.log('DEBUG rubricRes:', rubricRes.data);
+      const rubric = rubricRes.data[0];
+      if (!rubric) {
+        message.error('Không tìm thấy phiếu đánh giá phù hợp!');
+        setEvaluationLoading(false);
+        return;
+      }
+      // Sử dụng trực tiếp rubric_evaluations từ response
+      const evaluations = Array.isArray(rubric.rubric_evaluations) 
+        ? rubric.rubric_evaluations.sort((a, b) => a.serial - b.serial)
+        : [];
+      if (!evaluations || evaluations.length === 0) {
+        message.error('Không tìm thấy tiêu chí đánh giá!');
+        setEvaluationLoading(false);
+        return;
+      }
+      // Lấy điểm đã chấm (nếu có)
+      const scoreboardRes = await axios.get(
+        `/api/scoreboards?rubric_id=${rubric._id}&topic_id=${topic.id}&student_id=${student.id}&grader=${user.id}`
+      );
+      // Chỉ disable nếu đã có điểm hội đồng
+      let scoreboard = null;
+      if (Array.isArray(scoreboardRes.data)) {
+        scoreboard = scoreboardRes.data.find(s => s.evaluator_type === 'hoidong');
+      } else if (scoreboardRes.data?.evaluator_type === 'hoidong') {
+        scoreboard = scoreboardRes.data;
+      }
+      if (scoreboard) {
+        const prevScores = {};
+        (scoreboard.rubric_student_evaluations || []).forEach(ev => {
+          prevScores[ev.evaluation_id] = ev.score;
+        });
+        setScores(prevScores);
+        setTotalScore(scoreboard.total_score || 0);
+        setGrading(scoreboard.student_grades || '');
+        setAlreadyScored(true);
+      } else {
+        setScores({});
+        setTotalScore(0);
+        setGrading('');
+        setAlreadyScored(false);
+      }
       setEvaluationFormData({
-        schoolName: 'TRƯỜNG ĐẠI HỌC SÀI GÒN',
-        facultyName: faculty.faculty_name,
         rubricName: rubric.rubric_name,
-        evaluations: evaluations,
+        rubricId: rubric._id,
+        evaluations,
       });
-    } catch (err) {
+    } catch (error) {
+      console.error('Error in handleOpenEvaluationModal:', error);
       setEvaluationFormData(null);
-      message.error('Không thể tải phiếu đánh giá động!');
+      message.error('Không thể tải phiếu đánh giá!');
     }
     setEvaluationLoading(false);
+  };
+
+  const handleScoreChange = (id, value, max) => {
+    let val = Number(value);
+    if (val > max) val = max;
+    if (val < 0) val = 0;
+    setScores(prev => ({ ...prev, [id]: val }));
+  };
+
+  const handleSubmitScore = async () => {
+    if (!evaluationFormData || !selectedStudentForEvaluation) return;
+    setSubmittingScore(true);
+    try {
+      const payload = {
+        rubric_id: evaluationFormData.rubricId,
+        topic_id: topic._id || topic.id,
+        grader: user?._id || user?.id,
+        student_id: selectedStudentForEvaluation._id || selectedStudentForEvaluation.id,
+        rubric_student_evaluations: evaluationFormData.evaluations.map(ev => ({
+          evaluation_id: ev._id,
+          score: Number(scores[ev._id] || 0)
+        })),
+        total_score: totalScore,
+        student_grades: grading,
+        evaluator_type: 'hoidong'
+      };
+      console.log('Scoreboard payload:', payload);
+      await axios.post('/api/scoreboards', payload);
+      message.success('Chấm điểm thành công!');
+      setIsModalVisible(false);
+      setScores({});
+    } catch (err) {
+      message.error('Lưu điểm thất bại!');
+      console.error('POST /api/scoreboards error:', err);
+    }
+    setSubmittingScore(false);
   };
 
   // Xác định trạng thái đề cương và báo cáo cuối cùng
@@ -299,28 +356,28 @@ const evaluationData = [
         <div className="space-y-6">
           <div>
             <div className="text-sm text-gray-500 mb-1">Tên đề tài</div>
-            <div className="text-base">{topic.topic_title || topic.title || '-'}</div>
+            <div className="text-base">{topic.title ?? '-'}</div>
           </div>
 
           <div className="grid grid-cols-3 gap-6">
             <div>
               <div className="text-sm text-gray-500 mb-1">Số lượng thực hiện</div>
-              <div className="text-base">{topic.topic_max_members ?? topic.maxMembers ?? '-'}</div>
+              <div className="text-base">{topic.maxStudents ?? '-'}</div>
             </div>
             <div>
               <div className="text-sm text-gray-500 mb-1">Chuyên ngành</div>
-              <div className="text-base">{getMajorName(topic.topic_major || topic.major)}</div>
+              <div className="text-base">{topic.major ?? '-'}</div>
             </div>
             <div>
               <div className="text-sm text-gray-500 mb-1">Loại đề tài</div>
-              <div className="text-base">{getCategoryName(topic.topic_category || topic.category)}</div>
+              <div className="text-base">{topic.type ?? '-'}</div>
             </div>
           </div>
 
           <div>
             <div className="text-sm text-gray-500 mb-1">Mô tả đề tài</div>
             <div className="text-base whitespace-pre-line border rounded-md p-4 bg-gray-50 min-h-[100px]">
-              {topic.topic_description || topic.description || '-'}
+              {topic.description ?? '-'}
             </div>
           </div>
         </div>
@@ -370,7 +427,7 @@ const evaluationData = [
               <thead>
                 <tr className="bg-gray-100 text-gray-700">
                   <th className="px-4 py-2 border text-center">STT</th>
-                  <th className="px-4 py-2 border text-center">Số lượng</th>
+
                   <th className="px-4 py-2 border text-center">Thành viên</th>
                   <th className="px-4 py-2 border text-center">Mã số SV</th>
                   <th className="px-4 py-2 border text-center">Chi tiết</th>
@@ -381,19 +438,25 @@ const evaluationData = [
                 {topic.groups.map((student, idx) => (
                   <tr key={student.id || idx} className="hover:bg-blue-50 transition">
                     <td className="px-4 py-2 border text-center font-semibold">{idx + 1}</td>
-                    <td className="px-4 py-2 border text-center">1</td>
+
                     <td className="px-4 py-2 border text-center">{student.studentName || '-'}</td>
                     <td className="px-4 py-2 border text-center">{student.studentId || '-'}</td>
                     <td className="px-4 py-2 border text-center">
                       <Button
                         type="link"
                         icon={<EyeOutlined />}
-                        onClick={() => handleViewStudentDetail({ ...student, user_name: student.studentName, user_id: student.studentId })}
+                        onClick={() => handleViewStudentDetail({
+                          ...student,
+                          user_name: student.studentName,
+                          user_id: student.studentId,
+                          user_faculty: student.user_faculty || topic.user_faculty
+                        })}
                         className="text-green-600 hover:text-green-800"
                         style={{ fontSize: 18 }}
                       />
                     </td>
                     <td className="px-4 py-2 border text-center">
+                      {topic.topic_final_report_file ? (
                       <Button
                         type="link"
                         icon={<EditOutlined />}
@@ -401,6 +464,18 @@ const evaluationData = [
                         className="text-blue-600 hover:text-blue-800"
                         style={{ fontSize: 18 }}
                       />
+                      ) : (
+                        <Button
+                          type="link"
+                          icon={<EditOutlined />}
+                          disabled
+                          className="text-gray-400 cursor-not-allowed"
+                          style={{ fontSize: 18 }}
+                          onClick={() => {
+                            message.warning('Không thể chấm điểm khi chưa có báo cáo cuối cùng!');
+                          }}
+                        />
+                      )}
                     </td>
                   </tr>
                 ))}
@@ -415,8 +490,10 @@ const evaluationData = [
       <Modal
         title={
           <div className="text-center">
-            <div className="font-bold">{evaluationFormData?.schoolName || '...'}</div>
-            <div>{evaluationFormData?.facultyName || '...'}</div>
+            <div className="font-bold">TRƯỜNG ĐẠI HỌC SÀI GÒN</div>
+            <div className="flex justify-center my-2">
+              <img src={SGULogo} alt="SGU Logo" style={{ height: 60 }} />
+            </div>
             <div className="absolute right-4 top-4 cursor-pointer" onClick={handleCancel}>
               <CloseOutlined />
             </div>
@@ -433,9 +510,9 @@ const evaluationData = [
             <Text>CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM</Text>
             <div>Độc lập - Tự do - Hạnh phúc</div>
           </div>
-          <Title level={4} className="mb-8">{evaluationFormData?.rubricName || 'PHIẾU ĐÁNH GIÁ'}</Title>
+          <Title level={4} className="mb-8">{evaluationFormData?.rubricName || 'Tiêu chí đánh giá bài luận'}</Title>
           <div className="text-left mb-4">
-            <Text>Tên đề tài: {topic.topic_title || topic.title || '-'}</Text>
+            <Text>Tên đề tài: {topic.title || '-'}</Text>
           </div>
           <div className="text-left mb-8">
             <Text>Sinh viên thực hiện:</Text>
@@ -457,18 +534,48 @@ const evaluationData = [
           {evaluationLoading ? (
             <div>Đang tải phiếu đánh giá...</div>
           ) : evaluationFormData && evaluationFormData.evaluations ? (
+            <>
           <Table
               columns={[
                 { title: 'STT', dataIndex: 'serial', key: 'serial', align: 'center', width: '5%' },
                 { title: 'NỘI DUNG', dataIndex: 'evaluation_criteria', key: 'evaluation_criteria', width: '55%' },
                 { title: 'THANG ĐIỂM', dataIndex: 'grading_scale', key: 'grading_scale', align: 'center', width: '15%' },
-                { title: 'TRỌNG SỐ', dataIndex: 'weight', key: 'weight', align: 'center', width: '10%', render: (w) => (typeof w === 'number' ? w + '%' : w) },
-                { title: 'ĐIỂM', dataIndex: 'score', key: 'score', align: 'center', width: '15%', render: (_, row) => <Input type="number" min={0} max={row.grading_scale} className="w-16 text-center mx-auto" /> },
+                  { title: 'TRỌNG SỐ', dataIndex: 'weight', key: 'weight', align: 'center', width: '10%', render: (w) => (typeof w === 'number' ? (w * 100) + '%' : w) },
+                  { title: 'ĐIỂM', dataIndex: 'score', key: 'score', align: 'center', width: '15%',
+                    render: (_, row) => (
+                      <Input
+                        type="number"
+                        min={0}
+                        max={row.grading_scale}
+                        value={scores[row._id] || ''}
+                        onChange={e => handleScoreChange(row._id, e.target.value, row.grading_scale)}
+                        className="w-16 text-center mx-auto border-blue-400 focus:border-blue-600 rounded shadow-sm"
+                        disabled={alreadyScored}
+                      />
+                    )
+                  },
               ]}
-              dataSource={evaluationFormData.evaluations.map((item, idx) => ({ ...item, key: item._id }))}
+                dataSource={evaluationFormData.evaluations.map((item) => ({ ...item, key: item._id }))}
             pagination={false}
             bordered
           />
+              <div className="flex flex-col items-end mt-4">
+                <div className="text-lg font-semibold mb-2">
+                  Tổng điểm: <span className="text-blue-600">{totalScore.toFixed(2)}</span> &nbsp;
+                  <span className="text-green-600">({grading})</span>
+                </div>
+                <Button
+                  type="primary"
+                  size="large"
+                  disabled={submittingScore || !Object.keys(scores).length || alreadyScored}
+                  className="bg-gradient-to-r from-blue-500 to-green-400 text-white font-bold rounded-lg shadow"
+                  onClick={handleSubmitScore}
+                  loading={submittingScore}
+                >
+                  {alreadyScored ? "Đã chấm điểm" : "Chấm điểm"}
+                </Button>
+              </div>
+            </>
           ) : (
             <div>Không có tiêu chí đánh giá.</div>
           )}
@@ -517,8 +624,8 @@ const evaluationData = [
               <div><b>CCCD:</b> {selectedStudentDetail.user_CCCD || '-'}</div>
               <div className="col-span-2"><b>Địa chỉ thường trú:</b> {selectedStudentDetail.user_permanent_address || '-'}</div>
               <div className="col-span-2"><b>Địa chỉ tạm trú:</b> {selectedStudentDetail.user_temporary_address || '-'}</div>
-              <div><b>Khoa:</b> {getFacultyTitle(selectedStudentDetail.user_faculty, faculties)}</div>
-              <div><b>Ngành:</b> {selectedStudentDetail?.user_major?.major_title || selectedStudentDetail?.user_major || '-'}</div>
+              <div><b>Khoa:</b> {console.log('DEBUG getFacultyTitle input:', selectedStudentDetail, faculties), getFacultyTitle(selectedStudentDetail, faculties)}</div>
+              <div><b>Ngành:</b> {getMajorTitle(selectedStudentDetail)}</div>
               <div><b>Điểm TB:</b> {selectedStudentDetail.user_average_grade || '-'}</div>
               <div><b>Trạng thái:</b> {selectedStudentDetail.user_status || '-'}</div>
             </div>

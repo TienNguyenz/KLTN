@@ -27,8 +27,6 @@ import AddTopic from "./pages/lecturer/AddTopic";
 import EditTopic from "./pages/lecturer/EditTopic";
 import ProposedTopics from "./pages/lecturer/ProposedTopics";
 import SupervisedTopics from "./components/lecturer/SupervisedTopics";
-import ReviewTopics from './components/lecturer/ReviewTopics';
-import ReviewTopicDetail from './components/lecturer/ReviewTopicDetail';
 import CommitteeTopics from './components/lecturer/CommitteeTopics';
 import CommitteeTopicDetail from './components/lecturer/CommitteeTopicDetail';
 import LecturerDashboard from "./components/lecturer/LecturerDashboard";
@@ -113,8 +111,6 @@ const AppLayout = () => {
           <Route path="proposed-topics/:id" element={<ProposedTopicDetail />} />
           <Route path="supervised-topics" element={<SupervisedTopics />} />
           <Route path="supervised-topics/:id" element={<TopicDetail />} />
-          <Route path="review-topics" element={<ReviewTopics />} />
-          <Route path="review-topics/:id" element={<ReviewTopicDetail />} />
           <Route path="committee" element={<CommitteeTopics />} />
           <Route path="committee-topics/:id" element={<CommitteeTopicDetail />} />
           <Route path="profile" element={<LecturerProfile />} />

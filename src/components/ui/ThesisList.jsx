@@ -28,8 +28,8 @@ const ThesisList = () => {
   const fetchFacultiesAndMajors = async () => {
     try {
       const [facultiesRes, majorsRes] = await Promise.all([
-        axios.get("http://localhost:5000/api/database/collections/faculties"),
-        axios.get("http://localhost:5000/api/database/collections/majors")
+        axios.get("/api/faculties"),
+        axios.get("/api/majors")
       ]);
       setFaculties(facultiesRes.data.data);
       setMajors(majorsRes.data.data);
@@ -42,7 +42,7 @@ const ThesisList = () => {
   const fetchTheses = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("http://localhost:5000/api/database/collections/Topic", {
+      const response = await axios.get("/api/topics", {
         params: {
           search: searchText,
           faculty: filterFaculty,
@@ -285,98 +285,6 @@ const ThesisList = () => {
       ),
     },
   ];
-
-  const ReviewerSelectModal = ({
-    open,
-    onCancel,
-    onOk,
-    reviewers,
-    loading,
-    selectedReviewer,
-    setSelectedReviewer,
-  }) => {
-    const [search, setSearch] = useState('');
-    const filtered = reviewers
-      .filter(r => {
-        // Ẩn GVHD khỏi danh sách GVPB
-        const instructorId = typeof selectedThesis?.topic_instructor === 'object'
-          ? selectedThesis?.topic_instructor?._id
-          : selectedThesis?.topic_instructor;
-        return r._id !== instructorId;
-      })
-      .filter(
-        r =>
-          (r.user_name?.toLowerCase() || '').includes(search.toLowerCase()) ||
-          (r.email?.toLowerCase() || '').includes(search.toLowerCase())
-      );
-    const columns = [
-      {
-        title: 'Email',
-        dataIndex: 'email',
-        align: 'center',
-        render: text => <span className="font-medium">{text}</span>,
-      },
-      {
-        title: 'Họ tên',
-        dataIndex: 'user_name',
-        align: 'center',
-        render: text => <span className="font-semibold text-blue-700">{text}</span>,
-      },
-      {
-        title: 'Mã số',
-        dataIndex: 'user_id',
-        align: 'center',
-      },
-      {
-        title: 'Chuyên ngành',
-        dataIndex: ['user_major', 'major_title'],
-        align: 'center',
-        render: (text, record) => <span className="text-gray-700">{record.user_major?.major_title || ''}</span>,
-      },
-      {
-        title: 'Số lượng phản biện',
-        dataIndex: 'review_count',
-        align: 'center',
-        render: text => <span className="text-purple-600">{text || 0}</span>,
-      },
-    ];
-    return (
-      <Modal
-        title={<span className="text-lg font-bold text-blue-700">Chọn giảng viên phản biện</span>}
-        open={open}
-        onCancel={onCancel}
-        width={800}
-        footer={[
-          <Button key="cancel" onClick={onCancel}>Hủy</Button>,
-          <Button key="ok" type="primary" onClick={onOk} disabled={!selectedReviewer} className="bg-blue-600">Xác nhận</Button>,
-        ]}
-      >
-        <div className="mb-3 flex justify-between items-center">
-          <Input.Search
-            placeholder="Tìm kiếm theo tên hoặc email"
-            allowClear
-            onChange={e => setSearch(e.target.value)}
-            style={{ width: 300 }}
-          />
-          <Button onClick={() => setSearch('')}>Xóa tìm kiếm</Button>
-        </div>
-        <Table
-          rowSelection={{
-            type: 'radio',
-            selectedRowKeys: selectedReviewer ? [selectedReviewer._id] : [],
-            onChange: (selectedRowKeys, selectedRows) => setSelectedReviewer(selectedRows[0]),
-          }}
-          columns={columns}
-          dataSource={filtered}
-          rowKey="_id"
-          loading={loading}
-          pagination={{ pageSize: 5, showSizeChanger: false }}
-          bordered
-          size="middle"
-        />
-      </Modal>
-    );
-  };
 
   return (
     <div className="p-4">

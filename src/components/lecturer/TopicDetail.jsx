@@ -161,7 +161,13 @@ const TopicDetail = () => {
       const scoreboardRes = await axios.get(
         `/api/scoreboards?rubric_id=${rubric._id}&topic_id=${topic._id}&student_id=${student._id}&grader=${user.id}`
       );
-      const scoreboard = Array.isArray(scoreboardRes.data) ? scoreboardRes.data[0] : scoreboardRes.data?.data;
+      // Chỉ disable nếu đã có điểm GVHD
+      let scoreboard = null;
+      if (Array.isArray(scoreboardRes.data)) {
+        scoreboard = scoreboardRes.data.find(s => s.evaluator_type === 'gvhd');
+      } else if (scoreboardRes.data?.evaluator_type === 'gvhd') {
+        scoreboard = scoreboardRes.data;
+      }
       if (scoreboard) {
         // Đã chấm điểm, set scores theo dữ liệu đã chấm
         const prevScores = {};
@@ -311,11 +317,9 @@ const TopicDetail = () => {
   const handleSubmitScore = async () => {
     if (!evaluationFormData || !selectedStudentForEvaluation) return;
     setSubmittingScore(true);
-    console.log('user:', user);
     try {
       const payload = {
         rubric_id: evaluationFormData.rubricId,
-        rubric_category: evaluationFormData.rubric_category,
         topic_id: topic._id,
         grader: user?.id,
         student_id: selectedStudentForEvaluation._id,
@@ -324,15 +328,16 @@ const TopicDetail = () => {
           score: Number(scores[ev._id] || 0)
         })),
         total_score: totalScore,
-        student_grades: grading
+        student_grades: grading,
+        evaluator_type: 'gvhd'
       };
-      console.log('Scoreboard payload:', payload);
       await axios.post('/api/scoreboards', payload);
       message.success('Chấm điểm thành công!');
       setIsModalVisible(false);
       setScores({});
-    } catch {
+    } catch (err) {
       message.error('Lưu điểm thất bại!');
+      console.error('POST /api/scoreboards error:', err);
     }
     setSubmittingScore(false);
   };

@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { FaBook, FaUserGraduate, FaUsers, FaInfoCircle, FaEye, FaCheckCircle, FaTimesCircle, FaFileAlt, FaFilePdf, FaTimes, FaUserTie, FaUserEdit, FaFileUpload } from 'react-icons/fa';
 import axios from 'axios';
 
-const RegisteredTopicDetails = ({ topic, onViewGrades }) => {
+const RegisteredTopicDetails = ({ topic, onViewGrades, onViewCouncil }) => {
   const statusMap = {
     approved: 'Đã duyệt',
     pending: 'Chờ duyệt',
@@ -165,6 +165,15 @@ const RegisteredTopicDetails = ({ topic, onViewGrades }) => {
             >
               <FaEye className="mr-2" /> Xem điểm
             </button>
+            {typeof onViewCouncil === 'function' && (
+              <button
+                onClick={onViewCouncil}
+                className="flex items-center bg-blue-100 hover:bg-blue-200 text-blue-700 text-sm font-medium px-4 py-2 rounded transition-colors duration-300 border border-blue-300"
+                style={{ minWidth: 120, justifyContent: 'center' }}
+              >
+                <FaUsers className="mr-2" /> Xem hội đồng
+              </button>
+            )}
           </div>
         ) : (
           <button 
@@ -480,28 +489,6 @@ const RegisteredTopicDetails = ({ topic, onViewGrades }) => {
           </div>
         </div>
       )}
-      {/* Hội đồng phản biện */}
-      <div className="mt-8">
-        <div className="flex justify-between items-center mb-2">
-          <h3 className="text-md font-semibold text-gray-700">Hội đồng phản biện</h3>
-          {topic.topic_teacher_status === 'approved' && topic.topic_leader_status === 'approved' && (
-            <button 
-              onClick={() => setIsCommitteeModalOpen(true)}
-              className="flex items-center bg-green-100 hover:bg-green-200 text-green-700 text-sm font-medium px-4 py-2 rounded transition-colors duration-300 border border-green-300"
-              style={{ minWidth: 140, justifyContent: 'center' }}
-            >
-              <FaInfoCircle className="mr-2" /> Thông tin hội đồng
-            </button>
-          )}
-        </div>
-        <div className="bg-white border border-blue-200 rounded-lg p-4">
-          {topic.topic_assembly && topic.topic_assembly.assembly_name ? (
-            <span className="text-gray-800 font-semibold">{topic.topic_assembly.assembly_name}</span>
-          ) : (
-            <span className="text-gray-400 italic">Chưa có thông tin hội đồng phản biện.</span>
-          )}
-        </div>
-      </div>
       {/* Overlay loading khi upload */}
       {(isUploadingOutline && outlineFile && (outlineFile.name.endsWith('.doc') || outlineFile.name.endsWith('.docx'))) || (isUploadingFinal && finalFile && (finalFile.name.endsWith('.doc') || finalFile.name.endsWith('.docx'))) ? (
         <div style={{position:'fixed',top:0,left:0,width:'100vw',height:'100vh',background:'rgba(0,0,0,0.3)',zIndex:9999,display:'flex',alignItems:'center',justifyContent:'center'}}>
@@ -533,79 +520,6 @@ const RegisteredTopicDetails = ({ topic, onViewGrades }) => {
               <button className="px-4 py-1 bg-gray-300 rounded hover:bg-gray-400" onClick={() => setModalConfirm({ open: false })}>Không</button>
               <button className="px-4 py-1 bg-red-500 text-white rounded hover:bg-red-600" onClick={doCancelRegistration}>Có, hủy đề tài</button>
             </div>
-          </div>
-        </div>
-      )}
-      {/* Modal thông tin hội đồng */}
-      {isCommitteeModalOpen && (
-        <div className="fixed inset-0 z-[99999] flex items-center justify-center bg-black bg-opacity-40">
-          <div className="bg-white rounded-2xl shadow-2xl p-8 min-w-[350px] max-w-[95vw] relative border border-blue-200">
-            <button className="absolute top-2 right-2 text-gray-400 hover:text-red-500" onClick={() => setIsCommitteeModalOpen(false)}><FaTimes size={22} /></button>
-            <h2 className="text-2xl font-bold mb-5 text-blue-700 text-center">Thông tin hội đồng</h2>
-            {(!lecturersList.length || !majorsList.length || !assembliesList.length) ? (
-              <div className="text-center py-8 text-blue-600 font-semibold">Đang tải dữ liệu hội đồng...</div>
-            ) : (() => {
-              const assembly = resolveAssembly();
-              if (!topic.topic_assembly) return <div className="text-gray-500 italic">Không có thông tin hội đồng.</div>;
-              if (!assembly) return <div className="text-red-500 italic">Không tìm thấy hội đồng.</div>;
-              return (
-                <>
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="font-semibold text-gray-700 min-w-[120px]">Tên hội đồng:</span>
-                    <span className="text-lg text-blue-900 font-bold">{assembly.assembly_name}</span>
-                  </div>
-                  <div className="mb-3 flex items-center gap-2">
-                    <span className="font-semibold text-gray-700 min-w-[120px]">Chuyên ngành:</span>
-                    <span>{getNameById(majorsList, assembly.assembly_major, 'major_title')}</span>
-                  </div>
-                  <div className="mb-3 flex items-center gap-2">
-                    <FaUserTie className="text-blue-500" />
-                    <span className="font-semibold text-gray-700 min-w-[120px]">Chủ tịch:</span>
-                    <span>{getNameById(lecturersList, assembly.chairman)}</span>
-                  </div>
-                  <div className="mb-3 flex items-center gap-2">
-                    <FaUserEdit className="text-green-500" />
-                    <span className="font-semibold text-gray-700 min-w-[120px]">Thư ký:</span>
-                    <span>{getNameById(lecturersList, assembly.secretary)}</span>
-                  </div>
-                  <div className="mb-3 flex items-center gap-2">
-                    <FaUsers className="text-purple-500" />
-                    <span className="font-semibold text-gray-700 min-w-[120px]">Ủy viên:</span>
-                    <span>{Array.isArray(assembly.members) && assembly.members.length > 0
-                      ? assembly.members.map(id => getNameById(lecturersList, id)).join(', ')
-                      : '---'}</span>
-                  </div>
-                  <hr className="my-4" />
-                  <h3 className="font-semibold text-md mb-2 text-blue-700">Phiếu đánh giá</h3>
-                  {assembly.rubric && assembly.rubric.length > 0 ? (
-                    <div className="overflow-x-auto">
-                      <table className="w-full mb-2 border rounded-lg shadow">
-                        <thead>
-                          <tr className="bg-blue-50">
-                            <th className="border px-2 py-1 text-left">Tiêu chí</th>
-                            <th className="border px-2 py-1 text-center">Điểm</th>
-                            <th className="border px-2 py-1 text-left">Nhận xét</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {assembly.rubric.map((r, idx) => (
-                            <tr key={idx} className="hover:bg-blue-50">
-                              <td className="border px-2 py-1">{r.criteria}</td>
-                              <td className="border px-2 py-1 text-center">{r.score}</td>
-                              <td className="border px-2 py-1">{r.comment}</td>
-                            </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  ) : (
-                    <div className="text-gray-500 italic mb-2">Chưa có phiếu đánh giá.</div>
-                  )}
-                  <div className="mb-2"><b>Tổng điểm:</b> {assembly.totalScore ?? <span className="italic text-gray-500">Chưa có</span>}</div>
-                  <div className="mb-2"><b>Nhận xét chung:</b> {assembly.comment ?? <span className="italic text-gray-500">Chưa có</span>}</div>
-                </>
-              );
-            })()}
           </div>
         </div>
       )}
