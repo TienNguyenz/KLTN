@@ -617,31 +617,57 @@ const LecturerList = () => {
           }
         }
 
+        // Lấy danh sách MAGV đã có (trong hệ thống và trong batch)
+        const existingIds = new Set(lecturers.map(l => l.user_id));
+        const batchIds = new Set();
+
+        // Tự động sinh MAGV nếu thiếu
+        for (let i = 0; i < jsonData.length; i++) {
+          let row = jsonData[i];
+          if (!row.user_id || String(row.user_id).trim() === '') {
+            // Tìm mã khoa: có thể là _id hoặc faculty_title
+            let faculty = faculties.find(f => f._id === row.user_faculty) || faculties.find(f => f.faculty_title === row.user_faculty);
+            if (!faculty) {
+              setImportError(`Không tìm thấy khoa cho dòng ${i + 2} (giá trị: ${row.user_faculty || 'trống'})`);
+              return;
+            }
+            let facultyCode = generateFacultyCode(faculty.faculty_title);
+            if (!facultyCode) {
+              setImportError(`Không thể sinh mã khoa cho dòng ${i + 2} (giá trị: ${faculty.faculty_title})`);
+              return;
+            }
+            let newId = '';
+            let attempt = 0;
+            do {
+              newId = facultyCode + generateRandomNumberString(3);
+              attempt++;
+            } while ((existingIds.has(newId) || batchIds.has(newId)) && attempt < 200);
+            row.user_id = newId;
+          }
+          batchIds.add(row.user_id);
+        }
+
         // Validate data structure
         const requiredFields = ['user_id', 'user_name', 'email', 'user_CCCD', 'user_phone', 'user_permanent_address', 'user_date_of_birth', 'user_faculty', 'user_major'];
         const missingFields = requiredFields.filter(field => !Object.prototype.hasOwnProperty.call(jsonData[0] || {}, field));
-        
         if (missingFields.length > 0) {
           setImportError(`Thiếu các trường bắt buộc: ${missingFields.join(', ')}`);
           return;
         }
 
-        // Process and send data to server
+        // Xử lý dữ liệu và gửi lên server
         const processedData = jsonData.map(row => {
           const processedRow = { ...row };
-          
-          // Xử lý cột ngày sinh từ import (có thể là DD/MM/YYYY hoặc YYYY-MM-DD)
+          // Xử lý ngày sinh
           if (processedRow.user_date_of_birth) {
-            let date = dayjs(processedRow.user_date_of_birth, ['DD/MM/YYYY', 'YYYY-MM-DD'], true); // Thử parse với cả 2 định dạng
+            let date = dayjs(processedRow.user_date_of_birth, ['DD/MM/YYYY', 'YYYY-MM-DD'], true);
             if (date.isValid()) {
-              processedRow.user_date_of_birth = date.format('YYYY-MM-DD'); // Lưu lại dưới dạng YYYY-MM-DD
+              processedRow.user_date_of_birth = date.format('YYYY-MM-DD');
             } else {
-               // Nếu không parse được, có thể ghi log hoặc bỏ qua
               console.warn(`Could not parse date: ${row.user_date_of_birth}`);
-              delete processedRow.user_date_of_birth; // Hoặc set về null/undefined tùy logic
+              delete processedRow.user_date_of_birth;
             }
           }
-
           return {
             ...processedRow,
             role: 'giangvien',

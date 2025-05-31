@@ -541,9 +541,15 @@ router.put('/:id/approve-by-lecturer', async (req, res) => {
     // Populate để lấy _id của từng sinh viên
     const topic = await Topic.findById(req.params.id).populate('topic_group_student', '_id user_name user_id');
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
-    topic.topic_teacher_status = 'approved';
-    topic.topic_leader_status = 'approved';
-    topic.status = 'active';
+    if (topic.rejectType === 'proposal') {
+      topic.topic_teacher_status = 'approved';
+      topic.topic_leader_status = 'pending';
+      topic.status = 'pending';
+    } else {
+      topic.topic_teacher_status = 'approved';
+      topic.topic_leader_status = 'approved';
+      topic.status = 'active';
+    }
     await topic.save();
 
     // Gửi thông báo cho từng sinh viên trong nhóm
@@ -572,7 +578,15 @@ router.put('/:id/approve-by-leader', async (req, res) => {
   try {
     const topic = await Topic.findById(req.params.id);
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
-    topic.topic_leader_status = 'approved';
+    // Nếu status là waiting_admin thì cập nhật luôn như admin duyệt
+    if (topic.status === 'waiting_admin') {
+      topic.status = 'pending';
+      topic.topic_teacher_status = 'approved';
+      topic.topic_leader_status = 'approved';
+    } else {
+      topic.topic_leader_status = 'approved';
+      topic.status = 'active';
+    }
     await topic.save();
 
     // Gửi thông báo cho giảng viên nếu có comment
@@ -1669,24 +1683,6 @@ router.put('/:id/submit-by-lecturer', async (req, res) => {
     res.json({ message: 'Đã gửi đăng ký đề tài lên admin', topic });
   } catch (err) {
     res.status(500).json({ message: 'Lỗi khi gửi đăng ký đề tài', error: err.message });
-  }
-});
-
-// Admin duyệt đề tài
-router.put('/:id/approve-by-admin', async (req, res) => {
-  try {
-    const topic = await Topic.findById(req.params.id);
-    if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
-    if (topic.status !== 'waiting_admin') {
-      return res.status(400).json({ message: 'Chỉ có thể duyệt đề tài đang chờ admin duyệt' });
-    }
-    topic.status = 'pending'; // Cho phép sinh viên đăng ký
-    topic.topic_teacher_status = 'approved';
-    topic.topic_leader_status = 'approved';
-    await topic.save();
-    res.json({ message: 'Admin đã duyệt đề tài thành công', topic });
-  } catch (err) {
-    res.status(500).json({ message: 'Lỗi khi admin duyệt đề tài', error: err.message });
   }
 });
 
