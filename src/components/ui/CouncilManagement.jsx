@@ -336,9 +336,6 @@ const CouncilManagement = () => {
         console.log('Majors:', majors);
         
         topics = topics.filter(t => {
-          console.log('Topic:', t.topic_title);
-          console.log('Topic major:', t.topic_major);
-          console.log('Council major:', assignCouncil.assembly_major);
           // Xử lý cả 2 trường hợp: topic_major là string ID hoặc object
           let topicMajorId;
           if (typeof t.topic_major === 'object' && t.topic_major !== null) {
@@ -346,9 +343,15 @@ const CouncilManagement = () => {
           } else {
             topicMajorId = t.topic_major;
           }
-          console.log('Is match:', String(topicMajorId) === String(assignCouncil.assembly_major));
-          console.log('Topic assembly:', t.topic_assembly);
-          return String(topicMajorId) === String(assignCouncil.assembly_major) && (!t.topic_assembly || t.topic_assembly === '' || t.topic_assembly === null);
+          // Lấy GVHD đề tài
+          const topicInstructor = t.topic_instructor?._id || t.topic_instructor;
+          // Lấy danh sách hội đồng
+          const chairman = assignCouncil.chairman;
+          const secretary = assignCouncil.secretary;
+          const members = Array.isArray(assignCouncil.members) ? assignCouncil.members : [];
+          // Nếu GVHD là 1 trong 3 người hội đồng thì ẩn đề tài này
+          const isInstructorInCouncil = [chairman, secretary, ...members].some(id => String(id) === String(topicInstructor));
+          return String(topicMajorId) === String(assignCouncil.assembly_major) && (!t.topic_assembly || t.topic_assembly === '' || t.topic_assembly === null) && !isInstructorInCouncil;
         });
         
         console.log('Filtered topics:', topics);
@@ -812,7 +815,6 @@ const CouncilManagement = () => {
                       <TableCell sx={{ fontWeight: 700, maxWidth: 160, fontSize: 16, whiteSpace: 'normal', wordBreak: 'break-word' }}>Tên đề tài</TableCell>
                       <TableCell sx={{ fontWeight: 700, maxWidth: 120, fontSize: 16, whiteSpace: 'normal', wordBreak: 'break-word' }}>Chuyên ngành</TableCell>
                       <TableCell sx={{ fontWeight: 700, maxWidth: 140, fontSize: 16, whiteSpace: 'normal', wordBreak: 'break-word' }}>GVHD</TableCell>
-                      <TableCell sx={{ fontWeight: 700, maxWidth: 140, fontSize: 16, whiteSpace: 'normal', wordBreak: 'break-word' }}>GVPB</TableCell>
                       <TableCell sx={{ fontWeight: 700, maxWidth: 100, fontSize: 16, whiteSpace: 'normal', wordBreak: 'break-word' }}>Loại đề tài</TableCell>
                     </TableRow>
                   </TableHead>
@@ -850,16 +852,6 @@ const CouncilManagement = () => {
                             }
                             const instructor = lecturers.find(l => l._id === topic.topic_instructor);
                             return instructor ? `${instructor.user_id} - ${instructor.user_name}` : '';
-                          })()}
-                        </TableCell>
-                        <TableCell sx={{ fontSize: 15, py: 1.5, px: 2, maxWidth: 140, whiteSpace: 'normal', wordBreak: 'break-word' }}>
-                          {(() => {
-                            if (!topic.topic_reviewer) return '';
-                            if (typeof topic.topic_reviewer === 'object' && topic.topic_reviewer !== null) {
-                              return `${topic.topic_reviewer.user_id || ''} - ${topic.topic_reviewer.user_name || ''}`;
-                            }
-                            const reviewer = lecturers.find(l => l._id === topic.topic_reviewer);
-                            return reviewer ? `${reviewer.user_id} - ${reviewer.user_name}` : '';
                           })()}
                         </TableCell>
                         <TableCell sx={{ fontSize: 15, py: 1.5, px: 2, maxWidth: 100, whiteSpace: 'normal', wordBreak: 'break-word' }}>
