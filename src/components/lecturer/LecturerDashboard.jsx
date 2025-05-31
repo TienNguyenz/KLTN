@@ -4,8 +4,7 @@ import {
   FileTextOutlined, 
   TeamOutlined, 
   CheckCircleOutlined, 
-  ClockCircleOutlined,
-  FileExcelOutlined
+  ClockCircleOutlined
 } from '@ant-design/icons';
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
@@ -16,11 +15,9 @@ const LecturerDashboard = () => {
   const { user } = useAuth();
   const [loading, setLoading] = useState(true);
   const [recentTopics, setRecentTopics] = useState([]);
-  // eslint-disable-next-line no-unused-vars
   const [stats, setStats] = useState({
     totalTopics: 0,
     supervisedTopics: 0,
-    reviewTopics: 0,
     committeeTopics: 0
   });
 
@@ -28,26 +25,18 @@ const LecturerDashboard = () => {
     const loadData = async () => {
       setLoading(true);
       try {
-        // Log user object để debug
         console.log('User object:', user);
-        // Bỏ phần gọi API stats vì backend không có route này
-        // const statsResponse = await axios.get(`/api/lecturers/${user?.id}/stats`);
-        // setStats(statsResponse.data);
-
-        // Lấy danh sách đề tài gần đây
         const recentTopicsResponse = await axios.get(`/api/topics/instructor/${user?.id}/all`);
         const topics = recentTopicsResponse.data;
 
         // Tính toán số lượng
         const totalTopics = topics.length;
         const supervisedTopics = topics.filter(t => t.topic_teacher_status === 'approved').length;
-        const reviewTopics = topics.filter(t => t.topic_leader_status === 'approved').length;
         const committeeTopics = topics.filter(t => t.topic_admin_status === 'approved').length;
 
         setStats({
           totalTopics,
           supervisedTopics,
-          reviewTopics,
           committeeTopics
         });
 
@@ -110,7 +99,7 @@ const LecturerDashboard = () => {
     <div className="p-6 bg-gray-50 min-h-screen">
       {/* Thống kê */}
       <Row gutter={[16, 16]} className="mb-6">
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
               title="Tổng số đề tài"
@@ -120,7 +109,7 @@ const LecturerDashboard = () => {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
               title="Đề tài hướng dẫn"
@@ -130,17 +119,7 @@ const LecturerDashboard = () => {
             />
           </Card>
         </Col>
-        <Col xs={24} sm={12} lg={6}>
-          <Card>
-            <Statistic
-              title="Đề tài phản biện"
-              value={stats.reviewTopics}
-              prefix={<CheckCircleOutlined />}
-              loading={loading}
-            />
-          </Card>
-        </Col>
-        <Col xs={24} sm={12} lg={6}>
+        <Col xs={24} sm={12} lg={8}>
           <Card>
             <Statistic
               title="Đề tài hội đồng"
@@ -191,7 +170,7 @@ const LecturerDashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card 
             hoverable 
-            onClick={() => navigate('/lecturer/approve-groups')}
+            onClick={() => navigate('/lecturer/proposed-topics')}
             className="text-center"
           >
             <CheckCircleOutlined className="text-3xl mb-2" />
@@ -211,11 +190,11 @@ const LecturerDashboard = () => {
         <Col xs={24} sm={12} lg={6}>
           <Card 
             hoverable 
-            onClick={() => navigate('/lecturer/review-topics')}
+            onClick={() => navigate('/lecturer/committee')}
             className="text-center"
           >
-            <CheckCircleOutlined className="text-3xl mb-2" />
-            <div>Xem đề tài phản biện</div>
+            <ClockCircleOutlined className="text-3xl mb-2" />
+            <div>Xem đề tài hội đồng</div>
           </Card>
         </Col>
       </Row>

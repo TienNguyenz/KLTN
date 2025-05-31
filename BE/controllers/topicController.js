@@ -94,10 +94,8 @@ exports.getCommitteeTopics = async (req, res) => {
         name: student.user_name,
         studentId: student.user_id
       })) || [],
-      instructor: topic.topic_instructor?.user_name || 'N/A',
-      instructorId: topic.topic_instructor?.user_id || '',
-      reviewer: topic.topic_reviewer?.user_name || 'N/A',
-      reviewerId: topic.topic_reviewer?.user_id || '',
+      supervisor: topic.topic_instructor?.user_name || '[Chưa có GVHD]',
+      reviewer: topic.topic_reviewer?.user_name || '[Chưa có GVHD]',
       teacherStatus: topic.topic_teacher_status,
       leaderStatus: topic.topic_leader_status,
       isBlocked: topic.topic_block,
@@ -108,6 +106,7 @@ exports.getCommitteeTopics = async (req, res) => {
       assembly: topic.topic_assembly?.assembly_name || 'N/A',
       assemblyId: topic.topic_assembly?._id || '',
       status: topic.status || '',
+      type: topic.topic_category?.topic_category_title || '[Chưa có loại đề tài]',
     }));
 
     res.json(formattedTopics);
@@ -215,13 +214,18 @@ exports.getCommitteeTopicById = async (req, res) => {
       });
     }
 
+    // DEBUG LOG
+    console.log('DEBUG topic.topic_category:', topic.topic_category);
+    console.log('DEBUG topic.type:', topic.type);
+    console.log('DEBUG topic_category _id:', topic.topic_category?._id);
+
     const formattedTopic = {
       id: topic._id,
       name: topic.topic_title,
       title: topic.topic_title,
-      supervisor: topic.topic_instructor?.user_name || '',
-      reviewer: topic.topic_reviewer?.user_name || '',
-      type: topic.topic_category?.topic_category_title || '',
+      supervisor: topic.topic_instructor?.user_name || '[Chưa có GVHD]',
+      reviewer: topic.topic_reviewer?.user_name || '[Chưa có GVHD]',
+      type: topic.topic_category?.topic_category_title || '[Chưa có loại đề tài]',
       studentId: topic.topic_group_student?.[0]?.user_id || topic.topic_creator?.user_id || '',
       lecturer: topic.topic_instructor?.user_name || '',
       status: topic.topic_teacher_status === 'approved' ? 'ACTIVE' : (topic.topic_teacher_status === 'rejected' ? 'REJECTED' : 'REGISTERED'),

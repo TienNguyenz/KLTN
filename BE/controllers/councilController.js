@@ -50,20 +50,41 @@ const validateCouncilData = (data) => {
 
 // Get all councils
 exports.getAllCouncils = async (req, res) => {
+  console.log('DEBUG - getAllCouncils called');
+  console.log('DEBUG - Request headers:', req.headers);
+  console.log('DEBUG - Request query:', req.query);
+  console.log('DEBUG - Request params:', req.params);
+  
   try {
+    console.log('DEBUG - Fetching councils from MongoDB...');
     const councils = await Council.find()
-      .populate('assembly_major', 'major_name')
-      .populate('chairman', 'fullname')
-      .populate('secretary', 'fullname')
-      .populate('members', 'fullname');
+      .populate('assembly_major', 'major_name major_title')
+      .populate('chairman', 'user_name fullname')
+      .populate('secretary', 'user_name fullname')
+      .populate('members', 'user_name fullname');
+    
+    console.log('DEBUG - Number of councils found:', councils.length);
+    console.log('DEBUG - First council sample:', councils[0] ? {
+      id: councils[0]._id,
+      name: councils[0].assembly_name,
+      major: councils[0].assembly_major,
+      chairman: councils[0].chairman,
+      secretary: councils[0].secretary,
+      members: councils[0].members
+    } : 'No councils found');
 
     res.status(200).json({
       success: true,
       data: councils
     });
   } catch (error) {
-    const errorResponse = handleError(error, 'Error getting councils:');
-    res.status(500).json(errorResponse);
+    console.error('DEBUG - Error in getAllCouncils:', error);
+    console.error('DEBUG - Error stack:', error.stack);
+    res.status(500).json({ 
+      success: false,
+      message: error.message,
+      error: error.stack 
+    });
   }
 };
 
@@ -132,7 +153,10 @@ exports.updateCouncil = async (req, res) => {
     }
 
     // Check if council exists
-    const council = await Council.findById(id);
+    const council = await Council.findById(id)
+      .populate('chairman', 'fullname user_name')
+      .populate('secretary', 'fullname user_name')
+      .populate('members', 'fullname user_name');
     if (!council) {
       return res.status(404).json({
         success: false,
@@ -188,7 +212,10 @@ exports.deleteCouncil = async (req, res) => {
       });
     }
 
-    const council = await Council.findById(id);
+    const council = await Council.findById(id)
+      .populate('chairman', 'fullname user_name')
+      .populate('secretary', 'fullname user_name')
+      .populate('members', 'fullname user_name');
     if (!council) {
       return res.status(404).json({
         success: false,

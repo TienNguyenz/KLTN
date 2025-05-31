@@ -32,6 +32,11 @@ const scoreboardSchema = new mongoose.Schema({
   ],
   total_score: Number,
   student_grades: String,
+  evaluator_type: {
+    type: String,
+    enum: ['gvhd', 'hoidong'],
+    required: true
+  },
 }, {
   timestamps: true
 });

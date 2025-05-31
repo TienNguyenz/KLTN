@@ -3,19 +3,22 @@ const Scoreboard = require('../models/Scoreboard');
 // Tạo mới bảng điểm (lưu điểm chấm)
 exports.createScoreboard = async (req, res) => {
   try {
-    const data = req.body;
-    console.log('Scoreboard data:', data); // Log dữ liệu nhận được từ FE
+    const evaluator_type = req.body.evaluator_type;
+    console.log('Scoreboard data:', req.body); // Log dữ liệu nhận được từ FE
     // Kiểm tra đã có điểm cho sinh viên này, rubric này, topic này chưa
     const existed = await Scoreboard.findOne({
-      rubric_id: data.rubric_id,
-      topic_id: data.topic_id,
-      student_id: data.student_id,
-      grader: data.grader
+      rubric_id: req.body.rubric_id,
+      topic_id: req.body.topic_id,
+      student_id: req.body.student_id,
+      grader: req.body.grader
     });
     if (existed) {
       return res.status(400).json({ message: 'Đã chấm điểm cho sinh viên này với rubric này!' });
     }
-    const scoreboard = new Scoreboard(data);
+    const scoreboard = new Scoreboard({
+      ...req.body,
+      evaluator_type
+    });
     await scoreboard.save();
     res.status(201).json({ message: 'Lưu điểm thành công!', data: scoreboard });
   } catch (err) {

@@ -101,8 +101,9 @@ const CouncilManagement = () => {
 
   const fetchCouncils = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/database/collections/assemblies');
-      console.log('Fetch councils response:', response.data);
+      console.log('DEBUG - Fetching councils from API...');
+      const response = await axios.get('/api/database/collections/assemblies');
+      console.log('DEBUG - Fetch councils response:', response.data);
       const councils = Array.isArray(response.data.data) ? response.data.data : [];
       setCouncils(councils);
     } catch (error) {
