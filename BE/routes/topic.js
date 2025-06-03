@@ -16,6 +16,7 @@ const libre = require('libreoffice-convert');
 const topicController = require('../controllers/topicController');
 const { auth } = require('../middleware/auth');
 const { v4: uuidv4 } = require('uuid');
+const RegistrationPeriod = require('../models/RegistrationPeriod');
 
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
@@ -81,7 +82,8 @@ router.get('/', async (req, res) => {
       .populate('topic_major', 'major_title major_faculty')
       .populate('topic_category', 'topic_category_title')
       .populate('topic_registration_period', 'semester title')
-      .populate('topic_group_student', 'user_name user_id');
+      .populate('topic_group_student', 'user_name user_id')
+      .populate('topic_assembly', 'assembly_name');
     res.json({ success: true, data: topics });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -332,7 +334,8 @@ router.post('/propose', async (req, res) => {
       topic_max_members,
       topic_group_student,
       topic_creator,
-      topic_advisor_request
+      topic_advisor_request,
+      topic_registration_period // thêm trường này
     } = req.body;
 
     console.log('Received proposal data:', req.body);
@@ -353,10 +356,11 @@ router.post('/propose', async (req, res) => {
       !topic_description ||
       !topic_max_members ||
       !topic_creator ||
+      !topic_registration_period || // kiểm tra đợt đăng ký
       (creatorRole === 'sinhvien' && !topic_advisor_request) // chỉ bắt buộc với sinh viên
     ) {
       return res.status(400).json({
-        message: 'Vui lòng điền đầy đủ thông tin đề tài' + (creatorRole === 'sinhvien' ? ' và tải lên file đơn xin hướng dẫn.' : '.'),
+        message: 'Vui lòng điền đầy đủ thông tin đề tài' + (creatorRole === 'sinhvien' ? ' và tải lên file đơn xin hướng dẫn.' : '.') + (!topic_registration_period ? ' Thiếu đợt đăng ký.' : ''),
         missingFields: {
           topic_title: !topic_title,
           topic_instructor: !topic_instructor,
@@ -365,6 +369,7 @@ router.post('/propose', async (req, res) => {
           topic_description: !topic_description,
           topic_max_members: !topic_max_members,
           topic_creator: !topic_creator,
+          topic_registration_period: !topic_registration_period,
           topic_advisor_request: creatorRole === 'sinhvien' ? !topic_advisor_request : false
         }
       });
@@ -402,7 +407,7 @@ router.post('/propose', async (req, res) => {
         const memberName = member?.user_name || 'Không rõ';
         const memberCode = member?.user_id || '';
         return res.status(400).json({
-          message: `Thành viên ${memberName} (${memberCode}) đã có đề tài \"${busyTopic.topic_title}\" ở trạng thái đang thực hiện hoặc chờ duyệt. Không thể đề xuất đề tài mới.`
+          message: `Thành viên ${memberName} (${memberCode}) đã có đề tài "${busyTopic.topic_title}" ở trạng thái đang thực hiện hoặc chờ duyệt. Không thể đề xuất đề tài mới.`
         });
       }
     }
@@ -422,7 +427,8 @@ router.post('/propose', async (req, res) => {
       topic_block: false,
       status: creatorRole === 'giangvien' ? 'draft' : 'pending', // Giảng viên tạo thì là draft
       topic_advisor_request,
-      rejectType: 'proposal' // Đảm bảo đề xuất luôn là proposal
+      topic_registration_period, // lưu đợt đăng ký
+      rejectType: 'register' // Đảm bảo đề xuất luôn là register
     });
 
     await newTopic.save();
@@ -461,6 +467,14 @@ router.post('/propose', async (req, res) => {
     ]);
     if (safe_group_student.length > 0) {
       await newTopic.populate({ path: 'topic_group_student', select: 'user_name user_id' });
+    }
+
+    // Kiểm tra đợt đăng ký có bị ẩn hoàn toàn không
+    if (topic_registration_period) {
+      const period = await RegistrationPeriod.findById(topic_registration_period);
+      if (period && period.registration_period_status === false && period.block_topic === true) {
+        return res.status(400).json({ message: 'Đợt đăng ký này đã đóng và bị khóa, không thể tạo đề tài.' });
+      }
     }
 
     res.status(201).json({
@@ -627,6 +641,10 @@ router.get('/leader/pending-topics', async (req, res) => {
     .populate('topic_instructor', 'user_name')
     .populate('topic_major', 'major_title')
     .populate('topic_category', 'topic_category_title')
+    .populate({
+      path: 'topic_registration_period',
+      populate: { path: 'registration_period_semester' }
+    })
     .populate('topic_group_student', 'user_name user_id')
     .sort({ createdAt: -1 });
     res.json(topics);
@@ -641,13 +659,21 @@ router.put('/:id/reject-by-leader', async (req, res) => {
   try {
     const topic = await Topic.findById(req.params.id);
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
-    topic.topic_leader_status = 'rejected';
-    topic.topic_teacher_status = 'rejected';
-    topic.status = 'rejected';
+    topic.topic_teacher_status = 'draft';
+    topic.topic_leader_status = 'pending';
+    topic.status = 'draft';
     topic.topic_group_student = []; // Gỡ toàn bộ sinh viên khỏi đề tài
     topic.reject_reason = req.body.reason || '';
-    // Xác định rejectType: nếu có topic_creator và không có group_student => proposal, ngược lại là register
-    if (topic.topic_creator && (!topic.topic_group_student || topic.topic_group_student.length === 0)) {
+    // Xác định rejectType đúng theo vai trò topic_creator
+    let creatorRole = null;
+    if (topic.topic_creator && typeof topic.topic_creator === 'object' && topic.topic_creator.role) {
+      creatorRole = topic.topic_creator.role;
+    } else if (topic.topic_creator && typeof topic.topic_creator === 'string') {
+      // Nếu là ObjectId, truy vấn User
+      const creatorUser = await User.findById(topic.topic_creator);
+      creatorRole = creatorUser?.role;
+    }
+    if (creatorRole === 'sinhvien') {
       topic.rejectType = 'proposal';
     } else {
       topic.rejectType = 'register';

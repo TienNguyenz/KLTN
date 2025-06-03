@@ -81,7 +81,7 @@ const ProposedTopicDetail = () => {
           </div>
           <div>
             <div className="text-sm text-gray-500 mb-1">Mô tả đề tài</div>
-            <div className="text-base whitespace-pre-line border rounded-md p-4 bg-gray-50 min-h-[100px]">
+            <div className="text-base whitespace-pre-line border rounded-md p-4 bg-gray-50 min-h-[100px]" style={{ maxHeight: '250px', overflowY: 'auto' }}>
               {topic.topic_description || '-'}
             </div>
           </div>

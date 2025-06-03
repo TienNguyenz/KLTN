@@ -191,7 +191,7 @@ const TopicManagement = () => {
           </div>
           <div>
             <div className="font-medium text-gray-500">Mô tả</div>
-            <div className="whitespace-pre-line">
+            <div className="whitespace-pre-line" style={{ maxHeight: '250px', overflowY: 'auto', background: '#f9fafb', borderRadius: 8, padding: 12, border: '1px solid #e5e7eb' }}>
               {record.description || 'Chưa có mô tả chi tiết.'}
             </div>
           </div>

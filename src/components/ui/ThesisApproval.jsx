@@ -89,17 +89,16 @@ const ThesisApproval = ({ setSelected }) => {
               <TableCell>GVHD</TableCell>
               <TableCell>Chuyên ngành</TableCell>
               <TableCell>Loại đề tài</TableCell>
-              <TableCell>Học kì</TableCell>
+              <TableCell>Đợt đăng ký</TableCell>
               <TableCell>Thời gian tạo</TableCell>
               <TableCell>Số lượng</TableCell>
-              <TableCell>Giáo vụ</TableCell>
               <TableCell>Thao tác</TableCell>
             </TableRow>
           </TableHead>
           <TableBody>
             {theses.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={10} align="center" style={{ padding: 48, background: '#fff' }}>
+                <TableCell colSpan={9} align="center" style={{ padding: 48, background: '#fff' }}>
                   <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', opacity: 0.7 }}>
                     <svg width="48" height="48" fill="none" viewBox="0 0 48 48" style={{ marginBottom: 8 }}>
                       <rect x="8" y="20" width="32" height="16" rx="2" fill="#fafafa" stroke="#e5e7eb" strokeWidth="2"/>
@@ -118,10 +117,13 @@ const ThesisApproval = ({ setSelected }) => {
                   <TableCell>{thesis.topic_instructor?.user_name || 'Chưa có GVHD'}</TableCell>
                   <TableCell>{thesis.topic_major?.major_title || ''}</TableCell>
                   <TableCell>{thesis.topic_category?.topic_category_title || '-'}</TableCell>
-                  <TableCell>{thesis.topic_registration_period || '-'}</TableCell>
+                  <TableCell>
+                    {typeof thesis.topic_registration_period === 'object' && thesis.topic_registration_period !== null
+                      ? `${thesis.topic_registration_period.registration_period_semester?.semester || ''} - ${thesis.topic_registration_period.registration_period_start ? new Date(thesis.topic_registration_period.registration_period_start * 1000).toLocaleDateString('vi-VN') : ''} đến ${thesis.topic_registration_period.registration_period_end ? new Date(thesis.topic_registration_period.registration_period_end * 1000).toLocaleDateString('vi-VN') : ''}`
+                      : '-' }
+                  </TableCell>
                   <TableCell>{formatDate(thesis.createdAt)}</TableCell>
                   <TableCell>{thesis.topic_max_members || 1}</TableCell>
-                  <TableCell>{thesis.academic_staff || '-'}</TableCell>
                   <TableCell>
                     <IconButton color="primary" onClick={() => handleOpen(thesis)}>
                       <EditIcon />
@@ -165,8 +167,12 @@ const ThesisApproval = ({ setSelected }) => {
                       <div style={{ marginLeft: 8 }}>{selectedThesis.topic_major?.major_title || '-'}</div>
                     </Box>
                     <Box sx={{ minWidth: 120 }}>
-                      <strong>Học kỳ:</strong>
-                      <div style={{ marginLeft: 8 }}>{selectedThesis.topic_registration_period || '-'}</div>
+                      <strong>Đợt đăng ký:</strong>
+                      <div style={{ marginLeft: 8 }}>
+                        {typeof selectedThesis.topic_registration_period === 'object' && selectedThesis.topic_registration_period !== null
+                          ? `${selectedThesis.topic_registration_period.registration_period_semester?.semester || ''} - ${selectedThesis.topic_registration_period.registration_period_start ? new Date(selectedThesis.topic_registration_period.registration_period_start * 1000).toLocaleDateString('vi-VN') : ''} đến ${selectedThesis.topic_registration_period.registration_period_end ? new Date(selectedThesis.topic_registration_period.registration_period_end * 1000).toLocaleDateString('vi-VN') : ''}`
+                          : '-' }
+                      </div>
                     </Box>
                     <Box sx={{ minWidth: 120 }}>
                       <strong>Số lượng SV:</strong>
@@ -183,7 +189,7 @@ const ThesisApproval = ({ setSelected }) => {
                   <Typography variant="subtitle1" sx={{ fontWeight: 600, color: '#1976d2', mb: 1 }}>
                     Mô tả chi tiết
                   </Typography>
-                  <Typography variant="body2" sx={{ whiteSpace: 'pre-line', color: '#333' }}>
+                  <Typography variant="body2" sx={{ whiteSpace: 'pre-line', color: '#333', maxHeight: 250, overflowY: 'auto' }}>
                     {selectedThesis.topic_description}
                   </Typography>
                 </Box>

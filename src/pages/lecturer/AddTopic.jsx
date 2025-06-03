@@ -8,22 +8,22 @@ const AddTopic = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const [topicName, setTopicName] = useState('');
-  const [semester, setSemester] = useState('');
   const [topicType, setTopicType] = useState('');
   const [studentCount, setStudentCount] = useState(1);
   const [description, setDescription] = useState('');
   const [selectedStudents, setSelectedStudents] = useState([]);
-  const [semesters, setSemesters] = useState([]);
+  const [registrationPeriods, setRegistrationPeriods] = useState([]);
   const [topicTypes, setTopicTypes] = useState([]);
   const [students, setStudents] = useState([]);
   const [showStudentModal, setShowStudentModal] = useState(false);
   const [majorName, setMajorName] = useState('');
+  const [selectedPeriod, setSelectedPeriod] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
       try {
-        const [semestersRes, typesRes, studentsRes] = await Promise.all([
-          axios.get('/api/semesters'),
+        const [periodsRes, typesRes, studentsRes] = await Promise.all([
+          axios.get('/api/registrationperiods'),
           axios.get('/api/topics/topic-types'),
           axios.get('/api/students')
         ]);
@@ -33,7 +33,7 @@ const AddTopic = () => {
         // Có thể thêm log cho students response để kiểm tra cấu trúc nếu cần
         console.log('API response for students:', studentsRes.data);
 
-        setSemesters(semestersRes.data);
+        setRegistrationPeriods(periodsRes.data);
         setTopicTypes(typesRes.data.data);
         setStudents(studentsRes.data.data);
       } catch (error) {
@@ -117,7 +117,7 @@ const AddTopic = () => {
     e.preventDefault();
     
     // Kiểm tra thông tin cơ bản
-    if (!topicName || !semester || !topicType || !description) {
+    if (!topicName || !selectedPeriod || !topicType || !description) {
       alert('Vui lòng điền đầy đủ thông tin bắt buộc.');
       return;
     }
@@ -156,7 +156,7 @@ const AddTopic = () => {
         topic_max_members: studentCount,
         topic_group_student: selectedStudents.map(s => s._id),
         topic_creator: lecturerId,
-        topic_registration_period: semester,
+        topic_registration_period: selectedPeriod,
       };
 
       const res = await axios.post('/api/topics/propose', payload);
@@ -179,21 +179,25 @@ const AddTopic = () => {
       <button type="button" onClick={() => navigate('/lecturer/topics')} className="mb-4 px-4 py-2 bg-gray-400 text-white rounded hover:bg-gray-500">Quay lại</button>
 
       <form onSubmit={handleSubmit} className="bg-white p-6 md:p-8 rounded-lg shadow-md space-y-6">
-        {/* Row 1: Semester and Topic Type */}
+        {/* Row 1: Registration Period and Topic Type */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
-            <label htmlFor="semester" className="block text-sm font-medium text-gray-700 mb-1">Học kỳ</label>
+            <label htmlFor="registrationPeriod" className="block text-sm font-medium text-gray-700 mb-1">Đợt đăng ký</label>
             <select 
-              id="semester"
-              value={semester}
-              onChange={(e) => setSemester(e.target.value)}
+              id="registrationPeriod"
+              value={selectedPeriod}
+              onChange={(e) => setSelectedPeriod(e.target.value)}
               required
               className="mt-1 block w-full pl-3 pr-10 py-2 text-base border-gray-300 focus:outline-none focus:ring-indigo-500 focus:border-indigo-500 sm:text-sm rounded-md shadow-sm"
             >
               <option value="">Vui lòng chọn</option>
-              {Array.isArray(semesters) && semesters.map(s => (
-                <option key={s._id} value={s._id}>{s.semester}</option>
-              ))}
+              {registrationPeriods
+                .filter(p => !(p.registration_period_status === false && p.block_topic === true))
+                .map(p => (
+                  <option key={p._id} value={p._id}>
+                    {`${p.registration_period_semester?.semester || ''} - ${new Date(p.registration_period_start * 1000).toLocaleDateString('vi-VN')} đến ${new Date(p.registration_period_end * 1000).toLocaleDateString('vi-VN')}`}
+                  </option>
+                ))}
             </select>
           </div>
           <div>

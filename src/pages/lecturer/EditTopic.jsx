@@ -15,27 +15,27 @@ const EditTopic = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [form] = Form.useForm();
-  const [semesters, setSemesters] = useState([]);
   const [majors, setMajors] = useState([]);
   const [categories, setCategories] = useState([]);
   const [isEditMode, setIsEditMode] = useState(false);
   const [deleteModalVisible, setDeleteModalVisible] = useState(false);
   const [deleteReason, setDeleteReason] = useState('');
   const { user } = useAuth();
+  const [registrationPeriods, setRegistrationPeriods] = useState([]);
 
   useEffect(() => {
     const fetchDropdowns = async () => {
       try {
-        const [semRes, majorRes, catRes] = await Promise.all([
-          axios.get('/api/semesters'),
+        const [periodsRes, majorRes, catRes] = await Promise.all([
+          axios.get('/api/registrationperiods'),
           axios.get('/api/majors'),
           axios.get('/api/topics/topic-types')
         ]);
-        setSemesters(Array.isArray(semRes.data) ? semRes.data : (semRes.data?.data || []));
+        setRegistrationPeriods(Array.isArray(periodsRes.data) ? periodsRes.data : (periodsRes.data?.data || []));
         setMajors(Array.isArray(majorRes.data) ? majorRes.data : (majorRes.data?.data || []));
         setCategories(Array.isArray(catRes.data) ? catRes.data : (catRes.data?.data || []));
       } catch {
-        setSemesters([]);
+        setRegistrationPeriods([]);
         setMajors([]);
         setCategories([]);
       }
@@ -84,16 +84,16 @@ const EditTopic = () => {
     if (isEditMode) {
       const fetchDropdowns = async () => {
         try {
-          const [semRes, majorRes, catRes] = await Promise.all([
-            axios.get('/api/semesters'),
+          const [periodsRes, majorRes, catRes] = await Promise.all([
+            axios.get('/api/registrationperiods'),
             axios.get('/api/majors'),
             axios.get('/api/topics/topic-types')
           ]);
-          setSemesters(Array.isArray(semRes.data) ? semRes.data : (semRes.data?.data || []));
+          setRegistrationPeriods(Array.isArray(periodsRes.data) ? periodsRes.data : (periodsRes.data?.data || []));
           setMajors(Array.isArray(majorRes.data) ? majorRes.data : (majorRes.data?.data || []));
           setCategories(Array.isArray(catRes.data) ? catRes.data : (catRes.data?.data || []));
         } catch {
-          setSemesters([]);
+          setRegistrationPeriods([]);
           setMajors([]);
           setCategories([]);
         }
@@ -189,11 +189,13 @@ const EditTopic = () => {
     const found = categories.find(c => String(c._id) === String(cat));
     return found ? (found.topic_category_title || found.title || found.name) : '';
   };
-  const getSemesterName = (sem) => {
-    if (!sem) return '';
-    if (typeof sem === 'object') return sem.semester || sem.title || '';
-    const found = semesters.find(s => String(s._id) === String(sem));
-    return found ? (found.semester || found.title) : '';
+  const getRegistrationPeriodName = (period) => {
+    if (!period) return '';
+    if (typeof period === 'object') {
+      return `${period.registration_period_semester?.semester || ''} - ${new Date(period.registration_period_start * 1000).toLocaleDateString('vi-VN')} đến ${new Date(period.registration_period_end * 1000).toLocaleDateString('vi-VN')}`;
+    }
+    const found = registrationPeriods.find(p => String(p._id) === String(period));
+    return found ? `${found.registration_period_semester?.semester || ''} - ${new Date(found.registration_period_start * 1000).toLocaleDateString('vi-VN')} đến ${new Date(found.registration_period_end * 1000).toLocaleDateString('vi-VN')}` : '';
   };
 
   // Lọc majors theo khoa của giảng viên
@@ -263,13 +265,13 @@ const EditTopic = () => {
                 <div className="text-base bg-gray-50 rounded px-3 py-1 border border-gray-200 min-h-[40px] flex items-center">{getCategoryName(topic?.topic_category)}</div>
               </div>
               <div>
-                <div className="text-sm text-gray-500 mb-1">Học kỳ</div>
-                <div className="text-base bg-gray-50 rounded px-3 py-1 border border-gray-200 min-h-[40px] flex items-center">{getSemesterName(topic?.topic_registration_period)}</div>
+                <div className="text-sm text-gray-500 mb-1">Đợt đăng ký</div>
+                <div className="text-base bg-gray-50 rounded px-3 py-1 border border-gray-200 min-h-[40px] flex items-center">{getRegistrationPeriodName(topic?.topic_registration_period)}</div>
               </div>
             </div>
             <div>
               <div className="text-sm text-gray-500 mb-1">Mô tả đề tài</div>
-              <div className="text-base whitespace-pre-line border rounded-lg p-4 bg-gray-50 min-h-[100px] border-gray-200">{topic?.topic_description}</div>
+              <div className="text-base whitespace-pre-line border rounded-lg p-4 bg-gray-50 min-h-[100px] border-gray-200" style={{ maxHeight: '250px', overflowY: 'auto' }}>{topic?.topic_description}</div>
             </div>
             <div className="grid grid-cols-2 gap-6">
               <div>
@@ -380,12 +382,14 @@ const EditTopic = () => {
           <div className="grid grid-cols-3 gap-6">
           <Form.Item
               name="topic_registration_period"
-              label={<span className="text-gray-700 font-medium">Học kỳ</span>}
-              rules={[{ required: true, message: 'Vui lòng chọn học kỳ' }]}
+              label={<span className="text-gray-700 font-medium">Đợt đăng ký</span>}
+              rules={[{ required: true, message: 'Vui lòng chọn đợt đăng ký' }]}
           >
-              <Select placeholder="Chọn học kỳ" className="rounded-md">
-                {Array.isArray(semesters) && semesters.map(s => (
-                  <Option key={s._id} value={s._id}>{s.semester}</Option>
+              <Select placeholder="Chọn đợt đăng ký" className="rounded-md">
+                {Array.isArray(registrationPeriods) && registrationPeriods.map(p => (
+                  <Option key={p._id} value={p._id}>
+                    {`${p.registration_period_semester?.semester || ''} - ${new Date(p.registration_period_start * 1000).toLocaleDateString('vi-VN')} đến ${new Date(p.registration_period_end * 1000).toLocaleDateString('vi-VN')}`}
+                  </Option>
                 ))}
               </Select>
           </Form.Item>

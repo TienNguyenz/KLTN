@@ -319,7 +319,7 @@ const ThesisList = () => {
           >
             {faculties.map(faculty => (
               <Option key={faculty._id} value={faculty._id}>
-                {faculty.faculty_title}
+                {faculty.faculty_name}
               </Option>
             ))}
           </Select>

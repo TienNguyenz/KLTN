@@ -185,13 +185,8 @@ const TopicList = () => {
 
             <div>
               <div className="text-sm text-gray-500 mb-1">Mô tả đề tài</div>
-              <div className="text-base whitespace-pre-line border rounded-md p-4 bg-gray-50 min-h-[100px]">
-                {selectedTopic.description || `1. Tính cấp thiết của đề tài
-- Câu hỏi: Vì sao lại nghiên cứu đề tài đó?
-+ Lí do khách quan: Ý nghĩa trên lý luận và thực tiễn chung
-+ Lí do chủ quan: Thực trạng nơi tác giả nghiên cứu, nhu cầu, trách nhiệm, sự hứng thú của người nghiên cứu đối với vấn đề
-- Các nghiên cứu đã được thực hiện trước đó từ đó chỉ ra điểm mới của đề tài, vấn đề mà nhóm lựa chọn.
-- Trọng số trong bài nghiên cứu: Luận giải rõ ràng tính cấp thiết của vấn đề nghiên cứu: 10%`}
+              <div className="text-base whitespace-pre-line border rounded-md p-4 bg-gray-50 min-h-[100px]" style={{ maxHeight: '250px', overflowY: 'auto' }}>
+                {selectedTopic.description || `1. Tính cấp thiết của đề tài\n- Câu hỏi: Vì sao lại nghiên cứu đề tài đó?\n+ Lí do khách quan: Ý nghĩa trên lý luận và thực tiễn chung\n+ Lí do chủ quan: Thực trạng nơi tác giả nghiên cứu, nhu cầu, trách nhiệm, sự hứng thú của người nghiên cứu đối với vấn đề\n- Các nghiên cứu đã được thực hiện trước đó từ đó chỉ ra điểm mới của đề tài, vấn đề mà nhóm lựa chọn.\n- Trọng số trong bài nghiên cứu: Luận giải rõ ràng tính cấp thiết của vấn đề nghiên cứu: 10%`}
               </div>
             </div>
 

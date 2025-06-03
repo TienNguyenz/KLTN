@@ -9,6 +9,7 @@ import {
 import { useNavigate } from 'react-router-dom';
 import axios from 'axios';
 import { useAuth } from '../../context/AuthContext';
+import { getCommitteeTopics } from '../../services/topicService';
 
 const LecturerDashboard = () => {
   const navigate = useNavigate();
@@ -32,7 +33,18 @@ const LecturerDashboard = () => {
         // Tính toán số lượng
         const totalTopics = topics.length;
         const supervisedTopics = topics.filter(t => t.topic_teacher_status === 'approved').length;
-        const committeeTopics = topics.filter(t => t.topic_admin_status === 'approved').length;
+
+        // Lấy số lượng đề tài hội đồng đúng chuẩn
+        let committeeTopics = 0;
+        if (user?.id) {
+          try {
+            const committeeData = await getCommitteeTopics(user.id);
+            committeeTopics = Array.isArray(committeeData) ? committeeData.length : 0;
+          } catch (e) {
+            console.error('Error fetching committee topics:', e);
+            committeeTopics = 0;
+          }
+        }
 
         setStats({
           totalTopics,

@@ -51,7 +51,8 @@ const TopicDetails = () => {
         });
         const scoreboards = res.data;
         // Lấy điểm cá nhân GVHD
-        const gvhdScore = scoreboards.find(s => s.evaluator_type === 'gvhd')?.total_score || 0;
+        const gvhdScoreObj = scoreboards.find(s => s.evaluator_type === 'gvhd');
+        const gvhdScore = (gvhdScoreObj && typeof gvhdScoreObj.total_score === 'number') ? gvhdScoreObj.total_score : null;
         // Lấy điểm hội đồng
         const hoidongScore = scoreboards.find(s => s.evaluator_type === 'hoidong')?.total_score || 0;
         // Nếu có điểm nhóm riêng, lấy thêm (hoặc tính trung bình các điểm cá nhân GVHD)
@@ -96,8 +97,9 @@ const TopicDetails = () => {
     }
   };
   const handleViewCouncil = async () => {
+    // Nếu chưa có hội đồng, vẫn mở modal và hiển thị thông báo
     if (!registeredTopic?.topic_assembly) {
-      message.info('Đề tài chưa được phân hội đồng!');
+      setIsViewCouncilOpen(true);
       return;
     }
     try {
@@ -303,6 +305,8 @@ const TopicsList = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [isBlocked, setIsBlocked] = useState(false);
   const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   useEffect(() => {
     const fetchTopics = async () => {
@@ -364,6 +368,10 @@ const TopicsList = () => {
   );
   });
 
+  const totalTopics = filteredTopics.length;
+  const totalPages = Math.ceil(totalTopics / pageSize);
+  const paginatedTopics = filteredTopics.slice((currentPage - 1) * pageSize, currentPage * pageSize);
+
   return (
     <div className="p-6 md:p-8 bg-gray-50 min-h-full">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Danh Sách Đề Tài</h1>
@@ -424,15 +432,15 @@ const TopicsList = () => {
             <tbody className="bg-white divide-y divide-gray-200">
               {isLoading ? (
                 <tr><td colSpan="7" className="p-4 text-center text-gray-500">Đang tải...</td></tr>
-              ) : filteredTopics.length > 0 ? (
-                filteredTopics.map((topic) => (
+              ) : paginatedTopics.length > 0 ? (
+                paginatedTopics.map((topic) => (
                   <tr key={topic._id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                          <button 
                         onClick={() => handleRegisterClick(topic._id, topic.topic_block)}
                         className={`text-blue-600 hover:text-blue-800 focus:outline-none ${topic.topic_block || isBlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
                         title={topic.topic_block ? 'Đề tài đã bị khóa' : isBlocked ? 'Bạn đã có đề tài đang thực hiện hoặc chờ duyệt' : 'Ghi danh'}
-                        disabled={topic.topic_block || isBlocked}
+                        disabled={topic.topic_block || isBlocked || (topic.topic_registration_period && topic.topic_registration_period.block_topic)}
                          >
                            <FaPencilAlt />
                          </button>
@@ -472,19 +480,19 @@ const TopicsList = () => {
 
         {/* Pagination */}
         <div className="mt-6 flex items-center justify-between text-xs text-gray-600">
-           <div>Hiển thị 1 đến {filteredTopics.length} của {topics.length} đề tài</div>
-           <div className="flex items-center space-x-1">
-              <button className="p-1 border rounded disabled:text-gray-300" disabled>&laquo;</button>
-              <button className="p-1 border rounded disabled:text-gray-300" disabled>&lsaquo;</button>
-              <span className="px-2 py-1 bg-blue-500 text-white rounded">1</span> 
-              <button className="p-1 border rounded">&rsaquo;</button>
-              <button className="p-1 border rounded">&raquo;</button>
-               <select className="ml-2 border rounded p-1 text-xs">
-                 <option>5</option>
-                 <option>10</option>
-                 <option>20</option>
-               </select>
-           </div>
+          <div>Hiển thị {(currentPage - 1) * pageSize + 1} đến {Math.min(currentPage * pageSize, totalTopics)} của {totalTopics} đề tài</div>
+          <div className="flex items-center space-x-1">
+            <button className="p-1 border rounded disabled:text-gray-300" onClick={() => setCurrentPage(1)} disabled={currentPage === 1}>&laquo;</button>
+            <button className="p-1 border rounded disabled:text-gray-300" onClick={() => setCurrentPage(prev => Math.max(1, prev - 1))} disabled={currentPage === 1}>&lsaquo;</button>
+            <span className="px-2 py-1 bg-blue-500 text-white rounded">{currentPage}</span>
+            <button className="p-1 border rounded" onClick={() => setCurrentPage(prev => Math.min(totalPages, prev + 1))} disabled={currentPage === totalPages}>&rsaquo;</button>
+            <button className="p-1 border rounded" onClick={() => setCurrentPage(totalPages)} disabled={currentPage === totalPages}>&raquo;</button>
+            <select className="ml-2 border rounded p-1 text-xs" value={pageSize} onChange={e => { setPageSize(Number(e.target.value)); setCurrentPage(1); }}>
+              <option value={5}>5</option>
+              <option value={10}>10</option>
+              <option value={20}>20</option>
+            </select>
+          </div>
         </div>
       </div>
     </div>
@@ -1183,7 +1191,6 @@ const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers 
   let scoreObj = studentScores?.[user._id] || studentScores?.[user.user_id] || studentScores?.[user.id] || {};
   const personal = scoreObj.gvhd ?? 0;
   const hoidong = scoreObj.hoidong ?? 0;
-  // Nếu có điểm nhóm riêng, lấy ở đây, nếu không thì dùng groupAvg
   const group = Number(groupAvg) || 0;
 
   const total = personal + group + hoidong;
@@ -1500,12 +1507,18 @@ const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers 
         <Tabs.TabPane tab="Điểm tổng" key="total">
           <div className="p-6">
             <div className="mb-4 text-lg">
-              <div>Điểm cá nhân (GVHD): <b className="text-blue-600">{personal}</b></div>
-              <div>Điểm nhóm: <b className="text-blue-600">{groupGVHDAvg}</b></div>
-              <div>Điểm hội đồng: <b className="text-blue-600">{groupCouncilAvg}</b></div>
+              <div>Điểm cá nhân (GVHD): <b className="text-blue-600">{typeof personal === 'number' ? personal : '-'}</b></div>
+              <div>Điểm nhóm: <b className="text-blue-600">{!isNaN(Number(groupGVHDAvg)) ? groupGVHDAvg : '-'}</b></div>
+              <div>Điểm hội đồng: <b className="text-blue-600">{!isNaN(Number(groupCouncilAvg)) ? groupCouncilAvg : '-'}</b></div>
             </div>
             <div className="text-xl font-bold mt-6">
-              Tổng điểm: <span className="text-green-600">{(Number(personal)*0.4 + Number(groupGVHDAvg)*0.3 + Number(groupCouncilAvg)*0.3).toFixed(2)}</span>
+              Tổng điểm: <span className="text-green-600">
+                {
+                  (typeof personal === 'number' && !isNaN(Number(groupGVHDAvg)) && !isNaN(Number(groupCouncilAvg)))
+                    ? (Number(personal)*0.4 + Number(groupGVHDAvg)*0.3 + Number(groupCouncilAvg)*0.3).toFixed(2)
+                    : '-'
+                }
+              </span>
             </div>
           </div>
         </Tabs.TabPane>

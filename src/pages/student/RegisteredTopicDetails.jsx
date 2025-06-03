@@ -255,7 +255,7 @@ const RegisteredTopicDetails = ({ topic, onViewGrades, onViewCouncil }) => {
       {/* Chi tiết đề tài */}
       <div>
         <label className="block text-sm font-medium text-gray-500 mb-2">Chi tiết đề tài</label>
-        <div className="bg-gray-50 p-4 rounded-md border border-gray-200 text-gray-700 text-sm space-y-2 whitespace-pre-line h-40 overflow-y-auto">
+        <div className="bg-gray-50 p-4 rounded-md border border-gray-200 text-gray-700 text-sm space-y-2 whitespace-pre-line" style={{ maxHeight: '250px', overflowY: 'auto' }}>
           {topic.topic_description}
         </div>
       </div>

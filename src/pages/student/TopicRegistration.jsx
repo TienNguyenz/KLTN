@@ -294,6 +294,10 @@ const TopicRegistration = () => {
     return <div className="p-8 text-center">Không tìm thấy đề tài.</div>;
   }
 
+  if (topic && topic.topic_registration_period && topic.topic_registration_period.registration_period_status === false && topic.topic_registration_period.block_topic === true) {
+    return <div className="p-8 text-center text-red-600 font-semibold">Đợt đăng ký này đã đóng và bị khóa, bạn không thể đăng ký đề tài này.</div>;
+  }
+
   const studentOptions = students
     .filter(student => {
       if (student._id === user._id || student.user_id === user?.user_id) return false;
