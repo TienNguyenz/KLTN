@@ -9,6 +9,10 @@ import { Modal, Tabs, Table, Button, Collapse, Tooltip } from 'antd';
 import { message } from 'antd';
 import { EyeOutlined } from '@ant-design/icons';
 
+// Đặt sau import, trước các component:
+const getGraderId = (g) => (typeof g === 'object' && g !== null) ? g._id : g;
+const getGraderName = (g) => (typeof g === 'object' && g !== null) ? (g.user_name || g.user_id || g._id) : g;
+
 // Component con để hiển thị chi tiết đề tài hoặc thông báo chưa đăng ký
 const TopicDetails = () => {
   const { user } = useAuth();
@@ -161,126 +165,135 @@ const TopicDetails = () => {
     <div className="p-6 md:p-8 bg-gray-50 min-h-full">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Trang chủ Sinh viên</h1>
       {registeredTopic && registeredTopic.topic_title ? (
-        registeredTopic.status === 'rejected' || registeredTopic.topic_teacher_status === 'rejected' ? (
-          <div className="bg-white p-6 rounded-lg shadow-md text-center">
-            <span className="text-4xl text-red-500 mx-auto mb-4 inline-block">❌</span>
-            <p className="text-lg text-red-600 mb-2 font-semibold">Đề tài của bạn đã bị từ chối!</p>
-            <p className="text-gray-600 mb-2 font-semibold">{registeredTopic.topic_title}</p>
-            {registeredTopic.reject_reason && (
-              <p className="text-red-500 mb-4">Lý do: {registeredTopic.reject_reason}</p>
-            )}
-            {(() => {
-              // Lấy user_id trưởng nhóm
-              const leaderId = registeredTopic.topic_group_student && registeredTopic.topic_group_student.length > 0
-                ? registeredTopic.topic_group_student[0].user_id
-                : null;
-              if (leaderId !== user.user_id) return null;
-              return (
-                <div className="flex flex-col md:flex-row justify-center gap-4 mt-4">
-                  <div className="flex flex-col items-center">
-                    <Tooltip title="Đăng ký lại đề tài này cho nhóm bạn">
-                      <button
-                        className="bg-[#008bc3] hover:bg-[#0073a8] text-white font-semibold py-2 px-6 rounded-full transition-colors duration-300"
-                        onClick={() => navigate(`/student/topics/${registeredTopic._id}/register`)}
-                      >
-                        <span role="img" aria-label="redo" className="mr-2">🔄</span>
-                        Ghi danh lại đề tài
-                      </button>
-                    </Tooltip>
-                    <span className="text-xs text-gray-500 mt-1">Đăng ký lại đề tài này cho nhóm bạn</span>
-                  </div>
-                  <div className="flex flex-col items-center">
-                    <Tooltip title="Mở đề tài này cho nhóm khác, bạn chọn đề tài mới">
-                      <button
-                        className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-full transition-colors duration-300"
-                        onClick={async () => {
-                          try {
-                            await axios.post(`/api/topics/${registeredTopic._id}/reset-for-new-registration`);
-                            navigate('/student/topics');
-                          } catch (err) {
-                            console.error('Error resetting topic:', err);
-                            alert('Có lỗi khi mở lại đề tài cho sinh viên khác đăng ký!');
-                          }
-                        }}
-                      >
-                        <span role="img" aria-label="new" className="mr-2">🆕</span>
-                        Ghi danh đề tài mới
-                      </button>
-                    </Tooltip>
-                    <span className="text-xs text-gray-500 mt-1">Mở đề tài này cho nhóm khác, bạn chọn đề tài mới</span>
-                  </div>
-                </div>
-              );
-            })()}
-          </div>
-        ) : (
-          <>
-            <RegisteredTopicDetails
-              topic={registeredTopic}
-              onCancel={handleCancelRegistration}
-              onViewGrades={handleViewGrades}
-              onViewCouncil={handleViewCouncil}
-            />
-            <ViewGradesModal
-              open={isViewGradesOpen}
-              onClose={() => setIsViewGradesOpen(false)}
-              topic={registeredTopic}
-              user={user}
-              studentScores={studentScores}
-              lecturers={lecturers}
-              councilInfo={councilInfo}
-            />
-            <Modal
-              open={isViewCouncilOpen}
-              onCancel={() => setIsViewCouncilOpen(false)}
-              footer={null}
-              title={<span style={{fontWeight:700,fontSize:20}}>Thông tin hội đồng</span>}
-              width={540}
-            >
-              {!registeredTopic?.topic_assembly ? (
-                <div className="text-gray-500 text-center text-lg font-semibold py-6">Chưa phân hội đồng</div>
-              ) : councilInfo ? (
-                <div className="space-y-3">
-                  <div className="mb-2"><b>Tên hội đồng:</b> <span className="text-blue-700">{councilInfo.assembly_name}</span></div>
-                  <div className="mb-2">
-                    <b>Chuyên ngành:</b> <span className="text-green-700">{getMajorName(councilInfo.assembly_major)}</span>
-                  </div>
-                  <div className="mb-2 flex items-center gap-2">
-                    <b>Chủ tịch:</b>
-                    <span className="inline-flex items-center gap-2 bg-blue-50 px-2 py-1 rounded">
-                      <span className="font-semibold text-blue-800">
-                        {getLecturerName(councilInfo.chairman)}
-                      </span>
-                      <span className="text-xs text-gray-500">(Chủ tịch)</span>
-                    </span>
-                  </div>
-                  <div className="mb-2 flex items-center gap-2">
-                    <b>Thư ký:</b>
-                    <span className="inline-flex items-center gap-2 bg-blue-50 px-2 py-1 rounded">
-                      <span className="font-semibold text-blue-800">{getLecturerName(councilInfo.secretary)}</span>
-                      <span className="text-xs text-gray-500">(Thư ký)</span>
-                    </span>
-                  </div>
-                  <div className="mb-2 flex items-start gap-2">
-                    <b>Thành viên:</b>
-                    <span className="inline-flex flex-wrap gap-2">
-                      {Array.isArray(councilInfo.members) && councilInfo.members.length > 0
-                        ? councilInfo.members.map((m, idx) => (
-                            <span key={idx} className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-gray-800">
-                              {getLecturerName(m)}
-                              <span className="text-xs text-gray-400">(Thành viên)</span>
-                            </span>
-                          ))
-                        : <span className="italic text-gray-400">-</span>}
-                    </span>
-                  </div>
-                </div>
-              ) : (
-                <div className="text-red-500 text-center text-lg font-semibold py-6">Không tìm thấy thông tin hội đồng</div>
+        <>
+          {registeredTopic.status === 'completed' && (
+            <div className="flex items-center gap-2 mb-4">
+              <span className="inline-block bg-green-600 text-white px-3 py-1 rounded-full font-bold text-sm">
+                ✔️ Đề tài đã hoàn thành
+              </span>
+            </div>
+          )}
+          {registeredTopic.status === 'rejected' || registeredTopic.topic_teacher_status === 'rejected' ? (
+            <div className="bg-white p-6 rounded-lg shadow-md text-center">
+              <span className="text-4xl text-red-500 mx-auto mb-4 inline-block">❌</span>
+              <p className="text-lg text-red-600 mb-2 font-semibold">Đề tài của bạn đã bị từ chối!</p>
+              <p className="text-gray-600 mb-2 font-semibold">{registeredTopic.topic_title}</p>
+              {registeredTopic.reject_reason && (
+                <p className="text-red-500 mb-4">Lý do: {registeredTopic.reject_reason}</p>
               )}
-            </Modal>
-          </>
-        )
+              {(() => {
+                // Lấy user_id trưởng nhóm
+                const leaderId = registeredTopic.topic_group_student && registeredTopic.topic_group_student.length > 0
+                  ? registeredTopic.topic_group_student[0].user_id
+                  : null;
+                if (leaderId !== user.user_id) return null;
+                return (
+                  <div className="flex flex-col md:flex-row justify-center gap-4 mt-4">
+                    <div className="flex flex-col items-center">
+                      <Tooltip title="Đăng ký lại đề tài này cho nhóm bạn">
+                        <button
+                          className="bg-[#008bc3] hover:bg-[#0073a8] text-white font-semibold py-2 px-6 rounded-full transition-colors duration-300"
+                          onClick={() => navigate(`/student/topics/${registeredTopic._id}/register`)}
+                        >
+                          <span role="img" aria-label="redo" className="mr-2">🔄</span>
+                          Ghi danh lại đề tài
+                        </button>
+                      </Tooltip>
+                      <span className="text-xs text-gray-500 mt-1">Đăng ký lại đề tài này cho nhóm bạn</span>
+                    </div>
+                    <div className="flex flex-col items-center">
+                      <Tooltip title="Mở đề tài này cho nhóm khác, bạn chọn đề tài mới">
+                        <button
+                          className="bg-gray-200 hover:bg-gray-300 text-gray-800 font-semibold py-2 px-6 rounded-full transition-colors duration-300"
+                          onClick={async () => {
+                            try {
+                              await axios.post(`/api/topics/${registeredTopic._id}/reset-for-new-registration`);
+                              navigate('/student/topics');
+                            } catch (err) {
+                              console.error('Error resetting topic:', err);
+                              alert('Có lỗi khi mở lại đề tài cho sinh viên khác đăng ký!');
+                            }
+                          }}
+                        >
+                          <span role="img" aria-label="new" className="mr-2">🆕</span>
+                          Ghi danh đề tài mới
+                        </button>
+                      </Tooltip>
+                      <span className="text-xs text-gray-500 mt-1">Mở đề tài này cho nhóm khác, bạn chọn đề tài mới</span>
+                    </div>
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <>
+              <RegisteredTopicDetails
+                topic={registeredTopic}
+                onCancel={handleCancelRegistration}
+                onViewGrades={handleViewGrades}
+                onViewCouncil={handleViewCouncil}
+              />
+              <ViewGradesModal
+                open={isViewGradesOpen}
+                onClose={() => setIsViewGradesOpen(false)}
+                topic={registeredTopic}
+                user={user}
+                studentScores={studentScores}
+                lecturers={lecturers}
+                councilInfo={councilInfo}
+              />
+              <Modal
+                open={isViewCouncilOpen}
+                onCancel={() => setIsViewCouncilOpen(false)}
+                footer={null}
+                title={<span style={{fontWeight:700,fontSize:20}}>Thông tin hội đồng</span>}
+                width={540}
+              >
+                {!registeredTopic?.topic_assembly ? (
+                  <div className="text-gray-500 text-center text-lg font-semibold py-6">Chưa phân hội đồng</div>
+                ) : councilInfo ? (
+                  <div className="space-y-3">
+                    <div className="mb-2"><b>Tên hội đồng:</b> <span className="text-blue-700">{councilInfo.assembly_name}</span></div>
+                    <div className="mb-2">
+                      <b>Chuyên ngành:</b> <span className="text-green-700">{getMajorName(councilInfo.assembly_major)}</span>
+                    </div>
+                    <div className="mb-2 flex items-center gap-2">
+                      <b>Chủ tịch:</b>
+                      <span className="inline-flex items-center gap-2 bg-blue-50 px-2 py-1 rounded">
+                        <span className="font-semibold text-blue-800">
+                          {getLecturerName(councilInfo.chairman)}
+                        </span>
+                        <span className="text-xs text-gray-500">(Chủ tịch)</span>
+                      </span>
+                    </div>
+                    <div className="mb-2 flex items-center gap-2">
+                      <b>Thư ký:</b>
+                      <span className="inline-flex items-center gap-2 bg-blue-50 px-2 py-1 rounded">
+                        <span className="font-semibold text-blue-800">{getLecturerName(councilInfo.secretary)}</span>
+                        <span className="text-xs text-gray-500">(Thư ký)</span>
+                      </span>
+                    </div>
+                    <div className="mb-2 flex items-start gap-2">
+                      <b>Thành viên:</b>
+                      <span className="inline-flex flex-wrap gap-2">
+                        {Array.isArray(councilInfo.members) && councilInfo.members.length > 0
+                          ? councilInfo.members.map((m, idx) => (
+                              <span key={idx} className="inline-flex items-center gap-1 bg-gray-100 px-2 py-1 rounded text-gray-800">
+                                {getLecturerName(m)}
+                                <span className="text-xs text-gray-400">(Thành viên)</span>
+                              </span>
+                            ))
+                          : <span className="italic text-gray-400">-</span>}
+                      </span>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="text-red-500 text-center text-lg font-semibold py-6">Không tìm thấy thông tin hội đồng</div>
+                )}
+              </Modal>
+            </>
+          )}
+        </>
       ) : (
         <div className="bg-white p-6 rounded-lg shadow-md text-center">
           <FaInfoCircle className="text-4xl text-blue-500 mx-auto mb-4" />
@@ -1115,6 +1128,60 @@ const StudentLayout = () => {
   );
 };
 
+// Ở ngoài cùng file, sau import
+const rubricCache = {}; // Nếu muốn cache toàn cục, hoặc truyền vào qua props
+
+export const fetchRubricEvaluations = async (rubricId) => {
+  if (!rubricId) return [];
+  if (rubricCache[rubricId]) return rubricCache[rubricId];
+  try {
+    const res = await axios.get(`/api/rubrics/${rubricId}`);
+    const evaluations = res.data?.rubric_evaluations || [];
+    rubricCache[rubricId] = evaluations;
+    return evaluations;
+  } catch {
+    return [];
+  }
+};
+
+// Đặt RubricTable ở ngoài cùng file
+export const RubricTable = ({ scoreboard }) => {
+  const [evaluations, setEvaluations] = useState([]);
+  useEffect(() => {
+    if (!scoreboard?.rubric_id) return;
+    fetchRubricEvaluations(scoreboard.rubric_id).then(setEvaluations);
+  }, [scoreboard?.rubric_id]);
+  if (!scoreboard) return null;
+  const scoreMap = {};
+  (scoreboard.rubric_student_evaluations || []).forEach(ev => {
+    scoreMap[ev.evaluation_id] = ev.score;
+  });
+  if (!evaluations.length) return null;
+  return (
+    <Table
+      size="small"
+      bordered
+      style={{ marginTop: 8, marginBottom: 8 }}
+      columns={[
+        { title: 'STT', dataIndex: 'serial', key: 'serial', align: 'center', width: 60 },
+        { title: 'Tiêu chí', dataIndex: 'evaluation_criteria', key: 'evaluation_criteria', width: 220 },
+        { title: 'Thang điểm', dataIndex: 'grading_scale', key: 'grading_scale', align: 'center', width: 100 },
+        { title: 'Trọng số', dataIndex: 'weight', key: 'weight', align: 'center', width: 100, render: w => (typeof w === 'number' ? (w * 100) + '%' : w) },
+        { title: 'Điểm đạt', dataIndex: 'score', key: 'score', align: 'center', width: 100 },
+      ]}
+      dataSource={evaluations.map(ev => ({
+        key: ev._id,
+        serial: ev.serial,
+        evaluation_criteria: ev.evaluation_criteria,
+        grading_scale: ev.grading_scale,
+        weight: ev.weight,
+        score: scoreMap[ev._id] ?? '-',
+      }))}
+      pagination={false}
+    />
+  );
+};
+
 const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers = [], councilInfo = null }) => {
   const [activeTab, setActiveTab] = useState('personal');
   const [personalScores, setPersonalScores] = useState([]); // Danh sách tất cả các bảng điểm cá nhân
@@ -1122,6 +1189,10 @@ const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers 
   const [loading, setLoading] = useState(false);
   const [groupStudentMap, setGroupStudentMap] = useState({});
   const [groupStudentIdToUserId, setGroupStudentIdToUserId] = useState({});
+  // Thêm state để cache rubric evaluations theo rubric_id
+  const [rubricCache, setRubricCache] = useState({});
+  // Thêm state để lưu rubric evaluations của GVHD cho tab Điểm tổng
+  const [gvhdRubricEvaluations, setGvhdRubricEvaluations] = useState([]);
 
   // Lấy tất cả bảng điểm cá nhân của SV cho đề tài này
   const fetchPersonalScores = async () => {
@@ -1182,18 +1253,9 @@ const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers 
     }
   };
 
-  // Tính trung bình nhóm
-  const groupAvg = groupScores.length
-    ? (groupScores.reduce((sum, s) => sum + (s.total_score || 0), 0) / groupScores.length).toFixed(2)
-    : 0;
-
   // Lấy điểm cá nhân, hội đồng, nhóm cho user hiện tại (ưu tiên _id, fallback user_id, id)
   let scoreObj = studentScores?.[user._id] || studentScores?.[user.user_id] || studentScores?.[user.id] || {};
   const personal = scoreObj.gvhd ?? 0;
-  const hoidong = scoreObj.hoidong ?? 0;
-  const group = Number(groupAvg) || 0;
-
-  const total = personal + group + hoidong;
 
   // Helper lấy tên giảng viên từ lecturers (dùng cho cả GVHD và hội đồng)
   const getLecturerName = (id) => {
@@ -1220,18 +1282,35 @@ const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers 
   const gvhdScore = personalScores.find(s => s.evaluator_type === 'gvhd');
   let chairmanScore, secretaryScore, memberScore;
   if (councilInfo) {
-    chairmanScore = personalScores.find(s => s.evaluator_type === 'hoidong' && String(s.grader) === String(councilInfo.chairman));
-    secretaryScore = personalScores.find(s => s.evaluator_type === 'hoidong' && String(s.grader) === String(councilInfo.secretary));
     // Lấy thành viên đầu tiên (nếu có nhiều thành viên thì chỉ lấy 1 người, hoặc cộng trung bình nếu muốn)
-    memberScore = personalScores.find(s => s.evaluator_type === 'hoidong' && Array.isArray(councilInfo.members) && councilInfo.members.some(m => String(m) === String(s.grader)));
+    memberScore = personalScores.find(s => s.evaluator_type === 'hoidong' && Array.isArray(councilInfo.members) && councilInfo.members.some(m => String(getGraderId(m)) === String(s.grader)));
   }
 
-  // Tính tổng điểm theo trọng số
+  // Lấy tất cả điểm hội đồng
+  const allCouncilScores = personalScores.filter(s => s.evaluator_type === 'hoidong');
+
+  // Chủ tịch
+  const chairmanArr = allCouncilScores.filter(s => String(getGraderId(s.grader)) === String(councilInfo?.chairman));
+  const chairmanAvg = chairmanArr.length ? (chairmanArr.reduce((a,b)=>a+(b.total_score||0),0)/chairmanArr.length) : 0;
+
+  // Thư ký
+  const secretaryArr = allCouncilScores.filter(s => String(getGraderId(s.grader)) === String(councilInfo?.secretary));
+  const secretaryAvg = secretaryArr.length ? (secretaryArr.reduce((a,b)=>a+(b.total_score||0),0)/secretaryArr.length) : 0;
+
+  // Thành viên
+  const memberArr = allCouncilScores.filter(s => {
+    if (!Array.isArray(councilInfo?.members)) return false;
+    return councilInfo.members.some(m => String(getGraderId(m)) === String(getGraderId(s.grader)));
+  });
+  const memberAvg = memberArr.length ? (memberArr.reduce((a,b)=>a+(b.total_score||0),0)/memberArr.length) : 0;
+
+  // Trung bình hội đồng
+  const councilAvg = (chairmanAvg + secretaryAvg + memberAvg) / 3;
+
+  // Tổng điểm theo trọng số
   const weightedTotal = (
     (gvhdScore?.total_score || 0) * 0.4 +
-    (chairmanScore?.total_score || 0) * 0.2 +
-    (secretaryScore?.total_score || 0) * 0.2 +
-    (memberScore?.total_score || 0) * 0.2
+    councilAvg * 0.6
   ).toFixed(2);
 
   // Hàm lấy màu cho xếp loại
@@ -1267,66 +1346,73 @@ const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers 
   // Tab "Điểm cá nhân": gom đúng 3 vai trò hội đồng, không lặp, không thiếu
   let councilPanels = [];
   if (councilInfo) {
-    const allCouncilScores = personalScores.filter(s => s.evaluator_type === 'hoidong');
     // Chủ tịch
-    const chairmanArr = allCouncilScores.filter(s => String(s.grader) === String(councilInfo.chairman));
-    if (chairmanArr.length) {
-      const avg = (chairmanArr.reduce((a,b)=>a+(b.total_score||0),0)/chairmanArr.length).toFixed(2);
-      const grade = getGrade(avg);
-      councilPanels.push({
-        key: 'chairman',
-        label: (
-          <div style={{display:'flex',alignItems:'center',gap:10}}>
-            <span style={{fontSize:22}}>{getRoleIcon('Chủ tịch')}</span>
-            <span style={{fontWeight:700}}>Chủ tịch:</span>
-            <span style={{color:'#2563eb',fontWeight:600}}>{getLecturerName(councilInfo.chairman)}</span>
-            <span style={{marginLeft:16,fontWeight:600}}>Tổng điểm:</span>
-            <span style={{color:'#0ea5e9',fontWeight:700,fontSize:18}}>{avg}</span>
-            <span style={{marginLeft:8,color:getGradeColor(grade),fontWeight:700}}>{grade}</span>
-          </div>
-        ),
-        children: (
-          <div style={{marginTop:8}}>
-            <div style={{marginBottom:8,fontWeight:600}}>
-              Tổng điểm: <span style={{color:'#0ea5e9',fontWeight:700}}>{avg}</span>
-              <span style={{marginLeft:8,color:getGradeColor(grade),fontWeight:700}}>{grade}</span>
-            </div>
-          </div>
-        )
-      });
-    }
+    const chairmanArr = allCouncilScores.filter(s => String(getGraderId(s.grader)) === String(councilInfo.chairman));
+    const chairmanAvg = chairmanArr.length ? (chairmanArr.reduce((a,b)=>a+(b.total_score||0),0)/chairmanArr.length) : 0;
     // Thư ký
-    const secretaryArr = allCouncilScores.filter(s => String(s.grader) === String(councilInfo.secretary));
+    const secretaryArr = allCouncilScores.filter(s => String(getGraderId(s.grader)) === String(councilInfo.secretary));
+    const secretaryAvg = secretaryArr.length ? (secretaryArr.reduce((a,b)=>a+(b.total_score||0),0)/secretaryArr.length) : 0;
+    // Thành viên (có thể nhiều người)
+    const memberArr = allCouncilScores.filter(s => {
+      if (!Array.isArray(councilInfo.members)) return false;
+      return councilInfo.members.some(m => String(getGraderId(m)) === String(getGraderId(s.grader)));
+    });
+    const memberAvg = memberArr.length ? (memberArr.reduce((a,b)=>a+(b.total_score||0),0)/memberArr.length) : 0;
+    // Trung bình hội đồng: luôn chia cho 3
+    const councilAvg = (chairmanAvg + secretaryAvg + memberAvg) / 3;
+    // Tổng điểm theo trọng số
+    const weightedTotal = (
+      (gvhdScore?.total_score || 0) * 0.4 +
+      councilAvg * 0.6
+    ).toFixed(2);
+    councilPanels.push({
+      key: 'chairman',
+      label: (
+        <div style={{display:'flex',alignItems:'center',gap:10}}>
+          <span style={{fontSize:22}}>{getRoleIcon('Chủ tịch')}</span>
+          <span style={{fontWeight:700}}>Chủ tịch:</span>
+          <span style={{color:'#2563eb',fontWeight:600}}>{getLecturerName(getGraderId(councilInfo.chairman))}</span>
+          <span style={{marginLeft:16,fontWeight:600}}>Tổng điểm:</span>
+          <span style={{color:'#0ea5e9',fontWeight:700,fontSize:18}}>{chairmanAvg}</span>
+          <span style={{marginLeft:8,color:getGradeColor(getGrade(chairmanAvg)),fontWeight:700}}>{getGrade(chairmanAvg)}</span>
+        </div>
+      ),
+      children: (
+        <div style={{marginTop:8}}>
+          <div style={{marginBottom:8,fontWeight:600}}>
+            Tổng điểm: <span style={{color:'#0ea5e9',fontWeight:700}}>{chairmanAvg}</span>
+            <span style={{marginLeft:8,color:getGradeColor(getGrade(chairmanAvg)),fontWeight:700}}>{getGrade(chairmanAvg)}</span>
+          </div>
+          {/* Nếu chỉ có 1 bảng điểm (1 người chấm), show chi tiết tiêu chí */}
+          {chairmanArr.length === 1 && <RubricTable scoreboard={chairmanArr[0]} />}
+        </div>
+      )
+    });
     if (secretaryArr.length) {
-      const avg = (secretaryArr.reduce((a,b)=>a+(b.total_score||0),0)/secretaryArr.length).toFixed(2);
-      const grade = getGrade(avg);
       councilPanels.push({
         key: 'secretary',
         label: (
           <div style={{display:'flex',alignItems:'center',gap:10}}>
             <span style={{fontSize:22}}>{getRoleIcon('Thư ký')}</span>
             <span style={{fontWeight:700}}>Thư ký:</span>
-            <span style={{color:'#2563eb',fontWeight:600}}>{getLecturerName(councilInfo.secretary)}</span>
+            <span style={{color:'#2563eb',fontWeight:600}}>{getLecturerName(getGraderId(councilInfo.secretary))}</span>
             <span style={{marginLeft:16,fontWeight:600}}>Tổng điểm:</span>
-            <span style={{color:'#0ea5e9',fontWeight:700,fontSize:18}}>{avg}</span>
-            <span style={{marginLeft:8,color:getGradeColor(grade),fontWeight:700}}>{grade}</span>
+            <span style={{color:'#0ea5e9',fontWeight:700,fontSize:18}}>{secretaryAvg}</span>
+            <span style={{marginLeft:8,color:getGradeColor(getGrade(secretaryAvg)),fontWeight:700}}>{getGrade(secretaryAvg)}</span>
           </div>
         ),
         children: (
           <div style={{marginTop:8}}>
             <div style={{marginBottom:8,fontWeight:600}}>
-              Tổng điểm: <span style={{color:'#0ea5e9',fontWeight:700}}>{avg}</span>
-              <span style={{marginLeft:8,color:getGradeColor(grade),fontWeight:700}}>{grade}</span>
+              Tổng điểm: <span style={{color:'#0ea5e9',fontWeight:700}}>{secretaryAvg}</span>
+              <span style={{marginLeft:8,color:getGradeColor(getGrade(secretaryAvg)),fontWeight:700}}>{getGrade(secretaryAvg)}</span>
             </div>
+            {secretaryArr.length === 1 && <RubricTable scoreboard={secretaryArr[0]} />}
           </div>
         )
       });
     }
-    // Thành viên (có thể nhiều người)
-    const memberArr = allCouncilScores.filter(s => Array.isArray(councilInfo.members) && councilInfo.members.some(m => String(m) === String(s.grader)));
     if (memberArr.length) {
-      const avg = (memberArr.reduce((a,b)=>a+(b.total_score||0),0)/memberArr.length).toFixed(2);
-      const grade = getGrade(avg);
       councilPanels.push({
         key: 'member',
         label: (
@@ -1335,50 +1421,64 @@ const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers 
             <span style={{fontWeight:700}}>Thành viên:</span>
             <span style={{color:'#2563eb',fontWeight:600}}>{Array.isArray(councilInfo.members) && councilInfo.members.map(getLecturerName).join(', ')}</span>
             <span style={{marginLeft:16,fontWeight:600}}>Tổng điểm:</span>
-            <span style={{color:'#0ea5e9',fontWeight:700,fontSize:18}}>{avg}</span>
-            <span style={{marginLeft:8,color:getGradeColor(grade),fontWeight:700}}>{grade}</span>
+            <span style={{color:'#0ea5e9',fontWeight:700,fontSize:18}}>{memberAvg}</span>
+            <span style={{marginLeft:8,color:getGradeColor(getGrade(memberAvg)),fontWeight:700}}>{getGrade(memberAvg)}</span>
           </div>
         ),
         children: (
           <div style={{marginTop:8}}>
             <div style={{marginBottom:8,fontWeight:600}}>
-              Tổng điểm: <span style={{color:'#0ea5e9',fontWeight:700}}>{avg}</span>
-              <span style={{marginLeft:8,color:getGradeColor(grade),fontWeight:700}}>{grade}</span>
+              Tổng điểm: <span style={{color:'#0ea5e9',fontWeight:700}}>{memberAvg}</span>
+              <span style={{marginLeft:8,color:getGradeColor(getGrade(memberAvg)),fontWeight:700}}>{getGrade(memberAvg)}</span>
             </div>
+            {memberArr.length === 1 && <RubricTable scoreboard={memberArr[0]} />}
           </div>
         )
       });
     }
   }
 
-  // Tab "Điểm nhóm": chỉ hiện 3 dòng: Chủ tịch, Thư ký, Thành viên, mỗi dòng là điểm trung bình vai trò
-  // Điểm nhóm của Hội đồng
-  // Tính điểm trung bình cho từng vai trò
-  const groupCouncilScores = groupScores.filter(s => s.evaluator_type === 'hoidong');
-  const groupChairmanArr = groupCouncilScores.filter(s => String(s.grader) === String(councilInfo?.chairman));
-  const groupSecretaryArr = groupCouncilScores.filter(s => String(s.grader) === String(councilInfo?.secretary));
-  const groupMemberArr = groupCouncilScores.filter(s => Array.isArray(councilInfo?.members) && councilInfo.members.some(m => String(m) === String(s.grader)));
+  // Tab "Điểm nhóm": dùng lại personalScores để đồng nhất với tab cá nhân
+  const personalCouncilScores = personalScores.filter(s => s.evaluator_type === 'hoidong');
+  // Điểm Chủ tịch
+  const groupChairmanArr = personalCouncilScores.filter(s => String(getGraderId(s.grader)) === String(councilInfo?.chairman));
+  const groupChairmanAvg = groupChairmanArr.length ? (groupChairmanArr.reduce((a,b)=>a+(b.total_score||0),0)/groupChairmanArr.length) : 0;
+  // Điểm Thư ký
+  const groupSecretaryArr = personalCouncilScores.filter(s => String(getGraderId(s.grader)) === String(councilInfo?.secretary));
+  const groupSecretaryAvg = groupSecretaryArr.length ? (groupSecretaryArr.reduce((a,b)=>a+(b.total_score||0),0)/groupSecretaryArr.length) : 0;
+  // Điểm Thành viên (có thể nhiều người)
+  const groupMemberArr = Array.isArray(councilInfo?.members)
+    ? councilInfo.members.map(memberId => {
+        const arr = personalCouncilScores.filter(
+          s => String(getGraderId(s.grader)) === String(getGraderId(memberId))
+        );
+        return arr.length ? (arr.reduce((a, b) => a + (b.total_score || 0), 0) / arr.length) : 0;
+      })
+    : [];
+  const groupMemberAvg = groupMemberArr.length
+    ? (groupMemberArr.reduce((a, b) => a + b, 0) / groupMemberArr.length).toFixed(2)
+    : '0.00';
   const groupCouncilTable = [
     {
       key: 'chairman',
       role: 'Chủ tịch',
-      name: getLecturerName(councilInfo?.chairman),
-      avg: groupChairmanArr.length ? (groupChairmanArr.reduce((a,b)=>a+(b.total_score||0),0)/groupChairmanArr.length).toFixed(2) : '-',
-      grade: groupChairmanArr.length ? getGrade((groupChairmanArr.reduce((a,b)=>a+(b.total_score||0),0)/groupChairmanArr.length).toFixed(2)) : '-'
+      name: getLecturerName(getGraderId(councilInfo?.chairman)),
+      avg: groupChairmanAvg.toFixed(2),
+      grade: getGrade(groupChairmanAvg)
     },
     {
       key: 'secretary',
       role: 'Thư ký',
-      name: getLecturerName(councilInfo?.secretary),
-      avg: groupSecretaryArr.length ? (groupSecretaryArr.reduce((a,b)=>a+(b.total_score||0),0)/groupSecretaryArr.length).toFixed(2) : '-',
-      grade: groupSecretaryArr.length ? getGrade((groupSecretaryArr.reduce((a,b)=>a+(b.total_score||0),0)/groupSecretaryArr.length).toFixed(2)) : '-'
+      name: getLecturerName(getGraderId(councilInfo?.secretary)),
+      avg: groupSecretaryAvg.toFixed(2),
+      grade: getGrade(groupSecretaryAvg)
     },
     {
       key: 'member',
       role: 'Thành viên',
       name: Array.isArray(councilInfo?.members) ? councilInfo.members.map(getLecturerName).join(', ') : '-',
-      avg: groupMemberArr.length ? (groupMemberArr.reduce((a,b)=>a+(b.total_score||0),0)/groupMemberArr.length).toFixed(2) : '-',
-      grade: groupMemberArr.length ? getGrade((groupMemberArr.reduce((a,b)=>a+(b.total_score||0),0)/groupMemberArr.length).toFixed(2)) : '-'
+      avg: groupMemberAvg,
+      grade: groupMemberArr.length ? getGrade(groupMemberAvg) : '-'
     }
   ];
 
@@ -1392,7 +1492,7 @@ const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers 
         <div style={{display:'flex',alignItems:'center',gap:10}}>
           <span style={{fontSize:22}}>{getRoleIcon('GVHD')}</span>
           <span style={{fontWeight:700}}>GVHD:</span>
-          <span style={{color:'#2563eb',fontWeight:600}}>{getLecturerName(gvhdScore.grader)}</span>
+          <span style={{color:'#2563eb',fontWeight:600}}>{getLecturerName(getGraderId(gvhdScore.grader))}</span>
           <span style={{marginLeft:16,fontWeight:600}}>Tổng điểm:</span>
           <span style={{color:'#0ea5e9',fontWeight:700,fontSize:18}}>{gvhdScore.total_score}</span>
           <span style={{marginLeft:8,color:getGradeColor(grade),fontWeight:700}}>{grade}</span>
@@ -1404,6 +1504,7 @@ const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers 
             Tổng điểm: <span style={{color:'#0ea5e9',fontWeight:700}}>{gvhdScore.total_score}</span>
             <span style={{marginLeft:8,color:getGradeColor(grade),fontWeight:700}}>{grade}</span>
           </div>
+          <RubricTable scoreboard={gvhdScore} />
         </div>
       )
     });
@@ -1421,6 +1522,34 @@ const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers 
   if (!isNaN(Number(groupGVHDAvg)) && !isNaN(Number(groupCouncilAvg))) {
     groupTotal = (Number(groupGVHDAvg)*0.4 + Number(groupCouncilAvg)*0.6).toFixed(2);
   }
+
+  // Trong ViewGradesModal, sau khi đã fetch rubric evaluations
+  const calcRubricTotal = (scoreboard, rubricEvaluations) => {
+    if (!scoreboard || !rubricEvaluations) return 0;
+    const scoreMap = {};
+    (scoreboard.rubric_student_evaluations || []).forEach(ev => {
+      scoreMap[ev.evaluation_id] = ev.score;
+    });
+    let sum = 0;
+    rubricEvaluations.forEach(ev => {
+      sum += (scoreMap[ev._id] || 0) * (ev.weight || 0);
+    });
+    return sum;
+  };
+
+  // Khi mở modal hoặc khi personalScores thay đổi, nếu có gvhdScore thì fetch rubric evaluations
+  useEffect(() => {
+    const fetchRubric = async () => {
+      const gvhdScore = personalScores.find(s => s.evaluator_type === 'gvhd');
+      if (gvhdScore && gvhdScore.rubric_id) {
+        const evaluations = await fetchRubricEvaluations(gvhdScore.rubric_id);
+        setGvhdRubricEvaluations(evaluations);
+      } else {
+        setGvhdRubricEvaluations([]);
+      }
+    };
+    fetchRubric();
+  }, [personalScores, open]);
 
   return (
     <Modal open={open} onCancel={onClose} footer={null} width={900} title="Xem điểm">
@@ -1488,7 +1617,8 @@ const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers 
               locale={{ emptyText: 'Chưa có điểm nhóm của Hội đồng' }}
               summary={pageData => {
                 if (!pageData.length) return null;
-                const avgs = pageData.map(r => Number(r.avg)).filter(v => !isNaN(v));
+                // Chỉ tính trung bình trên các vai trò có điểm (avg khác '0.00' và khác '-')
+                const avgs = pageData.map(r => Number(r.avg)).filter(v => !isNaN(v) && v > 0);
                 if (!avgs.length) return null;
                 const avg = (avgs.reduce((a,b)=>a+b,0)/avgs.length).toFixed(2);
                 const grade = avg >= 8 ? 'A' : avg >= 6.5 ? 'B' : avg >= 5 ? 'C' : 'D';
@@ -1507,18 +1637,30 @@ const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers 
         <Tabs.TabPane tab="Điểm tổng" key="total">
           <div className="p-6">
             <div className="mb-4 text-lg">
-              <div>Điểm cá nhân (GVHD): <b className="text-blue-600">{typeof personal === 'number' ? personal : '-'}</b></div>
+              {/* Lấy đúng Tổng điểm (theo trọng số) ở tab cá nhân */}
+              <div>Điểm cá nhân: <b className="text-blue-600">{weightedTotal}</b></div>
               <div>Điểm nhóm: <b className="text-blue-600">{!isNaN(Number(groupGVHDAvg)) ? groupGVHDAvg : '-'}</b></div>
               <div>Điểm hội đồng: <b className="text-blue-600">{!isNaN(Number(groupCouncilAvg)) ? groupCouncilAvg : '-'}</b></div>
             </div>
             <div className="text-xl font-bold mt-6">
-              Tổng điểm: <span className="text-green-600">
-                {
-                  (typeof personal === 'number' && !isNaN(Number(groupGVHDAvg)) && !isNaN(Number(groupCouncilAvg)))
-                    ? (Number(personal)*0.4 + Number(groupGVHDAvg)*0.3 + Number(groupCouncilAvg)*0.3).toFixed(2)
-                    : '-'
+              Tổng điểm: <span className="text-green-600">{
+                (weightedTotal !== '-' && !isNaN(Number(groupGVHDAvg)) && !isNaN(Number(groupCouncilAvg)))
+                  ? (Number(weightedTotal)*0.4 + Number(groupGVHDAvg)*0.3 + Number(groupCouncilAvg)*0.3).toFixed(2)
+                  : '-'
+              }</span>
+            </div>
+            {/* Thêm xếp loại dưới tổng điểm */}
+            <div className="text-lg font-semibold mt-2">
+              Xếp loại: <span style={{color: (() => {
+                const grade = getGrade(weightedTotal);
+                switch (grade) {
+                  case 'A': return '#22c55e';
+                  case 'B': return '#2563eb';
+                  case 'C': return '#f59e42';
+                  case 'D': return '#ef4444';
+                  default: return '#64748b';
                 }
-              </span>
+              })()}}>{getGrade(weightedTotal)}</span>
             </div>
           </div>
         </Tabs.TabPane>
@@ -1528,4 +1670,4 @@ const ViewGradesModal = ({ open, onClose, topic, user, studentScores, lecturers 
 };
 
 // Export layout mới và các component con
-export { StudentLayout, TopicDetails, TopicsList, Proposals }; 
+export { StudentLayout, TopicDetails, TopicsList, Proposals };

@@ -64,16 +64,14 @@ router.get('/committee/:id', (req, res, next) => {
 // Lấy tất cả đề tài đã duyệt và đang quản lý
 router.get('/', async (req, res) => {
   try {
-    const { facultyId } = req.query;
+    const { facultyId, all } = req.query;
     let majorIds = [];
     if (facultyId) {
       // Lấy tất cả major thuộc facultyId
       const majors = await Major.find({ major_faculty: facultyId }, '_id');
       majorIds = majors.map(m => m._id);
     }
-    const topicQuery = {
-      status: { $in: ['active', 'pending'] }
-    };
+    const topicQuery = all ? {} : { status: { $in: ['active', 'pending'] } };
     if (facultyId && majorIds.length > 0) {
       topicQuery.topic_major = { $in: majorIds };
     }
@@ -1711,5 +1709,14 @@ router.put('/:id/submit-by-lecturer', async (req, res) => {
     res.status(500).json({ message: 'Lỗi khi gửi đăng ký đề tài', error: err.message });
   }
 });
+
+// Đóng đề tài (Admin)
+router.post('/:id/close', auth, async (req, res, next) => {
+  // Chỉ cho phép admin/giaovu
+  if (!req.user || !['admin', 'giaovu'].includes(req.user.role)) {
+    return res.status(403).json({ message: 'Bạn không có quyền đóng đề tài' });
+  }
+  next();
+}, require('../controllers/topicController').closeTopic);
 
 module.exports = router;

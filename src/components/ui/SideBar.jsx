@@ -87,6 +87,11 @@ const Sidebar = ({ setSelected }) => {
                 text="Yêu cầu xóa đề tài"
                 onClick={() => setSelected("delete-requests")}
               />
+              <MenuItem
+                icon={<FaBook />}
+                text="Lịch sử đề tài"
+                onClick={() => setSelected("thesis-history")}
+              />
             </div>
           )}
         </div>

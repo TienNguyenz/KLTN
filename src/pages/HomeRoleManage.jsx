@@ -7,6 +7,7 @@ import LecturerList from "../components/ui/Lecturer.jsx";
 import CouncilManagement from "../components/ui/CouncilManagement.jsx";
 import ThesisApproval from "../components/ui/ThesisApproval.jsx";
 import ThesisList from "../components/ui/ThesisList.jsx";
+import ThesisHistory from "../components/ui/ThesisHistory.jsx";
 import Registration from "./admin/Registration.jsx";
 import Semester from "./admin/Semester.jsx";
 import Evaluation from "./admin/Evaluation.jsx";
@@ -126,6 +127,7 @@ const Home = () => {
             {selected === "registration-period" && "Quản lý Đợt đăng ký"}
             {selected === "evaluation-form" && "Quản lý Phiếu đánh giá"}
             {selected === "delete-requests" && "Yêu cầu xóa đề tài"}
+            {selected === "thesis-history" && "Lịch sử đề tài đã hoàn thành"}
           </h1>
 
           {/* Nội dung component động */}
@@ -141,6 +143,7 @@ const Home = () => {
             {selected === "registration-period" && <Registration />}
             {selected === "evaluation-form" && <Evaluation />}
             {selected === "delete-requests" && <DeleteRequests />}
+            {selected === "thesis-history" && <ThesisHistory />}
           </div>
         </main>
       </div>

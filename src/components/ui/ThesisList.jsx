@@ -19,6 +19,10 @@ const ThesisList = () => {
   const [selectedThesis, setSelectedThesis] = useState(null);
   const [isViewModalVisible, setIsViewModalVisible] = useState(false);
   const [notifyModal, setNotifyModal] = useState({ open: false, message: '', type: 'success' });
+  const [personalScoreModal, setPersonalScoreModal] = useState({ open: false, loading: false, data: null, student: null });
+  const [closeTopicLoading, setCloseTopicLoading] = useState(false);
+  const [closeTopicError, setCloseTopicError] = useState('');
+  const [allStudentsHaveScores, setAllStudentsHaveScores] = useState(false);
 
   useEffect(() => {
     fetchFacultiesAndMajors();
@@ -162,36 +166,70 @@ const ThesisList = () => {
   };
 
   const handleViewScore = async (student) => {
+    setPersonalScoreModal({ open: true, loading: true, data: null, student });
     try {
-      const res = await axios.get(`/api/users/transcript?studentId=${student._id}`);
-      if (res.data && res.data.user_transcript) {
-        Modal.info({
-          title: 'Bảng điểm sinh viên',
-          content: (
-            <div>
-              <a
-                href={res.data.user_transcript}
-                target="_blank"
-                rel="noopener noreferrer"
-                style={{ color: '#1976d2', fontWeight: 600 }}
-              >
-                Xem file bảng điểm (PDF)
-              </a>
-            </div>
-          ),
-          width: 400,
-        });
-      } else {
-        Modal.info({
-          title: 'Bảng điểm sinh viên',
-          content: <div>Chưa có bảng điểm</div>,
-          width: 400,
-        });
+      let url = `/api/scoreboards?student_id=${student._id}`;
+      if (selectedThesis && selectedThesis._id) {
+        url += `&topic_id=${selectedThesis._id}`;
       }
+      const res = await axios.get(url);
+      let data = res.data;
+      if (Array.isArray(data)) {
+        let scores = [];
+        let gvhdArr = [], hoidongArr = [];
+        data.forEach(sb => {
+          let name = '';
+          if (sb.grader && typeof sb.grader === 'object') {
+            name = sb.grader.user_name || sb.grader.user_id || sb.grader._id;
+          } else if (sb.grader_name) {
+            name = sb.grader_name;
+          } else {
+            name = sb.grader;
+          }
+          let roleLabel = 'Khác', roleIcon = '👤';
+          if (sb.evaluator_type === 'gvhd') { roleLabel = 'GVHD'; roleIcon = '🧑‍🏫'; gvhdArr.push(sb.total_score); }
+          if (sb.evaluator_type === 'hoidong') { roleLabel = 'Hội đồng'; roleIcon = '👥'; hoidongArr.push(sb.total_score); }
+          scores.push({
+            roleIcon,
+            roleLabel,
+            evaluatorName: name,
+            totalScore: sb.total_score
+          });
+        });
+        const gvhd = gvhdArr.length ? gvhdArr.reduce((a,b)=>a+b,0)/gvhdArr.length : 0;
+        while (hoidongArr.length < 3) hoidongArr.push(0);
+        const councilAvg = (hoidongArr[0] + hoidongArr[1] + hoidongArr[2]) / 3;
+        const weightedTotalScore = (gvhd * 0.4 + councilAvg * 0.6).toFixed(2);
+        data = { scores, weightedTotalScore };
+      }
+      setPersonalScoreModal({ open: true, loading: false, data, student });
     } catch {
-      Modal.error({ title: 'Lỗi', content: 'Không thể lấy bảng điểm' });
+      setPersonalScoreModal({ open: true, loading: false, data: null, student });
+      message.error('Không thể lấy điểm cá nhân');
     }
   };
+
+  useEffect(() => {
+    if (!isViewModalVisible || !selectedThesis || !selectedThesis.topic_group_student) return;
+    const fetchAllScores = async () => {
+      const scoresByStudent = {};
+      let allOk = true;
+      for (const sv of selectedThesis.topic_group_student) {
+        try {
+          const res = await axios.get(`/api/scoreboards?student_id=${sv._id}&topic_id=${selectedThesis._id}`);
+          const arr = Array.isArray(res.data) ? res.data : [];
+          scoresByStudent[sv._id] = arr;
+          const gvhdCount = arr.filter(sb => sb.evaluator_type === 'gvhd').length;
+          const hoidongCount = arr.filter(sb => sb.evaluator_type === 'hoidong').length;
+          if (!(gvhdCount >= 1 && hoidongCount >= 3)) allOk = false;
+        } catch {
+          allOk = false;
+        }
+      }
+      setAllStudentsHaveScores(allOk);
+    };
+    fetchAllScores();
+  }, [isViewModalVisible, selectedThesis]);
 
   const columns = [
     {
@@ -481,6 +519,49 @@ const ThesisList = () => {
               </tbody>
             </table>
           </div>
+          <div className="flex justify-end mt-6">
+            <Button
+              type="primary"
+              loading={closeTopicLoading}
+              disabled={!allStudentsHaveScores}
+              onClick={async () => {
+                setCloseTopicLoading(true);
+                setCloseTopicError('');
+                try {
+                  const token = localStorage.getItem('token');
+                  const res = await axios.post(`/api/topics/${selectedThesis._id}/close`, {}, {
+                    headers: { Authorization: `Bearer ${token}` }
+                  });
+                  setTheses(prev => prev.map(t =>
+                    t._id === selectedThesis._id ? { ...t, topic_teacher_status: 'completed' } : t
+                  ));
+                  setIsViewModalVisible(false);
+                  setNotifyModal({ open: true, message: res.data?.message || 'Đã đóng đề tài thành công!', type: 'success' });
+                } catch (err) {
+                  let msg = 'Đóng đề tài thất bại!';
+                  if (err.response && err.response.data && err.response.data.message) {
+                    msg = err.response.data.message;
+                  } else if (err.message) {
+                    msg = err.message;
+                  }
+                  setNotifyModal({ open: true, message: msg, type: 'error' });
+                  setCloseTopicError(msg);
+                } finally {
+                  setCloseTopicLoading(false);
+                }
+              }}
+            >
+              Đóng đề tài
+            </Button>
+          </div>
+          {!allStudentsHaveScores && (
+            <div className="text-red-500 text-xs mt-2">
+              Tất cả sinh viên phải có đủ điểm cá nhân (GVHD và 3 điểm hội đồng) mới được đóng đề tài.
+            </div>
+          )}
+          {closeTopicError && (
+            <div className="text-red-500 text-xs mt-2">{closeTopicError}</div>
+          )}
         </div>
       </Modal>
 
@@ -499,6 +580,71 @@ const ThesisList = () => {
             <span style={{ fontSize: 48, color: '#ff4d4f' }}>❌</span>
           )}
           <p className="mt-4 text-lg">{notifyModal.message}</p>
+        </div>
+      </Modal>
+
+      <Modal
+        title="Điểm cá nhân"
+        open={personalScoreModal.open}
+        onCancel={() => setPersonalScoreModal({ ...personalScoreModal, open: false })}
+        footer={null}
+        width={800}
+      >
+        <div style={{ padding: 24 }}>
+          {personalScoreModal.loading ? (
+            <div>Đang tải điểm...</div>
+          ) : (
+            <>
+              <h2 style={{ fontWeight: 700, fontSize: 22, color: '#1976d2', marginBottom: 16 }}>Điểm cá nhân</h2>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 mb-6">
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Tên sinh viên</label>
+                  <input
+                    className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                    value={personalScoreModal.student?.user_name || ''}
+                    disabled
+                  />
+                </div>
+                <div>
+                  <label className="block text-sm font-medium text-gray-500 mb-1">MSSV</label>
+                  <input
+                    className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                    value={personalScoreModal.student?.user_id || ''}
+                    disabled
+                  />
+                </div>
+                <div className="md:col-span-2">
+                  <label className="block text-sm font-medium text-gray-500 mb-1">Điểm</label>
+                  <input
+                    className="w-full border border-gray-300 rounded px-3 py-2 bg-gray-100"
+                    value={personalScoreModal.data?.weightedTotalScore || ''}
+                    disabled
+                  />
+                </div>
+              </div>
+              <div className="mb-6">
+                <label className="block text-sm font-medium text-gray-500 mb-1">Chi tiết điểm</label>
+                <table className="w-full border border-gray-200 rounded mt-2">
+                  <thead className="bg-gray-100">
+                    <tr>
+                      <th className="border px-2 py-1">STT</th>
+                      <th className="border px-2 py-1">Người chấm</th>
+                      <th className="border px-2 py-1">Điểm</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {(personalScoreModal.data?.scores || []).map((score, idx) => (
+                      <tr key={idx}>
+                        <td className="border px-2 py-1 text-center">{idx + 1}</td>
+                        <td className="border px-2 py-1">{score.evaluatorName}</td>
+                        <td className="border px-2 py-1">{score.totalScore}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            </>
+          )}
         </div>
       </Modal>
     </div>

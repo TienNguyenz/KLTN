@@ -35,7 +35,7 @@ exports.getScoreboards = async (req, res) => {
     if (req.query.topic_id) filter.topic_id = req.query.topic_id;
     if (req.query.student_id) filter.student_id = req.query.student_id;
     if (req.query.grader) filter.grader = req.query.grader;
-    const scoreboards = await Scoreboard.find(filter);
+    const scoreboards = await Scoreboard.find(filter).populate('grader', 'user_name user_id');
     res.status(200).json(scoreboards);
   } catch (err) {
     res.status(500).json({ message: 'Lỗi khi lấy bảng điểm!', error: err.message });

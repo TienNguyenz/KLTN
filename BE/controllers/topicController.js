@@ -2,6 +2,8 @@
 const Topic = require('../models/Topic');
 const mongoose = require('mongoose');
 const Council = require('../models/Council');
+const Scoreboard = require('../models/Scoreboard');
+const UserNotification = require('../models/UserNotification');
 
 // Get all review topics
 exports.getReviewTopics = async (req, res) => {
@@ -276,5 +278,42 @@ exports.getCommitteeTopicById = async (req, res) => {
       message: 'Error fetching committee topic detail',
       error: error.message
     });
+  }
+};
+
+// Đóng đề tài (Admin)
+exports.closeTopic = async (req, res) => {
+  try {
+    const topicId = req.params.id;
+    const topic = await Topic.findById(topicId);
+    if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+    if (topic.status === 'completed') return res.status(400).json({ message: 'Đề tài đã đóng trước đó' });
+    const students = topic.topic_group_student || [];
+    if (!students.length) return res.status(400).json({ message: 'Đề tài chưa có sinh viên' });
+    // Kiểm tra đủ điểm cho từng sinh viên (cá nhân + hội đồng)
+    for (const studentId of students) {
+      const personal = await Scoreboard.findOne({ topic_id: topicId, student_id: studentId, evaluator_type: 'gvhd' });
+      const council = await Scoreboard.findOne({ topic_id: topicId, student_id: studentId, evaluator_type: 'hoidong' });
+      if (!personal || !council) {
+        return res.status(400).json({ message: 'Chưa chấm điểm xong cho tất cả sinh viên' });
+      }
+    }
+    // Đủ điểm, cập nhật trạng thái
+    topic.status = 'completed';
+    await topic.save();
+    // Gửi thông báo cho từng sinh viên
+    for (const studentId of students) {
+      await UserNotification.create({
+        user_notification_title: 'Đề tài đã hoàn thành',
+        user_notification_sender: req.user?._id || null,
+        user_notification_recipient: studentId,
+        user_notification_content: `Đề tài "${topic.topic_title}" đã được đóng. Bạn không thể chỉnh sửa hoặc nộp báo cáo nữa.`,
+        user_notification_type: 1,
+        user_notification_topic: topicId.toString(),
+      });
+    }
+    res.json({ message: 'Đã đóng đề tài thành công!' });
+  } catch (err) {
+    res.status(500).json({ message: 'Lỗi khi đóng đề tài', error: err.message });
   }
 }; 
