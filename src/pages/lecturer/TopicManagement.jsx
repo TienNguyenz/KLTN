@@ -72,6 +72,8 @@ const TopicManagement = () => {
   };
 
   const filteredTopics = topics.filter(topic => {
+    // Ẩn các đề tài có status là 'completed'
+    if (topic.status === 'completed') return false;
     const lowerSearchTerm = searchTerm.toLowerCase();
     // Tìm kiếm trong tên đề tài, tên giảng viên, ID, và toàn bộ object (để bắt mã/thời gian)
     const topicDataString = JSON.stringify(topic).toLowerCase();

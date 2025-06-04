@@ -389,7 +389,7 @@ const TopicsList = () => {
       topic.topic_major?.major_title?.toLowerCase().includes(searchString) ||
       topic.topic_category?.topic_category_title?.toLowerCase().includes(searchString) ||
       topic.topic_category?.type_name?.toLowerCase().includes(searchString)
-    );
+  );
   });
 
   const totalTopics = filteredTopics.length;
@@ -421,18 +421,18 @@ const TopicsList = () => {
           {/* Hiển thị ngày bắt đầu/kết thúc */}
           {selectedPeriod && (
             <>
-              <div className="flex items-center border rounded px-2 py-1 bg-gray-100">
-                <FaCalendarAlt className="text-green-500 mr-2" />
+          <div className="flex items-center border rounded px-2 py-1 bg-gray-100">
+             <FaCalendarAlt className="text-green-500 mr-2" /> 
                 <span>{selectedPeriod.registration_period_semester?.semester || ''}</span>
-              </div>
-              <div className="flex items-center border rounded px-2 py-1">
-                <FaClock className="text-gray-500 mr-2" />
+          </div>
+          <div className="flex items-center border rounded px-2 py-1">
+             <FaClock className="text-gray-500 mr-2" />
                 <span>{selectedPeriod.registration_period_start ? new Date(selectedPeriod.registration_period_start * 1000).toLocaleDateString('vi-VN') : ''}</span>
-              </div>
-              <div className="flex items-center border rounded px-2 py-1">
-                <FaClock className="text-gray-500 mr-2" />
+          </div>
+           <div className="flex items-center border rounded px-2 py-1">
+             <FaClock className="text-gray-500 mr-2" />
                 <span>{selectedPeriod.registration_period_end ? new Date(selectedPeriod.registration_period_end * 1000).toLocaleDateString('vi-VN') : ''}</span>
-              </div>
+          </div>
             </>
           )}
         </div>
@@ -882,19 +882,19 @@ const Proposals = () => {
         </div>
       ) : (
         <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-wrap items-center gap-4">
-          <div className="flex items-center border rounded px-2 py-1 bg-gray-100">
-            <FaCalendarAlt className="text-green-500 mr-2" />
+           <div className="flex items-center border rounded px-2 py-1 bg-gray-100">
+              <FaCalendarAlt className="text-green-500 mr-2" /> 
             <span>{selectedPeriod.registration_period_semester?.semester || ''}</span>
-          </div>
-          <div className="flex items-center border rounded px-2 py-1">
-            <FaClock className="text-gray-500 mr-2" />
+           </div>
+           <div className="flex items-center border rounded px-2 py-1">
+              <FaClock className="text-gray-500 mr-2" />
             <span>{selectedPeriod.registration_period_start ? new Date(selectedPeriod.registration_period_start * 1000).toLocaleDateString('vi-VN') : ''}</span>
-          </div>
-          <div className="flex items-center border rounded px-2 py-1">
-            <FaClock className="text-gray-500 mr-2" />
+           </div>
+            <div className="flex items-center border rounded px-2 py-1">
+              <FaClock className="text-gray-500 mr-2" />
             <span>{selectedPeriod.registration_period_end ? new Date(selectedPeriod.registration_period_end * 1000).toLocaleDateString('vi-VN') : ''}</span>
-          </div>
-        </div>
+           </div>
+         </div>
       )}
 
       {/* Proposal Form */}

@@ -331,13 +331,18 @@ const TopicDetail = () => {
         student_grades: grading,
         evaluator_type: 'gvhd'
       };
-      await axios.post('/api/scoreboards', payload);
-      message.success('Chấm điểm thành công!');
+      
+      // Log để kiểm tra
+      console.log('Dữ liệu gửi đi:', JSON.stringify(payload, null, 2));
+      
+      const response = await axios.post('/api/scoreboards', payload);
+      message.success(response.data.message || 'Chấm điểm thành công!');
       setIsModalVisible(false);
       setScores({});
+      setAlreadyScored(true);
     } catch (err) {
-      message.error('Lưu điểm thất bại!');
-      console.error('POST /api/scoreboards error:', err);
+      console.error('Chi tiết lỗi:', err.response?.data);
+      message.error(err.response?.data?.message || 'Lưu điểm thất bại!');
     }
     setSubmittingScore(false);
   };
