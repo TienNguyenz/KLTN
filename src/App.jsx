@@ -3,7 +3,7 @@ import Header from "./components/ui/Header";
 import Footer from './components/ui/Footer';
 import { AuthProvider, useAuth } from "./context/AuthContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
-import TopicDetail from "./components/lecturer/TopicDetail";
+import TopicDetail from "./pages/lecturer/TopicDetail";
 import HomeRoleManage from "./pages/HomeRoleManage";
 import ScrollToTop from './pages/ScrollToTop';
 
@@ -18,7 +18,7 @@ import LienHePage from "./pages/Lienhe";
 // Import layout và các trang của sinh viên
 import { StudentLayout, TopicDetails, TopicsList, Proposals } from "./pages/student/StudentDashboard"; 
 import TopicRegistration from "./pages/student/TopicRegistration";
-import StudentProfile from "./components/student/StudentProfile";
+import StudentProfile from "./pages/student/StudentProfile";
 
 // Import layout và các trang của giảng viên
 import LecturerLayout from "./components/lecturer/LecturerLayout";
@@ -26,11 +26,11 @@ import TopicManagement from "./pages/lecturer/TopicManagement";
 import AddTopic from "./pages/lecturer/AddTopic";
 import EditTopic from "./pages/lecturer/EditTopic";
 import ProposedTopics from "./pages/lecturer/ProposedTopics";
-import SupervisedTopics from "./components/lecturer/SupervisedTopics";
-import CommitteeTopics from './components/lecturer/CommitteeTopics';
-import CommitteeTopicDetail from './components/lecturer/CommitteeTopicDetail';
-import LecturerDashboard from "./components/lecturer/LecturerDashboard";
-import LecturerProfile from "./components/lecturer/LecturerProfile";
+import SupervisedTopics from "./pages/lecturer/SupervisedTopics";
+import CommitteeTopics from './pages/lecturer/CommitteeTopics';
+import CommitteeTopicDetail from './pages/lecturer/CommitteeTopicDetail';
+import LecturerDashboard from "./pages/lecturer/LecturerDashboard";
+import LecturerProfile from "./pages/lecturer/LecturerProfile";
 import ProposedTopicDetail from './pages/lecturer/ProposedTopicDetail';
 import TopicHistory from "./pages/lecturer/TopicHistory";
 

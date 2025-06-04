@@ -1,144 +1,132 @@
-import React from 'react';
-import { Card, Row, Col, Table, Button, Input, Select } from 'antd';
-import { SearchOutlined, PlusOutlined } from '@ant-design/icons';
+import {
+  FaUserGraduate,
+  FaChalkboardTeacher,
+  FaBook,
+  FaUsers,
+} from "react-icons/fa";
+import { Line, Bar, Doughnut } from "react-chartjs-2";
+import {
+  Chart,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend,
+} from "chart.js";
 
-const { Option } = Select;
+// Đăng ký các thành phần của Chart.js
+Chart.register(
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  LineElement,
+  BarElement,
+  ArcElement,
+  Title,
+  Tooltip,
+  Legend
+);
 
-const Dashboard = () => {
-  const columns = [
-    {
-      title: 'Tên đề tài',
-      dataIndex: 'name',
-      key: 'name',
-      width: '30%',
-      sorter: (a, b) => a.name.localeCompare(b.name),
-    },
-    {
-      title: 'GVHD',
-      dataIndex: 'supervisor',
-      key: 'supervisor',
-      width: '15%',
-    },
-    {
-      title: 'Chuyên ngành',
-      dataIndex: 'major',
-      key: 'major',
-      width: '15%',
-    },
-    {
-      title: 'Trạng thái',
-      dataIndex: 'status',
-      key: 'status',
-      width: '15%',
-      render: (status) => (
-        <span className={`px-2 py-1 rounded-full text-xs ${
-          status === 'Chờ duyệt' ? 'bg-yellow-100 text-yellow-800' :
-          status === 'Đã duyệt' ? 'bg-green-100 text-green-800' :
-          'bg-red-100 text-red-800'
-        }`}>
-          {status}
-        </span>
-      ),
-    },
-    {
-      title: 'Thao tác',
-      key: 'action',
-      render: (_, record) => (
-        <div className="space-x-2">
-          <Button type="link" size="small">Chi tiết</Button>
-          <Button type="link" size="small">Duyệt</Button>
-          <Button type="link" danger size="small">Từ chối</Button>
-        </div>
-      ),
-    },
-  ];
+const Dashboard = ({ data }) => {
+  const {
+    totalStudents,
+    totalLecturers,
+    totalTopics,
+    totalGroups,
+    monthlyStats,
+    classStats,
+    groupProgress
+  } = data;
 
-  const data = [
-    {
-      key: '1',
-      name: 'Nghiên cứu ứng dụng AI trong y tế',
-      supervisor: 'Nguyễn Văn A',
-      major: 'CNTT',
-      status: 'Chờ duyệt',
-    },
-    {
-      key: '2',
-      name: 'Phát triển ứng dụng web với React',
-      supervisor: 'Trần Thị B',
-      major: 'KTPM',
-      status: 'Đã duyệt',
-    },
-    // Thêm dữ liệu mẫu...
-  ];
+  // Dữ liệu cho biểu đồ đường (Line Chart)
+  const lineData = {
+    labels: monthlyStats.map(stat => stat.month) || [],
+    datasets: [
+      {
+        label: "Số lượt tham gia",
+        data: monthlyStats.map(stat => stat.count) || [],
+        borderColor: "#42A5F5",
+        backgroundColor: "rgba(66, 165, 245, 0.2)",
+        tension: 0.4,
+      },
+    ],
+  };
+
+  // Dữ liệu cho biểu đồ cột (Bar Chart)
+  const barData = {
+    labels: classStats.map(stat => stat.className) || [],
+    datasets: [
+      {
+        label: "Số lượng sinh viên",
+        data: classStats.map(stat => stat.studentCount) || [],
+        backgroundColor: ["#66BB6A", "#FFA726", "#EF5350"],
+      },
+    ],
+  };
+
+  // Dữ liệu cho biểu đồ Doughnut (tiến độ hoạt động của nhóm)
+  const doughnutData = {
+    labels: ["Hoàn thành", "Đang thực hiện", "Chưa bắt đầu"],
+    datasets: [
+      {
+        data: groupProgress || [0, 0, 0], // Tỷ lệ %
+        backgroundColor: ["#4CAF50", "#FFEB3B", "#F44336"],
+      },
+    ],
+  };
 
   return (
-    <div>
-      <h1 className="text-2xl font-bold mb-6">Quản Lý Đề Tài</h1>
-
-      <div className="mb-6">
-        <Row gutter={[16, 16]}>
-          <Col span={6}>
-            <Card bordered={false} className="shadow-sm">
-              <div className="text-gray-500 mb-1">Tổng số đề tài</div>
-              <div className="text-2xl font-semibold">150</div>
-              <div className="text-sm text-green-500 mt-2">+12% so với kỳ trước</div>
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card bordered={false} className="shadow-sm">
-              <div className="text-gray-500 mb-1">Đề tài chờ duyệt</div>
-              <div className="text-2xl font-semibold">25</div>
-              <div className="text-sm text-yellow-500 mt-2">5 đề tài mới</div>
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card bordered={false} className="shadow-sm">
-              <div className="text-gray-500 mb-1">Đề tài đã duyệt</div>
-              <div className="text-2xl font-semibold">89</div>
-              <div className="text-sm text-green-500 mt-2">Hoàn thành 75%</div>
-            </Card>
-          </Col>
-          <Col span={6}>
-            <Card bordered={false} className="shadow-sm">
-              <div className="text-gray-500 mb-1">Đề tài từ chối</div>
-              <div className="text-2xl font-semibold">12</div>
-              <div className="text-sm text-red-500 mt-2">-2% so với kỳ trước</div>
-            </Card>
-          </Col>
-        </Row>
+    <div className="p-10 w-[900px] mx-auto ml-4 mt-8 overflow-hidden">
+      {/* Phần thông tin tổng quan */}
+      <div className="mt-8 flex flex-wrap justify-center gap-4">
+        <div className="bg-gradient-to-r from-blue-500 to-blue-700 text-white p-6 rounded-xl shadow-lg w-60 text-center">
+          <FaUserGraduate className="text-4xl mx-auto mb-2" />
+          <h2 className="text-lg font-semibold">{totalStudents}+ Sinh viên tham gia</h2>
+        </div>
+        <div className="bg-gradient-to-r from-green-500 to-green-700 text-white p-6 rounded-xl shadow-lg w-60 text-center">
+          <FaChalkboardTeacher className="text-4xl mx-auto mb-2" />
+          <h2 className="text-lg font-semibold">{totalLecturers}+ Giảng viên hướng dẫn</h2>
+        </div>
+        <div className="bg-gradient-to-r from-yellow-500 to-yellow-600 text-white p-6 rounded-xl shadow-lg w-60 text-center">
+          <FaBook className="text-4xl mx-auto mb-2" />
+          <h2 className="text-lg font-semibold">{totalTopics}+ Đề tài nghiên cứu</h2>
+        </div>
+        <div className="bg-gradient-to-r from-purple-500 to-purple-700 text-white p-6 rounded-xl shadow-lg w-60 text-center">
+          <FaUsers className="text-4xl mx-auto mb-2" />
+          <h2 className="text-lg font-semibold">{totalGroups}+ Nhóm nghiên cứu</h2>
+        </div>
       </div>
 
-      <Card bordered={false} className="shadow-sm">
-        <div className="flex justify-between items-center mb-4">
-          <div className="flex gap-4">
-            <Input
-              placeholder="Tìm kiếm đề tài..."
-              prefix={<SearchOutlined />}
-              style={{ width: 250 }}
-            />
-            <Select defaultValue="all" style={{ width: 180 }}>
-              <Option value="all">Tất cả chuyên ngành</Option>
-              <Option value="cntt">Công nghệ thông tin</Option>
-              <Option value="ktpm">Kỹ thuật phần mềm</Option>
-            </Select>
-          </div>
-          <Button type="primary" icon={<PlusOutlined />}>
-            Thêm đề tài
-          </Button>
+      {/* Phần biểu đồ */}
+      <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {/* Biểu đồ đường */}
+        <div className="bg-white p-4 rounded-lg shadow-md">
+          <h3 className="text-md font-semibold text-gray-700 mb-2">
+            Thống kê số lượt tham gia
+          </h3>
+          <Line data={lineData} />
         </div>
 
-        <Table
-          columns={columns}
-          dataSource={data}
-          pagination={{
-            total: data.length,
-            pageSize: 10,
-            showTotal: (total) => `Tổng số ${total} đề tài`,
-            showSizeChanger: true,
-            showQuickJumper: true,
-          }}
-        />
-      </Card>
+        {/* Biểu đồ cột */}
+        <div className="bg-white p-4 rounded-lg shadow-md">
+          <h3 className="text-md font-semibold text-gray-700 mb-2">
+            Số lượng sinh viên từng lớp
+          </h3>
+          <Bar data={barData} />
+        </div>
+
+        {/* Biểu đồ Doughnut - Tiến độ nhóm nghiên cứu */}
+        <div className="bg-white p-4 rounded-lg shadow-md">
+          <h3 className="text-md font-semibold text-gray-700 mb-2">
+            Tiến độ hoạt động của nhóm NCKH
+          </h3>
+          <Doughnut data={doughnutData} />
+        </div>
+      </div>
     </div>
   );
 };
