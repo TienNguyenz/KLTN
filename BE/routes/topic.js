@@ -29,6 +29,11 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage: storage });
 
+// Thêm hàm removeAccents
+function removeAccents(str) {
+  if (!str) return '';
+  return str.normalize('NFD').replace(/\p{Diacritic}/gu, '').replace(/đ/g, 'd').replace(/Đ/g, 'D');
+}
 
 // Lấy danh sách loại đề tài
 router.get('/topic-types', async (req, res) => {
@@ -64,7 +69,7 @@ router.get('/committee/:id', (req, res, next) => {
 // Lấy tất cả đề tài đã duyệt và đang quản lý
 router.get('/', async (req, res) => {
   try {
-    const { facultyId, all } = req.query;
+    const { facultyId, all, search, faculty, major, status, group_empty } = req.query;
     let majorIds = [];
     if (facultyId) {
       // Lấy tất cả major thuộc facultyId
@@ -75,13 +80,36 @@ router.get('/', async (req, res) => {
     if (facultyId && majorIds.length > 0) {
       topicQuery.topic_major = { $in: majorIds };
     }
-    const topics = await Topic.find(topicQuery)
+    // Bổ sung filter mới
+    if (faculty) {
+      const majors = await Major.find({ major_faculty: faculty }, '_id');
+      const majorIds = majors.map(m => m._id);
+      if (majorIds.length > 0) topicQuery.topic_major = { $in: majorIds };
+    }
+    if (major) {
+      topicQuery.topic_major = major;
+    }
+    if (status) {
+      topicQuery.status = status;
+    }
+    if (group_empty === 'true' || group_empty === true) {
+      topicQuery.topic_group_student = { $size: 0 };
+    }
+    let topics = await Topic.find(topicQuery)
       .populate('topic_instructor', 'user_name user_id')
       .populate('topic_major', 'major_title major_faculty')
       .populate('topic_category', 'topic_category_title')
-      .populate('topic_registration_period', 'semester title')
+      .populate({
+        path: 'topic_registration_period',
+        populate: { path: 'registration_period_semester' }
+      })
       .populate('topic_group_student', 'user_name user_id')
       .populate('topic_assembly', 'assembly_name');
+    // Tìm kiếm không dấu
+    if (search) {
+      const searchNoAccent = removeAccents(search.toLowerCase());
+      topics = topics.filter(t => removeAccents(t.topic_title?.toLowerCase() || '').includes(searchNoAccent));
+    }
     res.json({ success: true, data: topics });
   } catch (err) {
     res.status(500).json({ success: false, message: err.message });
@@ -632,19 +660,34 @@ router.put('/:id/approve-by-leader', async (req, res) => {
 router.get('/leader/pending-topics', async (req, res) => {
   console.log('topic.js: Hit GET /leader/pending-topics');
   try {
-    const topics = await Topic.find({
+    const { faculty, major, search } = req.query;
+    let query = {
       topic_teacher_status: 'approved',
       topic_leader_status: 'pending'
-    })
-    .populate('topic_instructor', 'user_name')
-    .populate('topic_major', 'major_title')
-    .populate('topic_category', 'topic_category_title')
-    .populate({
-      path: 'topic_registration_period',
-      populate: { path: 'registration_period_semester' }
-    })
-    .populate('topic_group_student', 'user_name user_id')
-    .sort({ createdAt: -1 });
+    };
+    if (major) {
+      query.topic_major = major;
+    } else if (faculty) {
+      // Lấy tất cả major thuộc faculty
+      const majors = await Major.find({ major_faculty: faculty }, '_id');
+      const majorIds = majors.map(m => m._id);
+      if (majorIds.length > 0) query.topic_major = { $in: majorIds };
+    }
+    let topics = await Topic.find(query)
+      .populate('topic_instructor', 'user_name')
+      .populate('topic_major', 'major_title')
+      .populate('topic_category', 'topic_category_title')
+      .populate({
+        path: 'topic_registration_period',
+        populate: { path: 'registration_period_semester' }
+      })
+      .populate('topic_group_student', 'user_name user_id')
+      .sort({ createdAt: -1 });
+    // Tìm kiếm không dấu
+    if (search) {
+      const searchNoAccent = removeAccents(search.toLowerCase());
+      topics = topics.filter(t => removeAccents(t.topic_title?.toLowerCase() || '').includes(searchNoAccent));
+    }
     res.json(topics);
   } catch (err) {
     res.status(500).json({ error: err.message });

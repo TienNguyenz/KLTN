@@ -19,7 +19,7 @@ import {
   Pagination,
   FormControl,
   InputLabel,
-  Select,
+  Select as MUISelect,
   MenuItem,
   Snackbar,
 } from '@mui/material';
@@ -36,19 +36,51 @@ const ThesisApproval = ({ setSelected }) => {
   const [formData, setFormData] = useState({ status: '', comment: '' });
   const [snackbar, setSnackbar] = useState({ open: false, message: '', severity: 'success' });
   const rowsPerPage = 5;
+  const [searchText, setSearchText] = useState('');
+  const [filterFaculty, setFilterFaculty] = useState(null);
+  const [filterMajor, setFilterMajor] = useState(null);
+  const [faculties, setFaculties] = useState([]);
+  const [majors, setMajors] = useState([]);
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetchFacultiesAndMajors();
+  }, []);
 
   useEffect(() => {
     fetchTheses();
-  }, [page]);
+  }, [page, searchText, filterFaculty, filterMajor]);
+
+  const fetchFacultiesAndMajors = async () => {
+    try {
+      const [facultiesRes, majorsRes] = await Promise.all([
+        axios.get('/api/database/collections/faculties'),
+        axios.get('/api/database/collections/majors')
+      ]);
+      setFaculties(facultiesRes.data.data);
+      setMajors(majorsRes.data.data);
+    } catch (err) {
+      console.error('Không thể tải dữ liệu khoa và chuyên ngành:', err);
+    }
+  };
 
   const fetchTheses = async () => {
     try {
-      const response = await axios.get('http://localhost:5000/api/topics/leader/pending-topics');
+      setLoading(true);
+      const response = await axios.get('http://localhost:5000/api/topics/leader/pending-topics', {
+        params: {
+          search: searchText,
+          faculty: filterFaculty || '',
+          major: filterMajor || ''
+        }
+      });
       const data = response.data;
       setTheses(data);
       setTotalPages(Math.ceil(data.length / rowsPerPage));
     } catch (error) {
       console.error('Error fetching theses:', error);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -80,6 +112,49 @@ const ThesisApproval = ({ setSelected }) => {
       <Typography variant="h5" component="h2" sx={{ mb: 3 }}>
         Đề tài chờ xét duyệt
       </Typography>
+      <Box sx={{ display: 'flex', gap: 2, mb: 2 }}>
+        <TextField
+          label="Tìm kiếm theo tên đề tài"
+          variant="outlined"
+          size="small"
+          value={searchText}
+          onChange={e => setSearchText(e.target.value)}
+          sx={{ width: 300 }}
+        />
+        <FormControl sx={{ minWidth: 200 }} size="small">
+          <InputLabel>Khoa</InputLabel>
+          <MUISelect
+            value={filterFaculty || ''}
+            label="Khoa"
+            onChange={e => {
+              setFilterFaculty(e.target.value);
+              setFilterMajor('');
+            }}
+          >
+            <MenuItem value=""><em>Chọn khoa</em></MenuItem>
+            {faculties.map(faculty => (
+              <MenuItem key={faculty._id} value={faculty._id}>
+                {faculty.faculty_title || faculty.faculty_name || faculty.name || faculty.title || faculty._id}
+              </MenuItem>
+            ))}
+          </MUISelect>
+        </FormControl>
+        <FormControl sx={{ minWidth: 200 }} size="small" disabled={!filterFaculty}>
+          <InputLabel>Chuyên ngành</InputLabel>
+          <MUISelect
+            value={filterMajor || ''}
+            label="Chuyên ngành"
+            onChange={e => setFilterMajor(e.target.value)}
+          >
+            <MenuItem value=""><em>Chọn chuyên ngành</em></MenuItem>
+            {majors.filter(major => major.major_faculty === filterFaculty).map(major => (
+              <MenuItem key={major._id} value={major._id}>
+                {major.major_title}
+              </MenuItem>
+            ))}
+          </MUISelect>
+        </FormControl>
+      </Box>
       <TableContainer component={Paper}>
         <Table>
           <TableHead>

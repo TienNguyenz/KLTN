@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Table, Tag, Modal, Button, Descriptions, Typography } from 'antd';
+import { Table, Tag, Modal, Button, Descriptions, Typography, Input, Select, message } from 'antd';
 import { CheckCircleTwoTone, TeamOutlined, UserOutlined, BookOutlined, CalendarOutlined } from '@ant-design/icons';
 import axios from 'axios';
+
+const { Search } = Input;
+const { Option } = Select;
 
 const ThesisHistory = () => {
   const [data, setData] = useState([]);
@@ -9,23 +12,52 @@ const ThesisHistory = () => {
   const [viewModal, setViewModal] = useState({ open: false, topic: null });
   const [detailLoading, setDetailLoading] = useState(false);
   const [detail, setDetail] = useState(null);
+  const [searchText, setSearchText] = useState('');
+  const [filterFaculty, setFilterFaculty] = useState(null);
+  const [filterMajor, setFilterMajor] = useState(null);
+  const [faculties, setFaculties] = useState([]);
+  const [majors, setMajors] = useState([]);
 
   useEffect(() => {
-    const fetchCompletedTheses = async () => {
-      setLoading(true);
-      try {
-        const res = await axios.get('/api/topics?all=1');
-        const all = res.data.data || [];
-        const completed = all.filter(t => t.status === 'completed' || t.topic_teacher_status === 'completed');
-        setData(completed);
-      } catch {
-        setData([]);
-      } finally {
-        setLoading(false);
-      }
-    };
-    fetchCompletedTheses();
+    fetchFacultiesAndMajors();
   }, []);
+
+  useEffect(() => {
+    fetchCompletedTheses();
+  }, [searchText, filterFaculty, filterMajor]);
+
+  const fetchFacultiesAndMajors = async () => {
+    try {
+      const [facultiesRes, majorsRes] = await Promise.all([
+        axios.get('/api/database/collections/faculties'),
+        axios.get('/api/database/collections/majors')
+      ]);
+      setFaculties(facultiesRes.data.data);
+      setMajors(majorsRes.data.data);
+    } catch {
+      message.error('Không thể tải dữ liệu khoa và chuyên ngành');
+    }
+  };
+
+  const fetchCompletedTheses = async () => {
+    setLoading(true);
+    try {
+      const res = await axios.get('/api/topics?all=1', {
+        params: {
+          search: searchText,
+          faculty: filterFaculty?.value || '',
+          major: filterMajor?.value || ''
+        }
+      });
+      const all = res.data.data || [];
+      const completed = all.filter(t => t.status === 'completed' || t.topic_teacher_status === 'completed');
+      setData(completed);
+    } catch {
+      setData([]);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleViewDetail = async (record) => {
     setViewModal({ open: true, topic: record });
@@ -59,6 +91,46 @@ const ThesisHistory = () => {
 
   return (
     <div>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+        <Search
+          placeholder="Tìm kiếm theo tên đề tài"
+          allowClear
+          onSearch={value => setSearchText(value)}
+          style={{ width: 300 }}
+        />
+        <Select
+          style={{ width: 200 }}
+          placeholder="Chọn khoa"
+          allowClear
+          labelInValue
+          onChange={option => {
+            setFilterFaculty(option);
+            setFilterMajor(null);
+          }}
+          value={filterFaculty}
+        >
+          {faculties.map(faculty => (
+            <Option key={faculty._id} value={faculty._id}>
+              {faculty.faculty_title || faculty.faculty_name || faculty.name || faculty.title || faculty._id}
+            </Option>
+          ))}
+        </Select>
+        <Select
+          style={{ width: 200 }}
+          placeholder="Chọn chuyên ngành"
+          allowClear
+          disabled={!filterFaculty}
+          labelInValue
+          onChange={option => setFilterMajor(option)}
+          value={filterMajor}
+        >
+          {majors.filter(major => major.major_faculty === (filterFaculty?.value || filterFaculty)).map(major => (
+            <Option key={major._id} value={major._id}>
+              {major.major_title}
+            </Option>
+          ))}
+        </Select>
+      </div>
       {data.length === 0 && !loading && (
         <div className="text-center text-gray-500 mb-4">Không có đề tài hoàn thành nào.</div>
       )}

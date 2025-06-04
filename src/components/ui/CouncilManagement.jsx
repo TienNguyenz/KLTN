@@ -394,13 +394,16 @@ const CouncilManagement = () => {
   const handleConfirmAssignDetails = async () => {
     // Validate tất cả ngày
     for (const detail of topicDetails) {
-      if (!/^\d{2}\/\d{2}\/\d{4}$/.test(detail.date)) {
+      if (!/^[0-9]{2}\/[0-9]{2}\/[0-9]{4}$/.test(detail.date)) {
         alert('Ngày phải đúng định dạng dd/mm/yyyy!');
         return;
       }
     }
     // Validate trùng phòng/ngày/thời gian
     try {
+      // Đóng modal nhập chi tiết NGAY LẬP TỨC
+      setIsAssignDetailsOpen(false);
+      setIsAssignDialogOpen(false); // Đóng luôn modal gán đề tài
       // Lấy tất cả đề tài đã gán
       const res = await axios.get('http://localhost:5000/api/database/collections/Topic');
       const allTopics = Array.isArray(res.data.data) ? res.data.data : [];
@@ -449,9 +452,10 @@ const CouncilManagement = () => {
           topic_date: dateStr
         });
       }));
-      alert('Gán đề tài thành công!');
+      setIsAssignDetailsOpen(false); // Đóng modal nhập chi tiết NGAY LẬP TỨC
+      setIsAssignDialogOpen(false); // Đóng luôn modal gán đề tài
+      setSuccessMessage('Gán đề tài cho hội đồng thành công!');
       setIsSuccessModalVisible(true);
-      setIsAssignDetailsOpen(false); // Close the details modal
       setSelectedTopics([]); // Clear selected topics
     } catch {
       alert('Có lỗi khi gán đề tài!');
@@ -689,12 +693,13 @@ const CouncilManagement = () => {
         title="Thông báo"
         open={isSuccessModalVisible}
         onOk={() => setIsSuccessModalVisible(false)}
+        onCancel={() => setIsSuccessModalVisible(false)}
         okText="Đóng"
         cancelButtonProps={{ style: { display: 'none' } }}
         centered
       >
         <div className="text-center py-4">
-          <CheckCircleFilled style={{ fontSize: '48px', color: '#52c41a' }} />
+          <span style={{ fontSize: 48, color: '#52c41a' }}>✔️</span>
           <p className="mt-4 text-lg">{successMessage}</p>
         </div>
       </Modal>

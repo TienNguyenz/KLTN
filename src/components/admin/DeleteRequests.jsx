@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { Table, Button, Modal, Input, message, Space, Tag } from 'antd';
+import { Table, Button, Modal, Input, message, Space, Tag, Select } from 'antd';
 import axios from 'axios';
 import { FaEye } from 'react-icons/fa';
+
+const { Search } = Input;
+const { Option } = Select;
 
 const DeleteRequests = () => {
   const [requests, setRequests] = useState([]);
@@ -11,15 +14,39 @@ const DeleteRequests = () => {
   const [rejectReason, setRejectReason] = useState('');
   const [detailModalVisible, setDetailModalVisible] = useState(false);
   const [detailTopic, setDetailTopic] = useState(null);
+  const [searchText, setSearchText] = useState('');
+  const [filterFaculty, setFilterFaculty] = useState(null);
+  const [filterMajor, setFilterMajor] = useState(null);
+  const [faculties, setFaculties] = useState([]);
+  const [majors, setMajors] = useState([]);
+
+  const fetchFacultiesAndMajors = async () => {
+    try {
+      const [facultiesRes, majorsRes] = await Promise.all([
+        axios.get('/api/database/collections/faculties'),
+        axios.get('/api/database/collections/majors')
+      ]);
+      setFaculties(facultiesRes.data.data);
+      setMajors(majorsRes.data.data);
+    } catch {
+      message.error('Không thể tải dữ liệu khoa và chuyên ngành');
+    }
+  };
 
   const fetchRequests = async () => {
     try {
       setLoading(true);
-      const response = await axios.get('http://localhost:5000/api/topics');
+      const response = await axios.get('http://localhost:5000/api/topics', {
+        params: {
+          search: searchText,
+          faculty: filterFaculty?.value || '',
+          major: filterMajor?.value || ''
+        }
+      });
       const topics = response.data.data || [];
       const deleteRequests = topics.filter(topic => topic.delete_request);
       setRequests(deleteRequests);
-    } catch (error) {
+    } catch {
       message.error('Lỗi khi tải danh sách yêu cầu xóa');
     } finally {
       setLoading(false);
@@ -27,50 +54,36 @@ const DeleteRequests = () => {
   };
 
   useEffect(() => {
-    fetchRequests();
+    fetchFacultiesAndMajors();
   }, []);
+
+  useEffect(() => {
+    fetchRequests();
+  }, [searchText, filterFaculty, filterMajor]);
 
   const handleApprove = async (topicId) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `http://localhost:5000/api/topics/${topicId}/approve-delete`,
-        {},
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      message.success('Đã duyệt yêu cầu xóa đề tài');
+      setLoading(true);
+      await axios.post(`/api/topics/${topicId}/approve-delete`);
+      message.success('Duyệt xóa thành công!');
       fetchRequests();
-    } catch (error) {
-      message.error('Lỗi khi duyệt yêu cầu xóa');
+    } catch {
+      message.error('Duyệt xóa thất bại!');
+    } finally {
+      setLoading(false);
     }
   };
 
-  const handleReject = async () => {
-    if (!selectedTopic) return;
+  const handleReject = async (topicId) => {
     try {
-      const token = localStorage.getItem('token');
-      await axios.post(
-        `http://localhost:5000/api/topics/${selectedTopic._id}/reject-delete`,
-        { reject_reason: rejectReason },
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-            'Content-Type': 'application/json'
-          }
-        }
-      );
-      message.success('Đã từ chối yêu cầu xóa đề tài');
-      setRejectModalVisible(false);
-      setRejectReason('');
-      setSelectedTopic(null);
+      setLoading(true);
+      await axios.post(`/api/topics/${topicId}/reject-delete`);
+      message.success('Từ chối xóa thành công!');
       fetchRequests();
-    } catch (error) {
-      message.error('Lỗi khi từ chối yêu cầu xóa');
+    } catch {
+      message.error('Từ chối xóa thất bại!');
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -132,6 +145,46 @@ const DeleteRequests = () => {
   return (
     <div>
       <h2 className="text-xl font-semibold mb-4">Danh sách yêu cầu xóa đề tài</h2>
+      <div style={{ display: 'flex', gap: 16, marginBottom: 16 }}>
+        <Search
+          placeholder="Tìm kiếm theo tên đề tài"
+          allowClear
+          onSearch={value => setSearchText(value)}
+          style={{ width: 300 }}
+        />
+        <Select
+          style={{ width: 200 }}
+          placeholder="Chọn khoa"
+          allowClear
+          labelInValue
+          onChange={option => {
+            setFilterFaculty(option);
+            setFilterMajor(null);
+          }}
+          value={filterFaculty}
+        >
+          {faculties.map(faculty => (
+            <Option key={faculty._id} value={faculty._id}>
+              {faculty.faculty_title || faculty.faculty_name || faculty.name || faculty.title || faculty._id}
+            </Option>
+          ))}
+        </Select>
+        <Select
+          style={{ width: 200 }}
+          placeholder="Chọn chuyên ngành"
+          allowClear
+          disabled={!filterFaculty}
+          labelInValue
+          onChange={option => setFilterMajor(option)}
+          value={filterMajor}
+        >
+          {majors.filter(major => major.major_faculty === (filterFaculty?.value || filterFaculty)).map(major => (
+            <Option key={major._id} value={major._id}>
+              {major.major_title}
+            </Option>
+          ))}
+        </Select>
+      </div>
       <Table 
         columns={columns} 
         dataSource={requests} 
@@ -142,7 +195,7 @@ const DeleteRequests = () => {
       <Modal
         title="Từ chối yêu cầu xóa"
         open={rejectModalVisible}
-        onOk={handleReject}
+        onOk={() => handleReject(selectedTopic._id)}
         onCancel={() => {
           setRejectModalVisible(false);
           setRejectReason('');

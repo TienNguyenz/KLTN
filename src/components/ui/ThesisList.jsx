@@ -12,8 +12,8 @@ const ThesisList = () => {
   const [theses, setTheses] = useState([]);
   const [loading, setLoading] = useState(false);
   const [searchText, setSearchText] = useState('');
-  const [filterFaculty, setFilterFaculty] = useState('');
-  const [filterMajor, setFilterMajor] = useState('');
+  const [filterFaculty, setFilterFaculty] = useState(null);
+  const [filterMajor, setFilterMajor] = useState(null);
   const [faculties, setFaculties] = useState([]);
   const [majors, setMajors] = useState([]);
   const [selectedThesis, setSelectedThesis] = useState(null);
@@ -32,60 +32,45 @@ const ThesisList = () => {
   const fetchFacultiesAndMajors = async () => {
     try {
       const [facultiesRes, majorsRes] = await Promise.all([
-        axios.get("/api/faculties"),
-        axios.get("/api/majors")
+        axios.get('/api/database/collections/faculties'),
+        axios.get('/api/database/collections/majors')
       ]);
       setFaculties(facultiesRes.data.data);
       setMajors(majorsRes.data.data);
     } catch (err) {
-      console.error("Lỗi khi tải dữ liệu khoa và chuyên ngành:", err);
-      message.error("Không thể tải dữ liệu khoa và chuyên ngành");
+      console.error('Không thể tải dữ liệu khoa và chuyên ngành:', err);
+      message.error('Không thể tải dữ liệu khoa và chuyên ngành');
     }
   };
 
   const fetchTheses = async () => {
     try {
       setLoading(true);
-      const response = await axios.get("/api/topics", {
+      const response = await axios.get('/api/topics', {
         params: {
           search: searchText,
-          faculty: filterFaculty,
-          major: filterMajor
+          faculty: filterFaculty?.value || '',
+          major: filterMajor?.value || ''
         }
       });
       
-      console.log("API Response:", response.data);
+      console.log('API Response:', response.data);
 
+      // Chỉ filter các trường trạng thái và nhóm sinh viên nếu BE chưa trả về đúng
       const filteredTheses = response.data.data.filter(thesis => {
-        if (thesis.topic_teacher_status !== 'approved' || thesis.topic_leader_status !== 'approved') {
-          return false;
-        }
-        if (!Array.isArray(thesis.topic_group_student) || thesis.topic_group_student.length === 0) {
-          return false;
-        }
-        if (searchText) {
-          const searchLower = searchText.toLowerCase();
-          if (!thesis.topic_title?.toLowerCase().includes(searchLower)) {
-            return false;
-          }
-        }
-        if (filterFaculty) {
-          const majorObj = majors.find(m => m._id === thesis.topic_major || m._id === thesis.topic_major?._id);
-          if (!majorObj || majorObj.major_faculty !== filterFaculty) {
-            return false;
-          }
-        }
-        if (filterMajor && (thesis.topic_major !== filterMajor && thesis.topic_major?._id !== filterMajor)) {
-          return false;
-        }
-        return true;
+        // Chỉ lấy đề tài đã được cả GVHD và leader duyệt, có nhóm sinh viên
+        return (
+          thesis.topic_teacher_status === 'approved' &&
+          thesis.topic_leader_status === 'approved' &&
+          Array.isArray(thesis.topic_group_student) && thesis.topic_group_student.length > 0
+        );
       });
 
-      console.log("Filtered Theses:", filteredTheses);
+      console.log('Filtered Theses:', filteredTheses);
       setTheses(filteredTheses);
     } catch (err) {
-      console.error("Lỗi khi tải dữ liệu đề tài:", err);
-      message.error("Không thể tải dữ liệu đề tài");
+      console.error('Lỗi khi tải dữ liệu đề tài:', err);
+      message.error('Không thể tải dữ liệu đề tài');
     } finally {
       setLoading(false);
     }
@@ -269,6 +254,9 @@ const ThesisList = () => {
       render: (period) => {
         if (!period) return '-';
         if (typeof period === 'string') return period;
+        if (period.registration_period_semester) {
+          return `${period.registration_period_semester.semester || ''} - ${period.registration_period_start ? new Date(period.registration_period_start * 1000).toLocaleDateString('vi-VN') : ''} đến ${period.registration_period_end ? new Date(period.registration_period_end * 1000).toLocaleDateString('vi-VN') : ''}`;
+        }
         return period.registration_period_name || period.name || '-';
       },
     },
@@ -350,14 +338,16 @@ const ThesisList = () => {
             style={{ width: 200 }}
             placeholder="Chọn khoa"
             allowClear
-            onChange={(value) => {
-              setFilterFaculty(value);
-              setFilterMajor('');
+            labelInValue
+            onChange={(option) => {
+              setFilterFaculty(option);
+              setFilterMajor(null);
             }}
+            value={filterFaculty}
           >
             {faculties.map(faculty => (
               <Option key={faculty._id} value={faculty._id}>
-                {faculty.faculty_name}
+                {faculty.faculty_title || faculty.faculty_name || faculty.name || faculty.title || faculty._id}
               </Option>
             ))}
           </Select>
@@ -366,10 +356,12 @@ const ThesisList = () => {
             placeholder="Chọn chuyên ngành"
             allowClear
             disabled={!filterFaculty}
-            onChange={(value) => setFilterMajor(value)}
+            labelInValue
+            onChange={(option) => setFilterMajor(option)}
+            value={filterMajor}
           >
             {majors
-              .filter(major => major.major_faculty === filterFaculty)
+              .filter(major => major.major_faculty === (filterFaculty?.value || filterFaculty))
               .map(major => (
                 <Option key={major._id} value={major._id}>
                   {major.major_title}

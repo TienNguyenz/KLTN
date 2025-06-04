@@ -283,6 +283,10 @@ const Evaluation = () => {
         }
       } else {
         // Thêm tiêu chí mới
+        if (criteria.length >= criteriaCount) {
+          message.error('Không thể thêm quá số lượng tiêu chí đã chọn!');
+          return;
+        }
         apiRes = await axios.post('http://localhost:5000/api/evaluations', apiData);
         window.alert('Thêm tiêu chí thành công!');
         updatedCriteria.push({
@@ -299,6 +303,23 @@ const Evaluation = () => {
       // Chuyển bước hoặc kết thúc
       const nextStep = currentCriteriaStep + 1;
       setCriteria(updatedCriteria);
+      // Validate tổng trọng số sau mỗi bước
+      const allWeights = updatedCriteria.map(c => Number(c.weight));
+      const totalWeight = allWeights.reduce((sum, w) => sum + w, 0);
+      if (nextStep >= criteriaCount || nextStep >= updatedCriteria.length) {
+        if (Math.abs(totalWeight - 1) > 0.0001) {
+          window.alert('Tổng trọng số của tất cả tiêu chí phải đúng 100%!');
+          return;
+        }
+        // Đã nhập hết, đóng modal và reset step
+        await fetchCriteriaForRubric(rubricId);
+        window.alert('Hoàn thành cập nhật tiêu chí!');
+        setIsCriteriaFormVisible(false);
+        criteriaForm.resetFields();
+        setCurrentCriteriaStep(0);
+        setIsUpdatingExisting(false);
+        return;
+      }
       setCurrentCriteriaStep(nextStep);
       if (nextStep < criteria.length) {
         // Chuyển sang tiêu chí tiếp theo
@@ -312,20 +333,6 @@ const Evaluation = () => {
       } else if (nextStep < criteriaCount) {
         // Hết tiêu chí cũ, chuyển sang nhập mới
         criteriaForm.resetFields();
-      } else {
-        // Đã nhập hết
-        const allWeights = updatedCriteria.map(c => Number(c.weight));
-        const totalWeight = allWeights.reduce((sum, w) => sum + w, 0);
-        if (totalWeight !== 1) {
-          message.error('Tổng trọng số của tất cả tiêu chí phải đúng 100%!');
-          return;
-        }
-        await fetchCriteriaForRubric(rubricId);
-        window.alert('Hoàn thành cập nhật tiêu chí!');
-        setIsCriteriaFormVisible(false);
-        criteriaForm.resetFields();
-        setCurrentCriteriaStep(0);
-        setIsUpdatingExisting(false);
       }
     } catch (err) {
       message.error('Lưu tiêu chí thất bại: ' + (err.response?.data?.message || err.message));
@@ -454,6 +461,14 @@ const Evaluation = () => {
       level_core: edited.level_core || '',
       note: edited.note || edited.description || '' // Thêm description vào đây
     };
+
+    // Validate tổng trọng số khi lưu từng tiêu chí (chỉnh sửa)
+    const allWeights = criteria.map(c => c.id === criteriaId ? Number(edited.weight) : Number(c.weight));
+    const totalWeight = allWeights.reduce((sum, w) => sum + w, 0);
+    if (Math.abs(totalWeight - 1) > 0.0001) {
+      window.alert('Tổng trọng số của tất cả tiêu chí phải đúng 100%!');
+      return;
+    }
 
     try {
       if (edited._id) {
