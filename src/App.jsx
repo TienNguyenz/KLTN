@@ -32,6 +32,7 @@ import CommitteeTopicDetail from './components/lecturer/CommitteeTopicDetail';
 import LecturerDashboard from "./components/lecturer/LecturerDashboard";
 import LecturerProfile from "./components/lecturer/LecturerProfile";
 import ProposedTopicDetail from './pages/lecturer/ProposedTopicDetail';
+import TopicHistory from "./pages/lecturer/TopicHistory";
 
 // Import admin components
 import AdminLayout from './components/admin/AdminLayout';
@@ -114,6 +115,7 @@ const AppLayout = () => {
           <Route path="committee" element={<CommitteeTopics />} />
           <Route path="committee-topics/:id" element={<CommitteeTopicDetail />} />
           <Route path="profile" element={<LecturerProfile />} />
+          <Route path="history" element={<TopicHistory />} />
         </Route>
         <Route path="*" element={<Navigate to="/lecturer/topics" replace />} />
       </Routes>

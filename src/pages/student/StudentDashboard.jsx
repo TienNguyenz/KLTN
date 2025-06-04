@@ -320,15 +320,25 @@ const TopicsList = () => {
   const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(5);
+  // Thêm state cho đợt đăng ký
+  const [registrationPeriods, setRegistrationPeriods] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState(null);
+
+  // Lấy danh sách đợt đăng ký khi load trang
+  useEffect(() => {
+    axios.get('/api/registrationperiods')
+      .then(res => setRegistrationPeriods(Array.isArray(res.data) ? res.data : (res.data?.data || [])));
+  }, []);
 
   useEffect(() => {
     const fetchTopics = async () => {
       try {
         setIsLoading(true);
         const facultyId = user?.user_faculty;
-        const response = await axios.get('/api/topics', {
-          params: { facultyId }
-        });
+        // Nếu có selectedPeriod thì filter theo đợt đăng ký
+        const params = { facultyId };
+        if (selectedPeriod?._id) params.registrationPeriodId = selectedPeriod._id;
+        const response = await axios.get('/api/topics', { params });
         if (Array.isArray(response.data.data)) {
           setTopics(response.data.data);
         } else if (response.data && Array.isArray(response.data.topics)) {
@@ -358,7 +368,7 @@ const TopicsList = () => {
         })
         .catch(() => setIsBlocked(false));
     }
-  }, [user?.user_faculty, user?.user_id]);
+  }, [user?.user_faculty, user?.user_id, selectedPeriod?._id]);
 
   const handleRegisterClick = (topicId, isBlockedTopic) => {
     if (isBlocked || isBlockedTopic) {
@@ -367,10 +377,11 @@ const TopicsList = () => {
     navigate(`/student/topics/${topicId}/register`);
   };
 
+  // Lọc đề tài theo đợt đăng ký (nếu backend chưa filter thì filter ở FE)
   const filteredTopics = topics.filter(topic => {
-    // Chỉ lấy đề tài chưa có SV và đang ở trạng thái pending
     if (!Array.isArray(topic.topic_group_student) || topic.topic_group_student.length > 0) return false;
     if (topic.status !== 'pending') return false;
+    if (selectedPeriod && topic.topic_registration_period !== selectedPeriod._id && topic.topic_registration_period?._id !== selectedPeriod._id) return false;
     const searchString = searchTerm.toLowerCase();
     return (
       topic.topic_title?.toLowerCase().includes(searchString) ||
@@ -378,7 +389,7 @@ const TopicsList = () => {
       topic.topic_major?.major_title?.toLowerCase().includes(searchString) ||
       topic.topic_category?.topic_category_title?.toLowerCase().includes(searchString) ||
       topic.topic_category?.type_name?.toLowerCase().includes(searchString)
-  );
+    );
   });
 
   const totalTopics = filteredTopics.length;
@@ -388,25 +399,46 @@ const TopicsList = () => {
   return (
     <div className="p-6 md:p-8 bg-gray-50 min-h-full">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Danh Sách Đề Tài</h1>
-      
       {/* Filters and Actions Row */}
       <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center space-x-4 text-sm">
-          <div className="flex items-center border rounded px-2 py-1 bg-gray-100">
-             <FaCalendarAlt className="text-green-500 mr-2" /> 
-             <span>HK1 - 2023/2024</span>
-          </div>
-          <div className="flex items-center border rounded px-2 py-1">
-             <FaClock className="text-gray-500 mr-2" />
-             <span>25/12/2023</span>
-          </div>
-           <div className="flex items-center border rounded px-2 py-1">
-             <FaClock className="text-gray-500 mr-2" />
-             <span>31/01/2024</span>
-          </div>
+          {/* Dropdown chọn đợt đăng ký */}
+          <select
+            className="border rounded px-2 py-1 bg-gray-100"
+            value={selectedPeriod?._id || ''}
+            onChange={e => {
+              const period = registrationPeriods.find(p => p._id === e.target.value);
+              setSelectedPeriod(period || null);
+            }}
+          >
+            <option value="">Chọn đợt đăng ký</option>
+            {registrationPeriods.filter(period => period.registration_period_status === true).map(period => (
+              <option key={period._id} value={period._id}>
+                {period.registration_period_semester?.semester || ''} ({period.registration_period_start ? new Date(period.registration_period_start * 1000).toLocaleDateString('vi-VN') : ''} - {period.registration_period_end ? new Date(period.registration_period_end * 1000).toLocaleDateString('vi-VN') : ''})
+              </option>
+            ))}
+          </select>
+          {/* Hiển thị ngày bắt đầu/kết thúc */}
+          {selectedPeriod && (
+            <>
+              <div className="flex items-center border rounded px-2 py-1 bg-gray-100">
+                <FaCalendarAlt className="text-green-500 mr-2" />
+                <span>{selectedPeriod.registration_period_semester?.semester || ''}</span>
+              </div>
+              <div className="flex items-center border rounded px-2 py-1">
+                <FaClock className="text-gray-500 mr-2" />
+                <span>{selectedPeriod.registration_period_start ? new Date(selectedPeriod.registration_period_start * 1000).toLocaleDateString('vi-VN') : ''}</span>
+              </div>
+              <div className="flex items-center border rounded px-2 py-1">
+                <FaClock className="text-gray-500 mr-2" />
+                <span>{selectedPeriod.registration_period_end ? new Date(selectedPeriod.registration_period_end * 1000).toLocaleDateString('vi-VN') : ''}</span>
+              </div>
+            </>
+          )}
         </div>
         <button className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-md"
-          onClick={() => navigate('/student/proposals')}
+          onClick={() => navigate('/student/proposals', { state: { selectedPeriod } })}
+          disabled={!selectedPeriod}
         >
            Đề xuất
         </button>
@@ -517,7 +549,12 @@ const Proposals = () => {
   const { user } = useAuth();
   const location = useLocation();
   const resubmitTopic = location.state?.resubmitTopic;
+  // Lấy selectedPeriod từ location.state
+  const initialSelectedPeriod = location.state?.selectedPeriod;
   const facultyId = user?.user_faculty; // Lấy facultyId của sinh viên
+  // State cho đợt đăng ký nếu chưa truyền sang
+  const [registrationPeriods, setRegistrationPeriods] = useState([]);
+  const [selectedPeriod, setSelectedPeriod] = useState(initialSelectedPeriod || null);
   // Helper để lấy _id đúng kiểu string
   const getId = (field) => {
     if (!field) return '';
@@ -716,6 +753,10 @@ const Proposals = () => {
       setModalError({ open: true, message: 'Vui lòng tải lên file đơn xin hướng dẫn (PDF, DOC, DOCX) và chuyển đổi thành công trước khi gửi đề xuất!' });
       return;
     }
+    if (!selectedPeriod?._id) {
+      setModalError({ open: true, message: 'Vui lòng chọn đợt đăng ký trước khi đề xuất!' });
+      return;
+    }
     try {
       // Tạo mảng thành viên, bắt đầu với trưởng nhóm
       let leaderId = user._id;
@@ -724,7 +765,6 @@ const Proposals = () => {
         leaderId = leader?._id;
       }
       const members = [leaderId];
-      
       // Thêm các thành viên khác nếu có
       for (let i = 2; i <= formData.topic_max_members; i++) {
         const memberId = formData[`student${i}Id`];
@@ -732,19 +772,16 @@ const Proposals = () => {
           members.push(memberId);
         }
       }
-
       // Kiểm tra số lượng thành viên
       if (members.length < 2) {
         alert('Vui lòng chọn ít nhất 1 thành viên khác');
         return;
       }
-
       let creatorId = user._id;
       if (!creatorId) {
         const leader = students.find(s => s.user_id === user.user_id);
         creatorId = leader?._id;
       }
-
       const proposalData = {
         topic_title: formData.topic_title,
         topic_instructor: formData.topic_instructor,
@@ -754,7 +791,9 @@ const Proposals = () => {
         topic_max_members: parseInt(formData.topic_max_members),
         topic_group_student: members,
         topic_creator: creatorId,
-        topic_advisor_request: convertedPdfUrl
+        topic_advisor_request: convertedPdfUrl,
+        // Gửi kèm đợt đăng ký
+        topic_registration_period: selectedPeriod._id
       };
 
       let isSuccess = false;
@@ -806,6 +845,14 @@ const Proposals = () => {
     }
   };
 
+  // Lấy danh sách đợt đăng ký nếu chưa có selectedPeriod
+  useEffect(() => {
+    if (!selectedPeriod) {
+      axios.get('/api/registrationperiods')
+        .then(res => setRegistrationPeriods(Array.isArray(res.data) ? res.data : (res.data?.data || [])));
+    }
+  }, [selectedPeriod]);
+
   if (isLoading) {
     return <div className="p-8 text-center">Đang tải dữ liệu...</div>;
   }
@@ -814,23 +861,41 @@ const Proposals = () => {
     <div className="p-6 md:p-8 bg-gray-50 min-h-full">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Đề Xuất Đề Tài Với Giảng Viên</h1>
 
-      {/* Filters Row */}
-       <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
-         <div className="flex items-center space-x-4 text-sm">
-           <div className="flex items-center border rounded px-2 py-1 bg-gray-100">
-              <FaCalendarAlt className="text-green-500 mr-2" /> 
-              <span>HK1 - 2023/2024</span>
-           </div>
-           <div className="flex items-center border rounded px-2 py-1">
-              <FaClock className="text-gray-500 mr-2" />
-              <span>25/12/2023</span>
-           </div>
-            <div className="flex items-center border rounded px-2 py-1">
-              <FaClock className="text-gray-500 mr-2" />
-              <span>31/01/2024</span>
-           </div>
-         </div>
-       </div>
+      {/* Nếu chưa có selectedPeriod thì cho chọn dropdown */}
+      {!selectedPeriod ? (
+        <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-wrap items-center gap-4">
+          <select
+            className="border rounded px-2 py-1 bg-gray-100"
+            value={''}
+            onChange={e => {
+              const period = registrationPeriods.find(p => p._id === e.target.value);
+              setSelectedPeriod(period || null);
+            }}
+          >
+            <option value="">Chọn đợt đăng ký</option>
+            {registrationPeriods.filter(period => period.registration_period_status === true).map(period => (
+              <option key={period._id} value={period._id}>
+                {period.registration_period_semester?.semester || ''} ({period.registration_period_start ? new Date(period.registration_period_start * 1000).toLocaleDateString('vi-VN') : ''} - {period.registration_period_end ? new Date(period.registration_period_end * 1000).toLocaleDateString('vi-VN') : ''})
+              </option>
+            ))}
+          </select>
+        </div>
+      ) : (
+        <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-wrap items-center gap-4">
+          <div className="flex items-center border rounded px-2 py-1 bg-gray-100">
+            <FaCalendarAlt className="text-green-500 mr-2" />
+            <span>{selectedPeriod.registration_period_semester?.semester || ''}</span>
+          </div>
+          <div className="flex items-center border rounded px-2 py-1">
+            <FaClock className="text-gray-500 mr-2" />
+            <span>{selectedPeriod.registration_period_start ? new Date(selectedPeriod.registration_period_start * 1000).toLocaleDateString('vi-VN') : ''}</span>
+          </div>
+          <div className="flex items-center border rounded px-2 py-1">
+            <FaClock className="text-gray-500 mr-2" />
+            <span>{selectedPeriod.registration_period_end ? new Date(selectedPeriod.registration_period_end * 1000).toLocaleDateString('vi-VN') : ''}</span>
+          </div>
+        </div>
+      )}
 
       {/* Proposal Form */}
       <form onSubmit={handleSubmit} className="bg-white p-6 rounded-lg shadow-md space-y-6">
@@ -1057,11 +1122,11 @@ const Proposals = () => {
         <div className="flex justify-end pt-4">
             <button
               type="submit"
-              className={`inline-flex items-center justify-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#008bc3] hover:bg-[#0073a8] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#008bc3] transition-colors ${isBlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-              disabled={isBlocked}
+              className={`inline-flex items-center justify-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-[#008bc3] hover:bg-[#0073a8] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#008bc3] transition-colors ${isBlocked || !selectedPeriod ? 'opacity-50 cursor-not-allowed' : ''}`}
+              disabled={isBlocked || !selectedPeriod}
             >
               <FaPaperPlane className="-ml-1 mr-2 h-5 w-5" />
-              {isBlocked ? 'Bạn đã có đề tài đang thực hiện hoặc chờ duyệt' : 'Gửi Đề Xuất'}
+              {isBlocked ? 'Bạn đã có đề tài đang thực hiện hoặc chờ duyệt' : !selectedPeriod ? 'Vui lòng chọn đợt đăng ký' : 'Gửi Đề Xuất'}
             </button>
         </div>
       </form>
