@@ -6,6 +6,7 @@ import ProtectedRoute from "./components/auth/ProtectedRoute";
 import TopicDetail from "./pages/lecturer/TopicDetail";
 import HomeRoleManage from "./pages/HomeRoleManage";
 import ScrollToTop from './pages/ScrollToTop';
+import { App as AntApp } from 'antd';
 
 // Import các trang công khai
 import HomePage from "./pages/Homepage";
@@ -48,12 +49,14 @@ const UserProfilePlaceholder = () => <div className="p-8"><h1>Trang Cá Nhân</h
 
 function App() {
   return (
-    <Router>
-      <ScrollToTop />
-      <AuthProvider>
-        <AppLayout />
-      </AuthProvider>
-    </Router>
+    <AntApp>
+      <Router>
+        <ScrollToTop />
+        <AuthProvider>
+          <AppLayout />
+        </AuthProvider>
+      </Router>
+    </AntApp>
   );
 }
 

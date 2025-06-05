@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { FaBook, FaUserGraduate, FaUsers, FaInfoCircle, FaEye, FaCheckCircle, FaTimesCircle, FaFileAlt, FaFilePdf, FaTimes, FaUserTie, FaUserEdit, FaFileUpload } from 'react-icons/fa';
 import axios from 'axios';
 
@@ -20,10 +20,6 @@ const RegisteredTopicDetails = ({ topic, onViewGrades, onViewCouncil }) => {
   const [isUploadingFinal, setIsUploadingFinal] = useState(false);
   const [modalUpload, setModalUpload] = useState({ open: false, type: '', message: '' });
   const [modalConfirm, setModalConfirm] = useState({ open: false });
-  const [isCommitteeModalOpen, setIsCommitteeModalOpen] = useState(false);
-  const [lecturersList, setLecturersList] = useState([]);
-  const [majorsList, setMajorsList] = useState([]);
-  const [assembliesList, setAssembliesList] = useState([]);
   const [outlineOriginalName, setOutlineOriginalName] = useState('');
 
   // Kiểm tra xem user hiện tại có phải là trưởng nhóm không (so sánh user_id)
@@ -105,41 +101,6 @@ const RegisteredTopicDetails = ({ topic, onViewGrades, onViewCouncil }) => {
     } catch {
       setModalUpload({ open: true, type: 'error', message: 'Có lỗi xảy ra khi hủy đăng ký!' });
     }
-  };
-
-  // ======= UTILS =======
-  const getNameById = (list, id, field = 'user_name') => {
-    if (!id) return '---';
-    const found = list.find(item => String(item._id) === String(id));
-    return found ? found[field] || found.user_name || found.major_title || found.major_name : id;
-  };
-
-  // ======= DATA FETCHING =======
-  useEffect(() => {
-    if (!isCommitteeModalOpen) return;
-    const fetchAll = async () => {
-      try {
-        const [lecturersRes, majorsRes, assembliesRes] = await Promise.all([
-          fetch('/api/lecturers').then(r => r.json()),
-          fetch('/api/majors').then(r => r.json()),
-          fetch('/api/database/collections/assemblies').then(r => r.json())
-        ]);
-        setLecturersList(lecturersRes.data || lecturersRes);
-        setMajorsList(majorsRes.data || majorsRes);
-        setAssembliesList(assembliesRes.data || assembliesRes);
-      } catch {}
-    };
-    fetchAll();
-  }, [isCommitteeModalOpen]);
-
-  // ======= ASSEMBLY OBJECT RESOLVER =======
-  const resolveAssembly = () => {
-    if (!topic.topic_assembly) return null;
-    if (typeof topic.topic_assembly === 'object' && topic.topic_assembly.assembly_name) {
-      const found = assembliesList.find(a => String(a._id) === String(topic.topic_assembly._id));
-      return found || topic.topic_assembly;
-    }
-    return assembliesList.find(a => String(a._id) === String(topic.topic_assembly));
   };
 
   // Xác định trạng thái đề cương
@@ -332,7 +293,7 @@ const RegisteredTopicDetails = ({ topic, onViewGrades, onViewCouncil }) => {
                 >
                   <FaFileAlt className="text-xl" />
                   <span className="underline">
-                    {outlineOriginalName || topic.topic_defense_request_original_name || (topic.topic_defense_request.split('/').pop() || 'Xem file')}
+                    {topic.topic_defense_request_original_name || (topic.topic_defense_request && topic.topic_defense_request.split('/').pop())}
                   </span>
                 </a>
               )}

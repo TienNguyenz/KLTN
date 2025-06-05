@@ -951,11 +951,7 @@ router.get('/instructor/:instructorId/all', async (req, res) => {
       return topicInstructor.toString() === instructorId;
     });
 
-    // console.log('Query results:', { // Dòng này đã xóa
-    //   totalTopics: allTopics.length,
-    //   matchedTopics: matchedTopics.length,
-    //   instructorId
-    // });
+
 
     res.json(matchedTopics);
   } catch { // Đổi thành catch không có biến
@@ -979,30 +975,42 @@ router.post('/:id/upload-outline', upload.single('file'), async (req, res) => {
         if (oldPath.startsWith('uploads/')) {
           fs.unlinkSync(oldPath);
         }
-      } catch { /* ignore */ } // Đổi thành catch không có biến
+      } catch { /* ignore */ }
     }
-    const docxBuf = fs.readFileSync(file.path);
-    libre.convert(docxBuf, '.pdf', undefined, async (err, done) => {
-      if (err) {
-        fs.unlinkSync(file.path);
-        return res.status(500).json({ message: 'Convert to PDF failed', error: err });
-      }
-      const pdfPath = path.join('uploads', `${file.filename}.pdf`);
-      fs.writeFileSync(pdfPath, done);
-      fs.unlinkSync(file.path);
-      const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${file.filename}.pdf`;
-      const topic = await Topic.findByIdAndUpdate(
-        topicId,
-        { 
-          topic_outline_file: fileUrl,
-          topic_outline_file_original_name: file.originalname
-        },
-        { new: true }
-      );
-      res.json({ message: 'Upload and convert successful', file: fileUrl, originalName: file.originalname, topic });
-    });
+    try {
+      const docxBuf = fs.readFileSync(file.path);
+      libre.convert(docxBuf, '.pdf', undefined, async (err, done) => {
+        try {
+          if (err) {
+            fs.unlinkSync(file.path);
+            console.error('Convert to PDF failed:', err);
+            return res.status(500).json({ message: 'Convert to PDF failed', error: err.message || err });
+          }
+          const pdfPath = path.join('uploads', `${file.filename}.pdf`);
+          fs.writeFileSync(pdfPath, done);
+          fs.unlinkSync(file.path);
+          const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${file.filename}.pdf`;
+          const topic = await Topic.findByIdAndUpdate(
+            topicId,
+            { 
+              topic_outline_file: fileUrl,
+              topic_outline_file_original_name: file.originalname
+            },
+            { new: true }
+          );
+          res.json({ message: 'Upload and convert successful', file: fileUrl, originalName: file.originalname, topic });
+        } catch (err2) {
+          console.error('Error after PDF conversion:', err2);
+          return res.status(500).json({ message: 'Server error after PDF conversion', error: err2.message || err2 });
+        }
+      });
+    } catch (err) {
+      console.error('Error reading file or starting conversion:', err);
+      return res.status(500).json({ message: 'Server error before PDF conversion', error: err.message || err });
+    }
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
+    console.error('topic.js: Server error in upload-outline:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || error });
   }
 });
 
@@ -1035,31 +1043,70 @@ router.post('/:id/upload-defense-request', upload.single('file'), async (req, re
         },
         { new: true }
       );
+      // Gửi notification cho giảng viên hướng dẫn
+      if (topic && topic.topic_instructor) {
+        await UserNotification.create({
+          user_notification_title: 'Sinh viên đã nộp đề cương',
+          user_notification_sender: topic.topic_group_student?.[0],
+          user_notification_recipient: topic.topic_instructor,
+          user_notification_content: `Nhóm sinh viên đã nộp đề cương cho đề tài "${topic.topic_title}". Vui lòng kiểm tra!`,
+          user_notification_type: 2,
+          user_notification_isRead: false,
+          user_notification_topic: 'topic',
+        });
+      }
       return res.json({ message: 'Upload PDF thành công', file: fileUrl, originalName: file.originalname, topic });
     }
     // Nếu là doc/docx thì convert
-    const docxBuf = fs.readFileSync(file.path);
-    libre.convert(docxBuf, '.pdf', undefined, async (err, done) => {
-      if (err) {
-        fs.unlinkSync(file.path);
-        return res.status(500).json({ message: 'Convert to PDF failed', error: err });
-      }
-      const pdfPath = path.join('uploads', `${file.filename}.pdf`);
-      fs.writeFileSync(pdfPath, done);
-      fs.unlinkSync(file.path);
-      const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${file.filename}.pdf`;
-      const topic = await Topic.findByIdAndUpdate(
-        topicId,
-        { 
-          topic_defense_request: fileUrl,
-          topic_defense_request_original_name: file.originalname.replace(/\.[^/.]+$/, '') + '.pdf'
-        },
-        { new: true }
-      );
-      res.json({ message: 'Upload and convert successful', file: fileUrl, originalName: file.originalname.replace(/\.[^/.]+$/, '') + '.pdf', topic });
-    });
+    try {
+      const docxBuf = fs.readFileSync(file.path);
+      libre.convert(docxBuf, '.pdf', undefined, async (err, done) => {
+        try {
+          if (err) {
+            fs.unlinkSync(file.path);
+            console.error('Convert to PDF failed:', err);
+            return res.status(500).json({ message: 'Convert to PDF failed', error: err.message || err });
+          }
+          // SỬA ĐOẠN NÀY: giống như final report, chỉ giữ UUID, không giữ đuôi .docx/.doc
+          const parsed = path.parse(file.filename);
+          const baseName = parsed.name; // UUID không đuôi
+          const pdfPath = path.join('uploads', `${baseName}.pdf`);
+          fs.writeFileSync(pdfPath, done);
+          fs.unlinkSync(file.path);
+          const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${baseName}.pdf`;
+          const topic = await Topic.findByIdAndUpdate(
+            topicId,
+            { 
+              topic_defense_request: fileUrl,
+              topic_defense_request_original_name: file.originalname.replace(/\.[^/.]+$/, '') + '.pdf'
+            },
+            { new: true }
+          );
+          // Gửi notification cho giảng viên hướng dẫn
+          if (topic && topic.topic_instructor) {
+            await UserNotification.create({
+              user_notification_title: 'Sinh viên đã nộp đề cương',
+              user_notification_sender: topic.topic_group_student?.[0],
+              user_notification_recipient: topic.topic_instructor,
+              user_notification_content: `Nhóm sinh viên đã nộp đề cương cho đề tài "${topic.topic_title}". Vui lòng kiểm tra!`,
+              user_notification_type: 2,
+              user_notification_isRead: false,
+              user_notification_topic: 'topic',
+            });
+          }
+          res.json({ message: 'Upload and convert successful', file: fileUrl, originalName: file.originalname.replace(/\.[^/.]+$/, '') + '.pdf', topic });
+        } catch (err2) {
+          console.error('Error after PDF conversion:', err2);
+          return res.status(500).json({ message: 'Server error after PDF conversion', error: err2.message || err2 });
+        }
+      });
+    } catch (err) {
+      console.error('Error reading file or starting conversion:', err);
+      return res.status(500).json({ message: 'Server error before PDF conversion', error: err.message || err });
+    }
   } catch (error) {
-    res.status(500).json({ message: 'Server error', error });
+    console.error('topic.js: Server error in upload-defense-request:', error);
+    res.status(500).json({ message: 'Server error', error: error.message || error });
   }
 });
 

@@ -205,7 +205,13 @@ const CouncilManagement = () => {
 
   const validateForm = () => {
     const newErrors = {};
-    if (!formData.assembly_name) newErrors.assembly_name = 'Vui lòng nhập tên hội đồng';
+    if (!formData.assembly_name) {
+      newErrors.assembly_name = 'Vui lòng nhập tên hội đồng';
+    } else if (formData.assembly_name.trim().length === 0) {
+      newErrors.assembly_name = 'Tên hội đồng không được để trống';
+    } else if (formData.assembly_name.trim().length < 3) {
+      newErrors.assembly_name = 'Tên hội đồng phải có ít nhất 3 ký tự';
+    }
     if (!formData.assembly_major) newErrors.assembly_major = 'Vui lòng chọn chuyên ngành';
     if (!formData.chairman) newErrors.chairman = 'Vui lòng chọn chủ tịch hội đồng';
     if (!formData.secretary) newErrors.secretary = 'Vui lòng chọn thư ký';
@@ -229,7 +235,7 @@ const CouncilManagement = () => {
     try {
       const now = new Date().toISOString();
       const payload = {
-        assembly_name: formData.assembly_name,
+        assembly_name: formData.assembly_name.trim(),
         assembly_major: formData.assembly_major,
         chairman: formData.chairman,
         secretary: formData.secretary,
@@ -265,7 +271,16 @@ const CouncilManagement = () => {
         stack: error.stack
       });
       
-      // Hiển thị thông báo lỗi chi tiết
+      // Handle duplicate council name error
+      if (error.response?.data?.message === 'Tên hội đồng đã tồn tại!') {
+        setErrors(prev => ({
+          ...prev,
+          assembly_name: 'Tên hội đồng đã tồn tại!'
+        }));
+        return;
+      }
+      
+      // Handle other errors
       const errorMessage = error.response?.data?.message || error.message;
       const errorDetails = error.response?.data?.error || '';
       const errorField = error.response?.data?.field || '';
@@ -392,13 +407,55 @@ const CouncilManagement = () => {
     setIsAssignDetailsOpen(true); // mở modal nhập chi tiết
   };
   const handleConfirmAssignDetails = async () => {
-    // Validate tất cả ngày
+    // Validate tất cả ngày và thời gian
     for (const detail of topicDetails) {
+      // Validate phòng
+      if (!detail.room || detail.room.trim() === '') {
+        alert('Vui lòng nhập phòng cho tất cả đề tài!');
+        return;
+      }
+
+      // Validate ngày
       if (!/^[0-9]{2}\/[0-9]{2}\/[0-9]{4}$/.test(detail.date)) {
         alert('Ngày phải đúng định dạng dd/mm/yyyy!');
         return;
       }
+
+      // Convert ngày từ dd/mm/yyyy sang Date object để so sánh
+      const [dd, mm, yyyy] = detail.date.split('/');
+      const defenseDate = new Date(yyyy, mm - 1, dd);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0); // Reset time to start of day
+
+      if (defenseDate < today) {
+        alert('Ngày chấm báo cáo phải lớn hơn hoặc bằng ngày hiện tại!');
+        return;
+      }
+
+      // Validate thời gian
+      if (!detail.timeStart || !detail.timeEnd) {
+        alert('Vui lòng nhập đầy đủ thời gian bắt đầu và kết thúc!');
+        return;
+      }
+
+      // Convert thời gian sang phút để so sánh
+      const [startHours, startMinutes] = detail.timeStart.split(':').map(Number);
+      const [endHours, endMinutes] = detail.timeEnd.split(':').map(Number);
+      const startInMinutes = startHours * 60 + startMinutes;
+      const endInMinutes = endHours * 60 + endMinutes;
+
+      if (endInMinutes <= startInMinutes) {
+        alert('Thời gian kết thúc phải lớn hơn thời gian bắt đầu!');
+        return;
+      }
+
+      // Kiểm tra thời gian phải trong khoảng 8:00 - 17:00
+      if (startInMinutes < 8 * 60 || endInMinutes > 17 * 60) {
+        alert('Thời gian chấm báo cáo phải trong khoảng 8:00 - 17:00!');
+        return;
+      }
     }
+
     // Validate trùng phòng/ngày/thời gian
     try {
       // Đóng modal nhập chi tiết NGAY LẬP TỨC

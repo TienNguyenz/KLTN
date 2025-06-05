@@ -85,6 +85,10 @@ const topicSchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
+    topic_defense_request_original_name: {
+      type: String,
+      trim: true,
+    },
     rubric_instructor: {
       type: String,
       trim: true,

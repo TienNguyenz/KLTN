@@ -26,24 +26,7 @@ const Evaluation = () => {
   const [isUpdatingExisting, setIsUpdatingExisting] = useState(false);
 
   // Dữ liệu mẫu cho tiêu chí
-  const criteriaData = [
-    {
-      id: 1,
-      name: 'Tiêu chí 1',
-      maxScore: 10,
-      weight: 50,
-      isEditing: false
-    },
-    {
-      id: 2,
-      name: 'Tiêu chí 2',
-      maxScore: 10,
-      weight: 50,
-      isEditing: false
-    }
-  ];
-
-  const [criteria, setCriteria] = useState(criteriaData);
+  const [criteria, setCriteria] = useState([]);
 
   // Columns cho bảng tiêu chí trong modal xem
   const criteriaColumns = [
@@ -202,10 +185,9 @@ const Evaluation = () => {
     if (criteriaCount > 0) {
       setIsCriteriaCountModalVisible(false);
       setIsCriteriaFormVisible(true);
-      
+      criteriaForm.resetFields();
       // Nếu đang cập nhật tiêu chí hiện có
       if (isUpdatingExisting) {
-        // Hiển thị tiêu chí đầu tiên để chỉnh sửa
         const firstCriteria = criteria[0];
         if (firstCriteria) {
           criteriaForm.setFieldsValue({
@@ -223,9 +205,10 @@ const Evaluation = () => {
   };
 
   const handleCriteriaFormSubmit = async () => {
-    console.log('Đã nhấn Tiếp tục');
+    console.log('--- BẮT ĐẦU SUBMIT ---');
     try {
       const values = await criteriaForm.validateFields();
+      console.log('Giá trị form:', values);
       const rubricId = selectedRubric?._id;
       if (!rubricId) {
         message.error('Không xác định được phiếu đánh giá!');
@@ -250,16 +233,18 @@ const Evaluation = () => {
         level_core: '',
         note: values.description || ''
       };
+      if (currentCriteriaStep === criteriaCount - 1) {
+        apiData.isLast = true;
+      }
+      console.log('Dữ liệu gửi BE:', apiData);
 
       let updatedCriteria = [...criteria];
       let apiRes = null;
-      // Nếu đang cập nhật tiêu chí hiện có
       if (isUpdatingExisting && currentCriteriaStep < criteria.length) {
         const currentCriteria = criteria[currentCriteriaStep];
         if (currentCriteria._id) {
           // Update existing criteria
           apiRes = await axios.put(`http://localhost:5000/api/evaluations/${currentCriteria._id}`, apiData);
-          window.alert('Cập nhật tiêu chí thành công!');
           updatedCriteria[currentCriteriaStep] = {
             ...currentCriteria,
             name: values.name,
@@ -271,7 +256,6 @@ const Evaluation = () => {
         } else {
           // Nếu không có _id, tạo mới
           apiRes = await axios.post('http://localhost:5000/api/evaluations', apiData);
-          window.alert('Thêm tiêu chí thành công!');
           updatedCriteria[currentCriteriaStep] = {
             ...currentCriteria,
             name: values.name,
@@ -287,10 +271,16 @@ const Evaluation = () => {
           message.error('Không thể thêm quá số lượng tiêu chí đã chọn!');
           return;
         }
-        apiRes = await axios.post('http://localhost:5000/api/evaluations', apiData);
-        window.alert('Thêm tiêu chí thành công!');
+        try {
+          apiRes = await axios.post('http://localhost:5000/api/evaluations', apiData);
+          console.log('API trả về:', apiRes.data);
+        } catch (err) {
+          console.error('Lỗi BE:', err.response?.data || err.message);
+          message.error(err.response?.data?.message || 'Lưu tiêu chí thất bại: ' + err.message);
+          return;
+        }
         updatedCriteria.push({
-          id: currentCriteriaStep + 1,
+          id: updatedCriteria.length + 1,
           name: values.name,
           maxScore: Number(values.maxScore),
           weight: values.weight / 100,
@@ -303,38 +293,56 @@ const Evaluation = () => {
       // Chuyển bước hoặc kết thúc
       const nextStep = currentCriteriaStep + 1;
       setCriteria(updatedCriteria);
-      // Validate tổng trọng số sau mỗi bước
-      const allWeights = updatedCriteria.map(c => Number(c.weight));
-      const totalWeight = allWeights.reduce((sum, w) => sum + w, 0);
+      setTimeout(() => setCurrentCriteriaStep(nextStep), 0);
+      console.log('Cập nhật criteria:', updatedCriteria, 'nextStep:', nextStep, 'criteriaCount:', criteriaCount);
       if (nextStep >= criteriaCount || nextStep >= updatedCriteria.length) {
+        // Chỉ kiểm tra tổng trọng số ở bước cuối cùng
+        const allWeights = updatedCriteria.map(c => Number(c.weight));
+        const totalWeight = allWeights.reduce((sum, w) => sum + w, 0);
         if (Math.abs(totalWeight - 1) > 0.0001) {
-          window.alert('Tổng trọng số của tất cả tiêu chí phải đúng 100%!');
+          setTimeout(() => {
+            message.error('Tổng trọng số của tất cả tiêu chí phải đúng 100%!');
+          }, 200);
           return;
         }
-        // Đã nhập hết, đóng modal và reset step
-        await fetchCriteriaForRubric(rubricId);
-        window.alert('Hoàn thành cập nhật tiêu chí!');
-        setIsCriteriaFormVisible(false);
-        criteriaForm.resetFields();
-        setCurrentCriteriaStep(0);
-        setIsUpdatingExisting(false);
+        // Đã nhập hết, fetch lại bảng và hiện thông báo SAU khi đóng modal
+        try {
+          await fetchCriteriaForRubric(rubricId);
+          setIsCriteriaFormVisible(false);
+          criteriaForm.resetFields();
+          setCurrentCriteriaStep(0);
+          setIsUpdatingExisting(false);
+          setTimeout(() => {
+            message.success('Hoàn thành cập nhật tiêu chí!');
+          }, 200);
+        } catch {
+          setIsCriteriaFormVisible(false);
+          criteriaForm.resetFields();
+          setCurrentCriteriaStep(0);
+          setIsUpdatingExisting(false);
+          setTimeout(() => {
+            message.error('Cập nhật bảng tiêu chí thất bại!');
+          }, 200);
+        }
         return;
+      } else {
+        if (nextStep < updatedCriteria.length) {
+          // Nếu đã có tiêu chí ở bước tiếp theo, setFieldsValue
+          const nextCriteria = updatedCriteria[nextStep];
+          criteriaForm.setFieldsValue({
+            name: nextCriteria.name,
+            description: nextCriteria.note || '',
+            maxScore: nextCriteria.maxScore,
+            weight: nextCriteria.weight * 100
+          });
+        } else {
+          // Nếu là tiêu chí mới, reset form
+          criteriaForm.resetFields();
+        }
       }
-      setCurrentCriteriaStep(nextStep);
-      if (nextStep < criteria.length) {
-        // Chuyển sang tiêu chí tiếp theo
-        const nextCriteria = updatedCriteria[nextStep];
-        criteriaForm.setFieldsValue({
-          name: nextCriteria.name,
-          description: nextCriteria.note || '',
-          maxScore: nextCriteria.maxScore,
-          weight: nextCriteria.weight * 100
-        });
-      } else if (nextStep < criteriaCount) {
-        // Hết tiêu chí cũ, chuyển sang nhập mới
-        criteriaForm.resetFields();
-      }
+      console.log('--- KẾT THÚC SUBMIT ---');
     } catch (err) {
+      console.error('Lỗi validate:', err);
       message.error('Lưu tiêu chí thất bại: ' + (err.response?.data?.message || err.message));
     }
   };
@@ -540,6 +548,10 @@ const Evaluation = () => {
     fetchTopicCategories();
   }, []);
 
+  useEffect(() => {
+    console.log('currentCriteriaStep:', currentCriteriaStep);
+  }, [currentCriteriaStep]);
+
   const fetchRubrics = async () => {
     setLoading(true);
     try {
@@ -703,6 +715,7 @@ const Evaluation = () => {
           className="mb-6"
         />
         <Form
+          key={currentCriteriaStep}
           form={criteriaForm}
           layout="vertical"
           name="criteriaForm"

@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Table, Button, Modal, Form, Input, DatePicker, message, Space } from 'antd';
-import { PlusOutlined, ExclamationCircleFilled, CheckCircleFilled } from '@ant-design/icons';
+import { PlusOutlined, ExclamationCircleFilled } from '@ant-design/icons';
 import { FaEdit, FaTrash } from 'react-icons/fa';
 import moment from 'moment';
 import axios from 'axios';
@@ -13,8 +13,6 @@ const Semester = () => {
   const [form] = Form.useForm();
   const [editForm] = Form.useForm();
   const [loading, setLoading] = useState(false);
-  const [isSuccessModalVisible, setIsSuccessModalVisible] = useState(false);
-  const [successMessage, setSuccessMessage] = useState('');
 
   // Fetch semesters data
   const fetchSemesters = async () => {
@@ -38,14 +36,19 @@ const Semester = () => {
   }, []);
 
   const showDeleteConfirm = (record) => {
-    if (window.confirm(`Bạn có chắc chắn muốn xóa ${record.semester}?`)) {
-      axios.delete(`http://localhost:5000/api/semesters/${record._id}`)
-        .then(() => {
-          setSuccessMessage('Xóa học kỳ thành công!');
-          setIsSuccessModalVisible(true);
+    Modal.confirm({
+      title: `Bạn có chắc chắn muốn xóa ${record.semester}?`,
+      icon: <ExclamationCircleFilled />,
+      okText: 'Xóa',
+      okType: 'danger',
+      cancelText: 'Hủy',
+      centered: true,
+      onOk: async () => {
+        try {
+          await axios.delete(`http://localhost:5000/api/semesters/${record._id}`);
+          message.success('Xóa học kỳ thành công!');
           fetchSemesters();
-        })
-        .catch((error) => {
+        } catch (error) {
           if (error.response) {
             message.error(error.response.data.message || 'Lỗi khi xóa học kỳ');
           } else if (error.request) {
@@ -53,8 +56,9 @@ const Semester = () => {
           } else {
             message.error('Lỗi khi xóa học kỳ');
           }
-        });
-    }
+        }
+      }
+    });
   };
 
   const columns = [
@@ -105,29 +109,6 @@ const Semester = () => {
     setIsModalVisible(true);
   };
 
-  // Hàm kiểm tra moment hợp lệ, nhận cả DD/MM/YYYY, ISO string, Date object
-  const getValidMoment = (date) => {
-    if (!date) return null;
-    if (typeof date === 'string') {
-      // Nếu là dạng DD/MM/YYYY
-      if (/^\d{2}\/\d{2}\/\d{4}$/.test(date)) {
-        const [d, m, y] = date.split('/');
-        const mDate = moment(`${y}-${m}-${d}`);
-        return mDate.isValid() ? mDate : null;
-      }
-      // Nếu là ISO string
-      const mDate = moment(date);
-      return mDate.isValid() ? mDate : null;
-    }
-    if (date instanceof Date) {
-      const mDate = moment(date);
-      return mDate.isValid() ? mDate : null;
-    }
-    // Nếu là moment object
-    if (moment.isMoment(date)) return date;
-    return null;
-  };
-
   const formatDateString = (date) => {
     if (!date) return '';
     if (typeof date === 'string' && /^\d{2}\/\d{2}\/\d{4}$/.test(date)) return date;
@@ -160,12 +141,10 @@ const Semester = () => {
           school_year_start: values.school_year_start.toDate(),
           school_year_end: values.school_year_end.toDate(),
         };
-        
         await axios.post('http://localhost:5000/api/semesters', payload);
-        setSuccessMessage('Thêm học kỳ mới thành công!');
-        setIsSuccessModalVisible(true);
-      form.resetFields();
-      setIsModalVisible(false);
+        message.success('Thêm học kỳ mới thành công!');
+        form.resetFields();
+        setIsModalVisible(false);
         fetchSemesters();
       } catch (error) {
         if (error.response?.data?.message) {
@@ -186,13 +165,11 @@ const Semester = () => {
           school_year_start: parseDate(values.school_year_start),
           school_year_end: parseDate(values.school_year_end),
         };
-        
         await axios.put(`http://localhost:5000/api/semesters/${editingRecord._id}`, payload);
-        setSuccessMessage('Cập nhật học kỳ thành công!');
-        setIsSuccessModalVisible(true);
-      editForm.resetFields();
-      setIsEditModalVisible(false);
-      setEditingRecord(null);
+        message.success('Cập nhật học kỳ thành công!');
+        editForm.resetFields();
+        setIsEditModalVisible(false);
+        setEditingRecord(null);
         fetchSemesters();
       } catch (error) {
         if (error.response?.data?.message) {
@@ -337,28 +314,6 @@ const Semester = () => {
             <Input placeholder="VD: 30/06/2025" />
           </Form.Item>
         </Form>
-      </Modal>
-
-      {/* Modal thông báo thành công */}
-      <Modal
-        title="Thông báo"
-        open={isSuccessModalVisible}
-        onOk={() => {
-          setIsSuccessModalVisible(false);
-          fetchSemesters();
-        }}
-        onCancel={() => {
-          setIsSuccessModalVisible(false);
-          fetchSemesters();
-        }}
-        okText="Đóng"
-        cancelButtonProps={{ style: { display: 'none' } }}
-        centered
-      >
-        <div style={{ textAlign: 'center', padding: '20px 0' }}>
-          <CheckCircleFilled style={{ fontSize: '48px', color: '#52c41a' }} />
-          <p style={{ marginTop: '20px', fontSize: '16px' }}>{successMessage}</p>
-        </div>
       </Modal>
     </div>
   );
