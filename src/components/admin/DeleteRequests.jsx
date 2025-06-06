@@ -64,7 +64,12 @@ const DeleteRequests = () => {
   const handleApprove = async (topicId) => {
     try {
       setLoading(true);
-      await axios.post(`/api/topics/${topicId}/approve-delete`);
+      const token = localStorage.getItem('token');
+      await axios.post(`/api/topics/${topicId}/approve-delete`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       message.success('Duyệt xóa thành công!');
       fetchRequests();
     } catch {
@@ -77,7 +82,12 @@ const DeleteRequests = () => {
   const handleReject = async (topicId) => {
     try {
       setLoading(true);
-      await axios.post(`/api/topics/${topicId}/reject-delete`);
+      const token = localStorage.getItem('token');
+      await axios.post(`/api/topics/${topicId}/reject-delete`, {}, {
+        headers: {
+          Authorization: `Bearer ${token}`
+        }
+      });
       message.success('Từ chối xóa thành công!');
       fetchRequests();
     } catch {

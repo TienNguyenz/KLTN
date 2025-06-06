@@ -978,32 +978,32 @@ router.post('/:id/upload-outline', upload.single('file'), async (req, res) => {
       } catch { /* ignore */ }
     }
     try {
-      const docxBuf = fs.readFileSync(file.path);
-      libre.convert(docxBuf, '.pdf', undefined, async (err, done) => {
+    const docxBuf = fs.readFileSync(file.path);
+    libre.convert(docxBuf, '.pdf', undefined, async (err, done) => {
         try {
-          if (err) {
-            fs.unlinkSync(file.path);
+      if (err) {
+        fs.unlinkSync(file.path);
             console.error('Convert to PDF failed:', err);
             return res.status(500).json({ message: 'Convert to PDF failed', error: err.message || err });
-          }
-          const pdfPath = path.join('uploads', `${file.filename}.pdf`);
-          fs.writeFileSync(pdfPath, done);
-          fs.unlinkSync(file.path);
-          const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${file.filename}.pdf`;
-          const topic = await Topic.findByIdAndUpdate(
-            topicId,
-            { 
-              topic_outline_file: fileUrl,
-              topic_outline_file_original_name: file.originalname
-            },
-            { new: true }
-          );
-          res.json({ message: 'Upload and convert successful', file: fileUrl, originalName: file.originalname, topic });
+      }
+      const pdfPath = path.join('uploads', `${file.filename}.pdf`);
+      fs.writeFileSync(pdfPath, done);
+      fs.unlinkSync(file.path);
+      const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${file.filename}.pdf`;
+      const topic = await Topic.findByIdAndUpdate(
+        topicId,
+        { 
+          topic_outline_file: fileUrl,
+          topic_outline_file_original_name: file.originalname
+        },
+        { new: true }
+      );
+      res.json({ message: 'Upload and convert successful', file: fileUrl, originalName: file.originalname, topic });
         } catch (err2) {
           console.error('Error after PDF conversion:', err2);
           return res.status(500).json({ message: 'Server error after PDF conversion', error: err2.message || err2 });
         }
-      });
+    });
     } catch (err) {
       console.error('Error reading file or starting conversion:', err);
       return res.status(500).json({ message: 'Server error before PDF conversion', error: err.message || err });
@@ -1059,29 +1059,29 @@ router.post('/:id/upload-defense-request', upload.single('file'), async (req, re
     }
     // Nếu là doc/docx thì convert
     try {
-      const docxBuf = fs.readFileSync(file.path);
-      libre.convert(docxBuf, '.pdf', undefined, async (err, done) => {
+    const docxBuf = fs.readFileSync(file.path);
+    libre.convert(docxBuf, '.pdf', undefined, async (err, done) => {
         try {
-          if (err) {
-            fs.unlinkSync(file.path);
+      if (err) {
+        fs.unlinkSync(file.path);
             console.error('Convert to PDF failed:', err);
             return res.status(500).json({ message: 'Convert to PDF failed', error: err.message || err });
-          }
+      }
           // SỬA ĐOẠN NÀY: giống như final report, chỉ giữ UUID, không giữ đuôi .docx/.doc
           const parsed = path.parse(file.filename);
           const baseName = parsed.name; // UUID không đuôi
           const pdfPath = path.join('uploads', `${baseName}.pdf`);
-          fs.writeFileSync(pdfPath, done);
-          fs.unlinkSync(file.path);
+      fs.writeFileSync(pdfPath, done);
+      fs.unlinkSync(file.path);
           const fileUrl = `${req.protocol}://${req.get('host')}/uploads/${baseName}.pdf`;
-          const topic = await Topic.findByIdAndUpdate(
-            topicId,
-            { 
-              topic_defense_request: fileUrl,
-              topic_defense_request_original_name: file.originalname.replace(/\.[^/.]+$/, '') + '.pdf'
-            },
-            { new: true }
-          );
+      const topic = await Topic.findByIdAndUpdate(
+        topicId,
+        { 
+          topic_defense_request: fileUrl,
+          topic_defense_request_original_name: file.originalname.replace(/\.[^/.]+$/, '') + '.pdf'
+        },
+        { new: true }
+      );
           // Gửi notification cho giảng viên hướng dẫn
           if (topic && topic.topic_instructor) {
             await UserNotification.create({
@@ -1094,12 +1094,12 @@ router.post('/:id/upload-defense-request', upload.single('file'), async (req, re
               user_notification_topic: 'topic',
             });
           }
-          res.json({ message: 'Upload and convert successful', file: fileUrl, originalName: file.originalname.replace(/\.[^/.]+$/, '') + '.pdf', topic });
+      res.json({ message: 'Upload and convert successful', file: fileUrl, originalName: file.originalname.replace(/\.[^/.]+$/, '') + '.pdf', topic });
         } catch (err2) {
           console.error('Error after PDF conversion:', err2);
           return res.status(500).json({ message: 'Server error after PDF conversion', error: err2.message || err2 });
         }
-      });
+    });
     } catch (err) {
       console.error('Error reading file or starting conversion:', err);
       return res.status(500).json({ message: 'Server error before PDF conversion', error: err.message || err });
