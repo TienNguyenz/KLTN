@@ -1625,8 +1625,16 @@ router.post('/:id/register-v2', upload.single('advisor_request'), async (req, re
   try {
     console.log('Body:', req.body);
     console.log('File:', req.file);
-    const topic = await Topic.findById(req.params.id);
+    // Lấy topic và populate đợt đăng ký
+    const topic = await Topic.findById(req.params.id).populate('topic_registration_period');
     if (!topic) return res.status(404).json({ message: 'Không tìm thấy đề tài' });
+
+    // Kiểm tra deadline ghi danh
+    const now = Date.now() / 1000;
+    const advisorDeadline = topic.topic_registration_period?.advisor_request_deadline;
+    if (advisorDeadline && now > advisorDeadline) {
+      return res.status(400).json({ message: 'Đã quá hạn nộp đơn xin hướng dẫn cho đợt đăng ký này.' });
+    }
 
     const { studentId, ...otherMembers } = req.body;
     if (!studentId) return res.status(400).json({ message: 'Thiếu thông tin người đăng ký' });

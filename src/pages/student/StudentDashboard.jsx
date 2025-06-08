@@ -330,6 +330,19 @@ const TopicsList = () => {
       .then(res => setRegistrationPeriods(Array.isArray(res.data) ? res.data : (res.data?.data || [])));
   }, []);
 
+  // Sau khi lấy registrationPeriods, tự động chọn đợt hiện tại
+  useEffect(() => {
+    if (registrationPeriods.length > 0 && !selectedPeriod) {
+      const now = Date.now() / 1000; // giây
+      const current = registrationPeriods.find(p =>
+        p.registration_period_status === true &&
+        now >= p.registration_period_start &&
+        now <= p.registration_period_end
+      );
+      if (current) setSelectedPeriod(current);
+    }
+  }, [registrationPeriods, selectedPeriod]);
+
   useEffect(() => {
     const fetchTopics = async () => {
       try {
@@ -371,7 +384,10 @@ const TopicsList = () => {
   }, [user?.user_faculty, user?.user_id, selectedPeriod?._id]);
 
   const handleRegisterClick = (topicId, isBlockedTopic) => {
-    if (isBlocked || isBlockedTopic) {
+    const now = Date.now() / 1000;
+    const advisorDeadline = selectedPeriod?.advisor_request_deadline;
+    const isOverAdvisorDeadline = advisorDeadline && now > advisorDeadline;
+    if (isBlocked || isBlockedTopic || isOverAdvisorDeadline) {
       return;
     }
     navigate(`/student/topics/${topicId}/register`);
@@ -400,49 +416,39 @@ const TopicsList = () => {
     <div className="p-6 md:p-8 bg-gray-50 min-h-full">
       <h1 className="text-2xl md:text-3xl font-bold text-gray-800 mb-6">Danh Sách Đề Tài</h1>
       {/* Filters and Actions Row */}
-      <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-wrap items-center justify-between gap-4">
-        <div className="flex items-center space-x-4 text-sm">
-          {/* Dropdown chọn đợt đăng ký */}
-          <select
-            className="border rounded px-2 py-1 bg-gray-100"
-            value={selectedPeriod?._id || ''}
-            onChange={e => {
-              const period = registrationPeriods.find(p => p._id === e.target.value);
-              setSelectedPeriod(period || null);
-            }}
-          >
-            <option value="">Chọn đợt đăng ký</option>
-            {registrationPeriods.filter(period => period.registration_period_status === true).map(period => (
-              <option key={period._id} value={period._id}>
-                {period.registration_period_semester?.semester || ''} ({period.registration_period_start ? new Date(period.registration_period_start * 1000).toLocaleDateString('vi-VN') : ''} - {period.registration_period_end ? new Date(period.registration_period_end * 1000).toLocaleDateString('vi-VN') : ''})
-              </option>
-            ))}
-          </select>
-          {/* Hiển thị ngày bắt đầu/kết thúc */}
-          {selectedPeriod && (
-            <>
+      {selectedPeriod && (
+        <div className="bg-white p-4 rounded-lg shadow-sm mb-6 flex flex-wrap items-center gap-4">
           <div className="flex items-center border rounded px-2 py-1 bg-gray-100">
-             <FaCalendarAlt className="text-green-500 mr-2" /> 
-                <span>{selectedPeriod.registration_period_semester?.semester || ''}</span>
+            <FaCalendarAlt className="text-green-500 mr-2" />
+            <span>{selectedPeriod.registration_period_semester?.semester || ''}</span>
           </div>
           <div className="flex items-center border rounded px-2 py-1">
-             <FaClock className="text-gray-500 mr-2" />
-                <span>{selectedPeriod.registration_period_start ? new Date(selectedPeriod.registration_period_start * 1000).toLocaleDateString('vi-VN') : ''}</span>
+            <FaClock className="text-gray-500 mr-2" />
+            <span>{selectedPeriod.registration_period_start ? new Date(selectedPeriod.registration_period_start * 1000).toLocaleDateString('vi-VN') : ''}</span>
           </div>
-           <div className="flex items-center border rounded px-2 py-1">
-             <FaClock className="text-gray-500 mr-2" />
-                <span>{selectedPeriod.registration_period_end ? new Date(selectedPeriod.registration_period_end * 1000).toLocaleDateString('vi-VN') : ''}</span>
+          <div className="flex items-center border rounded px-2 py-1">
+            <FaClock className="text-gray-500 mr-2" />
+            <span>{selectedPeriod.registration_period_end ? new Date(selectedPeriod.registration_period_end * 1000).toLocaleDateString('vi-VN') : ''}</span>
           </div>
-            </>
-          )}
         </div>
-        <button className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-md"
-          onClick={() => navigate('/student/proposals', { state: { selectedPeriod } })}
-          disabled={!selectedPeriod}
-        >
-           Đề xuất
-        </button>
-      </div>
+      )}
+      {/* Chỉ cho phép đề xuất trong 2 tháng đầu tiên của đợt đăng ký */}
+      {selectedPeriod && (() => {
+        const now = Date.now() / 1000;
+        const start = selectedPeriod.registration_period_start;
+        const advisorDeadline = selectedPeriod.advisor_request_deadline;
+        const isInRegistrationPhase = start && advisorDeadline && now >= start && now <= advisorDeadline;
+        return (
+          <button
+            className="bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2 rounded-md"
+            onClick={() => navigate('/student/proposals', { state: { selectedPeriod } })}
+            disabled={!isInRegistrationPhase}
+            style={!isInRegistrationPhase ? { opacity: 0.5, cursor: 'not-allowed' } : {}}
+          >
+            Đề xuất
+          </button>
+        );
+      })()}
 
       {/* Search and Table */}
       <div className="bg-white p-6 rounded-lg shadow-md">
@@ -478,14 +484,24 @@ const TopicsList = () => {
               {isLoading ? (
                 <tr><td colSpan="7" className="p-4 text-center text-gray-500">Đang tải...</td></tr>
               ) : paginatedTopics.length > 0 ? (
-                paginatedTopics.map((topic) => (
+                paginatedTopics.map((topic) => {
+                  // Chỉ cho phép ghi danh trong 2 tháng đầu tiên (từ registration_period_start đến advisor_request_deadline)
+                  const now = Date.now() / 1000;
+                  const start = selectedPeriod?.registration_period_start;
+                  const advisorDeadline = selectedPeriod?.advisor_request_deadline;
+                  const isInRegistrationPhase = start && advisorDeadline && now >= start && now <= advisorDeadline;
+                  return (
                   <tr key={topic._id} className="hover:bg-gray-50">
                     <td className="px-4 py-3 whitespace-nowrap text-center">
                          <button 
                         onClick={() => handleRegisterClick(topic._id, topic.topic_block)}
-                        className={`text-blue-600 hover:text-blue-800 focus:outline-none ${topic.topic_block || isBlocked ? 'opacity-50 cursor-not-allowed' : ''}`}
-                        title={topic.topic_block ? 'Đề tài đã bị khóa' : isBlocked ? 'Bạn đã có đề tài đang thực hiện hoặc chờ duyệt' : 'Ghi danh'}
-                        disabled={topic.topic_block || isBlocked || (topic.topic_registration_period && topic.topic_registration_period.block_topic)}
+                        className={`text-blue-600 hover:text-blue-800 focus:outline-none ${topic.topic_block || isBlocked || !isInRegistrationPhase ? 'opacity-50 cursor-not-allowed' : ''}`}
+                        title={
+                          topic.topic_block ? 'Đề tài đã bị khóa' :
+                          isBlocked ? 'Bạn đã có đề tài đang thực hiện hoặc chờ duyệt' :
+                          !isInRegistrationPhase ? 'Đã quá hạn ghi danh' : 'Ghi danh'
+                        }
+                        disabled={topic.topic_block || isBlocked || !isInRegistrationPhase || (topic.topic_registration_period && topic.topic_registration_period.block_topic)}
                          >
                            <FaPencilAlt />
                          </button>
@@ -507,15 +523,17 @@ const TopicsList = () => {
                     </td>
                     <td className="px-4 py-3 whitespace-nowrap">
                       <span className={`px-2 inline-flex text-xs leading-5 font-semibold rounded-full ${
-                        topic.topic_block 
-                          ? 'bg-red-100 text-red-800' 
-                          : 'bg-green-100 text-green-800'
+                        topic.topic_block
+                          ? 'bg-red-100 text-red-800'
+                          : !isInRegistrationPhase
+                            ? 'bg-gray-200 text-gray-500'
+                            : 'bg-green-100 text-green-800'
                       }`}>
-                        {topic.topic_block ? 'Đã khóa' : 'Có thể đăng ký'}
+                        {topic.topic_block ? 'Đã khóa' : !isInRegistrationPhase ? 'Hết hạn đăng ký' : 'Có thể đăng ký'}
                       </span>
                     </td>
                   </tr>
-                ))
+                )})
               ) : (
                 <tr><td colSpan="7" className="p-4 text-center text-gray-500">Không tìm thấy đề tài phù hợp.</td></tr>
               )}
@@ -853,8 +871,37 @@ const Proposals = () => {
     }
   }, [selectedPeriod]);
 
+  // Sau khi đã load registrationPeriods, tự động chọn đợt hợp lệ nếu chưa có selectedPeriod
+  useEffect(() => {
+    if (!selectedPeriod && registrationPeriods.length > 0) {
+      const now = Date.now() / 1000;
+      const valid = registrationPeriods.find(p =>
+        p.registration_period_status === true &&
+        now >= p.registration_period_start &&
+        now <= p.advisor_request_deadline
+      );
+      if (valid) setSelectedPeriod(valid);
+    }
+  }, [registrationPeriods, selectedPeriod]);
+
+  // Đặt biến now ở đầu component Proposals
+  const now = Date.now() / 1000;
+  // Kiểm tra deadline nộp đề cương
+  const outlineDeadline = selectedPeriod?.outline_proposal_deadline;
+  const isOverOutlineDeadline = outlineDeadline && now > outlineDeadline;
+  // Kiểm tra deadline ghi danh (giai đoạn hợp lệ đề xuất)
+  const start = selectedPeriod?.registration_period_start;
+  const advisorDeadline = selectedPeriod?.advisor_request_deadline;
+  const isInRegistrationPhase = start && advisorDeadline && now >= start && now <= advisorDeadline;
+
   if (isLoading) {
     return <div className="p-8 text-center">Đang tải dữ liệu...</div>;
+  }
+  if (!selectedPeriod) {
+    return <div className="p-8 text-center text-red-600 font-semibold">Hiện không có đợt đăng ký nào đang diễn ra.</div>;
+  }
+  if (!isInRegistrationPhase) {
+    return <div className="p-8 text-center text-red-600 font-semibold">Đã quá hạn đề xuất đề tài cho đợt này.</div>;
   }
 
   return (
@@ -1074,48 +1121,52 @@ const Proposals = () => {
 
         {/* Nộp file đơn xin hướng dẫn - giao diện đẹp */}
         <div className="bg-gray-50 rounded border p-4 mb-4">
-          <div className="flex flex-col md:flex-row md:items-center md:space-x-6">
-            <div className="flex items-center space-x-2 mb-2 md:mb-0">
+          <div className="flex items-center gap-4 mb-2">
+            <div className="flex items-center space-x-2">
               <FaFilePdf className="text-2xl text-red-600" />
-              <span className="font-semibold text-blue-900 text-base">Đơn xin hướng dẫn</span>
+              <h4 className="font-semibold text-blue-900 text-base">Đơn xin hướng dẫn</h4>
             </div>
-            <div className="flex-1">
-              {/* Ưu tiên: file vừa chọn (chưa upload) -> file đã upload -> chưa có file */}
-              {docFile
-                ? <span className="text-blue-700 text-sm">{docFile.name}</span>
-                : guidanceFile
-                  ? <span className="text-green-700 text-sm">{guidanceFile.name}</span>
-                  : convertedPdfUrl
-                    ? <span className="text-green-700 text-sm">{convertedPdfName}</span>
-                    : <span className="text-red-500 text-sm">Chưa có file.</span>
-              }
-              {convertedPdfUrl && (
-                <a href={convertedPdfUrl} target="_blank" rel="noopener noreferrer" className="ml-4 text-blue-500 underline text-sm">Xem file</a>
-              )}
-            </div>
+            <a
+                href="http://localhost:5000/uploads/don_xin_nckh_sv_yezsf.docx"
+                download="don_xin_nckh_sv_yezsf.docx"
+                className="cursor-pointer bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded text-sm"
+            >
+                Tải biểu mẫu
+            </a>
           </div>
-          <div className="flex space-x-2 mt-3">
+          <div className="flex flex-wrap items-center gap-2 mt-3">
             <label className="inline-block">
               <input
                 type="file"
-                accept=".pdf,.doc,.docx"
+                id="guidanceFileProposal"
                 onChange={handleGuidanceFileChange}
                 className="hidden"
+                accept=".pdf,.doc,.docx"
               />
-              <span className="inline-block px-4 py-2 bg-gray-200 rounded cursor-pointer text-sm font-medium hover:bg-gray-300">Chọn file</span>
-            </label>
-            {(docFile || guidanceFile) && !convertedPdfUrl && (
-            <button
-              type="button"
-                className={`px-4 py-2 rounded text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                disabled={isUploading}
-                onClick={handleUploadAdvisorRequest}
+              <label
+                htmlFor="guidanceFileProposal"
+                className="cursor-pointer bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
               >
-                {isUploading ? 'Đang tải...' : 'Tải lên'}
-            </button>
+                Chọn file
+              </label>
+            </label>
+            {docFile && (
+                <button
+                    onClick={handleUploadAdvisorRequest}
+                    disabled={isUploading}
+                    className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 font-bold"
+                >
+                    {isUploading ? 'Đang chuyển đổi...' : 'Tải lên'}
+                </button>
             )}
+            {guidanceFile && !convertedPdfUrl && <span className="text-gray-600">{guidanceFile.name}</span>}
+            {!guidanceFile && docFile && <span className="text-gray-600">{docFile.name}</span>}
+            {convertedPdfName && (
+                <a href={convertedPdfUrl} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline text-sm">{convertedPdfName}</a>
+            )}
+            {!docFile && !guidanceFile && !convertedPdfName && <span className="text-red-500 text-sm">Chưa có file.</span>}
           </div>
-          <p className="mt-1 text-xs text-gray-500">Hỗ trợ các định dạng: PDF, DOC, DOCX</p>
+          <p className="text-gray-500 text-sm mt-1">Hỗ trợ các định dạng: PDF, DOC, DOCX</p>
         </div>
 
         {/* Nút Submit */}

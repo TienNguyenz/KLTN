@@ -282,6 +282,19 @@ const TopicRegistration = () => {
     }
   };
 
+  // Kiểm tra deadline nộp đơn xin hướng dẫn
+  const now = Date.now() / 1000; // giây
+  const advisorDeadline = topic?.topic_registration_period?.advisor_request_deadline;
+  const isOverAdvisorDeadline = advisorDeadline && now > advisorDeadline;
+
+  if (isOverAdvisorDeadline) {
+    return (
+      <div className="p-8 text-center text-red-600 font-semibold">
+        Đã quá hạn nộp đơn xin hướng dẫn cho đợt đăng ký này. Bạn không thể ghi danh đề tài này nữa.
+      </div>
+    );
+  }
+
   if (isLoading) {
     return <div className="p-8 text-center">Đang tải thông tin đề tài...</div>;
   }
@@ -432,48 +445,59 @@ const TopicRegistration = () => {
          
           {/* Form nộp đơn xin hướng dẫn */}
           <div className="mb-6">
-            <h3 className="text-lg font-medium text-gray-700 mb-3">Đơn xin hướng dẫn</h3>
+            <h3 className="text-lg font-medium text-gray-700 mb-3">Form nộp đơn xin hướng dẫn</h3>
             <div className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-gray-600 mb-2">
-                  File đính kèm 
-                </label>
-                <div className="flex items-center space-x-2">
-                  <input
-                    type="file"
-                    onChange={handleGuidanceFileChange}
-                    className="hidden"
-                    id="file-upload"
-                    accept=".pdf,.doc,.docx"
-                  />
-                  <label
-                    htmlFor="file-upload"
-                    className="inline-flex items-center px-4 py-2 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 cursor-pointer"
-                  >
-                    <FaFileUpload className="mr-2 h-5 w-5 text-gray-400" />
-                    Chọn file
-                  </label>
-                  {guidanceFile && !convertedPdfUrl && (
-                    <span className="text-green-700 text-sm">{guidanceFile.name}</span>
-                  )}
-                  {docFile && !convertedPdfUrl && (
-                    <button
-                      type="button"
-                      className={`px-4 py-2 rounded text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 ${isUploading ? 'opacity-50 cursor-not-allowed' : ''}`}
-                      disabled={isUploading}
-                      onClick={handleUploadAdvisorRequest}
-                    >
-                      {isUploading ? 'Đang tải...' : 'Tải lên'}
-                    </button>
-                  )}
-                  {convertedPdfUrl && (
-                    <span className="text-green-700 text-sm">{convertedPdfName}</span>
-                  )}
+                <div className="mb-4">
+                    <div className="flex items-center gap-4 mb-2">
+                        <h4 className="text-lg font-semibold text-gray-700">Đơn xin hướng dẫn</h4>
+                        <a
+                            href="http://localhost:5000/uploads/don_xin_nckh_sv_yezsf.docx"
+                            download="don_xin_nckh_sv_yezsf.docx"
+                            className="cursor-pointer bg-gray-500 hover:bg-gray-700 text-white font-bold py-1 px-3 rounded text-sm"
+                        >
+                            Tải biểu mẫu
+                        </a>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                        <input
+                            type="file"
+                            id="guidanceFile"
+                            onChange={handleGuidanceFileChange}
+                            className="hidden"
+                            accept=".pdf,.doc,.docx"
+                        />
+                        <label
+                            htmlFor="guidanceFile"
+                            className="cursor-pointer bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded"
+                        >
+                            <FaFileUpload className="inline-block mr-2" />
+                            Chọn file
+                        </label>
+                        {docFile && (
+                            <button
+                                onClick={handleUploadAdvisorRequest}
+                                disabled={isUploading}
+                                className="px-3 py-2 bg-green-500 text-white rounded hover:bg-green-600 disabled:opacity-50 font-bold"
+                            >
+                                {isUploading ? 'Đang chuyển đổi...' : 'Tải lên'}
+                            </button>
+                        )}
+                        {guidanceFile && !convertedPdfUrl && <span className="text-gray-600">{guidanceFile.name}</span>}
+                        {!guidanceFile && docFile && <span className="text-gray-600">{docFile.name}</span>}
+                        {convertedPdfName && (
+                            <a
+                                href={convertedPdfUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="text-blue-500 hover:underline"
+                            >
+                                {convertedPdfName}
+                            </a>
+                        )}
+                        {!docFile && !guidanceFile && !convertedPdfName && <span className="text-red-500">Chưa có file.</span>}
+                    </div>
+                    <p className="text-gray-500 text-sm mt-1">Hỗ trợ các định dạng: PDF, DOC, DOCX</p>
                 </div>
-                <p className="mt-1 text-sm text-gray-500">
-                  Hỗ trợ các định dạng: PDF, DOC, DOCX
-                </p>
-              </div>
             </div>
           </div>
          
@@ -481,19 +505,17 @@ const TopicRegistration = () => {
               <button
                 type="submit"
               className={`inline-flex items-center justify-center px-6 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white transition-colors ${
-                topic.topic_block && !isOldMember || isBlocked ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
+                topic.topic_block && !isOldMember || isBlocked || isOverAdvisorDeadline ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500'
               }`}
-              disabled={topic.topic_block && !isOldMember || isBlocked}
+              disabled={topic.topic_block && !isOldMember || isBlocked || isOverAdvisorDeadline}
               >
                 <FaCheckCircle className="-ml-1 mr-2 h-5 w-5" />
-                {(topic.topic_block && !isOldMember) ? 'Đề tài đã bị khóa' : isBlocked ? 'Bạn đã có đề tài đang thực hiện hoặc chờ duyệt' : 'Xác nhận đăng ký'}
+                {(topic.topic_block && !isOldMember) ? 'Đề tài đã bị khóa' : isBlocked ? 'Bạn đã có đề tài đang thực hiện hoặc chờ duyệt' : isOverAdvisorDeadline ? 'Đã quá hạn ghi danh' : 'Xác nhận đăng ký'}
               </button>
           </div>
-          {topic.topic_block && !isOldMember && (
+          {isOverAdvisorDeadline && (
             <p className="text-right text-sm text-red-600 mt-2">
-              {topic.topic_group_student?.length >= topic.topic_max_members
-                ? 'Đề tài này đã đủ số lượng sinh viên đăng ký.'
-                : 'Đề tài này đã bị khóa và không thể đăng ký.'}
+              Đã quá hạn nộp đơn xin hướng dẫn cho đợt đăng ký này. Bạn không thể ghi danh đề tài này nữa.
             </p>
           )} 
       </form>

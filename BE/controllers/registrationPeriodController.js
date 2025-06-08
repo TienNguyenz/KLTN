@@ -14,6 +14,9 @@ const ERROR_MESSAGES = {
   DELETE_SUCCESS: 'Xóa đợt đăng ký thành công'
 };
 
+// Constants
+const MS_PER_MONTH = 30 * 24 * 60 * 60; // 30 ngày, đơn vị: giây
+
 // Helper functions
 const validateDates = (start, end, semester) => {
   if (start >= end) {
@@ -99,9 +102,18 @@ exports.createRegistrationPeriod = async (req, res) => {
       return res.status(400).json({ message: ERROR_MESSAGES.OVERLAPPING_PERIOD });
     }
 
-    const registrationPeriod = new RegistrationPeriod(req.body);
+    // Tính các deadline tự động
+    const advisor_request_deadline = Number(registration_period_start) + 2 * MS_PER_MONTH;
+    const outline_proposal_deadline = Number(registration_period_start) + 4 * MS_PER_MONTH;
+    const final_report_deadline = Number(registration_period_end);
+
+    const registrationPeriod = new RegistrationPeriod({
+      ...req.body,
+      advisor_request_deadline,
+      outline_proposal_deadline,
+      final_report_deadline
+    });
     await registrationPeriod.save();
-    
     res.status(201).json(registrationPeriod);
   } catch (error) {
     res.status(500).json({ 
@@ -166,9 +178,26 @@ exports.updateRegistrationPeriod = async (req, res) => {
       }
     }
 
+    // Tính lại các deadline nếu có cập nhật ngày bắt đầu/kết thúc
+    let advisor_request_deadline = existingPeriod.advisor_request_deadline;
+    let outline_proposal_deadline = existingPeriod.outline_proposal_deadline;
+    let final_report_deadline = existingPeriod.final_report_deadline;
+    if (registration_period_start) {
+      advisor_request_deadline = Number(registration_period_start) + 2 * MS_PER_MONTH;
+      outline_proposal_deadline = Number(registration_period_start) + 4 * MS_PER_MONTH;
+    }
+    if (registration_period_end) {
+      final_report_deadline = Number(registration_period_end);
+    }
+
     const updatedPeriod = await RegistrationPeriod.findByIdAndUpdate(
       req.params.id,
-      req.body,
+      {
+        ...req.body,
+        advisor_request_deadline,
+        outline_proposal_deadline,
+        final_report_deadline
+      },
       { new: true }
     ).populate('registration_period_semester');
 

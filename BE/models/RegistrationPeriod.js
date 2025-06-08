@@ -24,6 +24,18 @@ const registrationPeriodSchema = new mongoose.Schema({
   block_topic: {
     type: Boolean,
     default: false
+  },
+  advisor_request_deadline: {
+    type: Number,
+    required: true
+  },
+  outline_proposal_deadline: {
+    type: Number,
+    required: true
+  },
+  final_report_deadline: {
+    type: Number,
+    required: true
   }
 }, {
   timestamps: true
